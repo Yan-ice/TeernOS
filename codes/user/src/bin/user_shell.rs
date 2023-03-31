@@ -842,11 +842,13 @@ pub fn main() -> i32 {
     let mut line: String;
     let mut shellmachine = InputMachine::new();
     let mut arg_machine = ArgMachine::new();
-    loop {
-        // println!{"<<<<<<<<<entering the loop of input"}
+
+    loop{
+        println!{"<<<<<<<<<entering the loop of input"}
         let c = getchar();
         let is_exec = shellmachine.operate(c as char);
         if is_exec {
+            // println!("cmd: %s", shellmachine.get_cmd());
             line = String::from(shellmachine.get_cmd());
             let is_exec = arg_machine.operate_str(shellmachine.get_cmd());
             // arg_machine.print_state();
