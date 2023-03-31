@@ -1,4 +1,5 @@
 # Building
+QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
 TARGET := riscv64imac-unknown-none-elf
 MODE := release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/UltraOS
@@ -92,7 +93,7 @@ run: run-inner
 
 run-inner:  build 
 ifeq ($(BOARD),qemu)
-	@qemu-system-riscv64 \
+	@$(QEMU_SYSTEM)\
 		-machine virt \
 		-nographic \
 		-bios $(BOOTLOADER) \
