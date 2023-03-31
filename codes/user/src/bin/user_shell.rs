@@ -844,8 +844,11 @@ pub fn main() -> i32 {
     let mut arg_machine = ArgMachine::new();
 
     loop{
-        println!{"<<<<<<<<<entering the loop of input"}
         let c = getchar();
+        if(c==255){
+            continue;
+        }
+        //println!("getchar: {}", c);
         let is_exec = shellmachine.operate(c as char);
         if is_exec {
             // println!("cmd: %s", shellmachine.get_cmd());
