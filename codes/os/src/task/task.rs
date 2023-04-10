@@ -1,6 +1,4 @@
-use core::ops::Index;
-
-use crate::{console::print, mm::{
+use crate::{console::print, nk::{
     MemorySet,
     PhysPageNum,
     KERNEL_SPACE, 
@@ -15,7 +13,7 @@ use crate::{console::print, mm::{
     MapPermission,
     // PTEFlags,
 }, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::trap::{TrapContext, trap_handler};
+use crate::nk::{TrapContext, trap_handler};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;

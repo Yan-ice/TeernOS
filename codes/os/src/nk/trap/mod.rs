@@ -13,7 +13,7 @@ use riscv::register::{
     stval,
     sie,
 };
-use crate::mm::{
+use super::mm::{
     VirtAddr,
     VirtPageNum,
     print_free_pages,

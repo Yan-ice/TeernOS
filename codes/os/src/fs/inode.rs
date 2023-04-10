@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use alloc::string::String;
 use spin::Mutex;
 use super::{DT_DIR, DT_REG, DT_UNKNOWN, Dirent, File, Kstat, NewStat, finfo};
-use crate::mm::UserBuffer;
+use crate::nk::UserBuffer;
 use simple_fat32::{ATTRIBUTE_ARCHIVE, ATTRIBUTE_DIRECTORY, FAT32Manager, VFile};
 //use crate::config::*;
 //use crate::gdb_println;

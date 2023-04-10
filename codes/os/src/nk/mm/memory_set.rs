@@ -10,7 +10,7 @@ use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
 use crate::config::*;
-use crate::mm::MmapArea;
+use super::vma::*;
 use crate::monitor::*;
 use crate::task::AuxHeader;
 

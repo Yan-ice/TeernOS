@@ -1,4 +1,4 @@
-use crate::nk::trap::trap_return;
+use crate::nk::trap_return;
 
 #[derive(Debug)]
 #[repr(C)]

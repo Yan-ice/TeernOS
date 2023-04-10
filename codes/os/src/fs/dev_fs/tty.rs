@@ -5,11 +5,11 @@ use alloc::sync::Arc;
 use core::mem::size_of;
 use super::{ioctl::Termios};
 use crate::fs::File;
-use crate::mm::{
+use crate::nk::{
     copy_from_user,
     copy_to_user
 };
-use crate::mm::UserBuffer;
+use crate::nk::UserBuffer;
 use super::ioctl::*;
 
 lazy_static! {

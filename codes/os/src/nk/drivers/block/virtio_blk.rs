@@ -1,6 +1,6 @@
 
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
-use crate::mm::{
+use crate::nk::mm::{
     PhysAddr,
     VirtAddr,
     frame_alloc,
