@@ -8,7 +8,7 @@ mod info;
 mod resource;
 
 use crate::fs::{open, OpenFlags, DiskInodeType, File};
-use crate::mm::{UserBuffer, add_free, translated_refmut};
+use crate::nk::mm::{UserBuffer, add_free, translated_refmut};
 use crate::config::PAGE_SIZE;
 use crate::gdb_print;
 use crate::monitor::*;

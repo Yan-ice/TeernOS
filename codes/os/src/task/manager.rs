@@ -3,7 +3,6 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use spin::Mutex;
 use lazy_static::*;
-use super::processor::*;
 
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,

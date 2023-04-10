@@ -1,13 +1,13 @@
 // #![feature(llvm_asm)]
 // #[macro_use]
-use super::{TaskControlBlock, RUsage};
+use super::{TaskControlBlock};
 use alloc::sync::Arc;
 use core::{borrow::Borrow, cell::RefCell};
 use lazy_static::*;
-use super::{fetch_task, TaskStatus, Signals, SIG_DFL};
+use super::{fetch_task, TaskStatus};
 use super::__switch;
 use crate::timer::get_time_us;
-use crate::trap::TrapContext;
+use crate::nk::trap::TrapContext;
 use crate::task::manager::add_task;
 use crate::gdb_print;
 use crate::monitor::*;

@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use sbi::sbi_send_ipi;
 use spin::*;
 use timer::get_timeval;
-use syscall::*;
+use nk::*;
 use alloc::sync::Arc;
 
 extern crate alloc;
@@ -22,17 +22,13 @@ extern crate bitflags;
 mod console;
 mod lang_items;
 mod sbi;
-mod syscall;
-mod trap;
+mod nk;
 mod config;
 mod utils;
 #[macro_use]
 mod monitor;
 mod task;
 mod timer;
-mod mm;
-mod fs;
-mod drivers;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
