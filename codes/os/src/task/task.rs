@@ -13,7 +13,7 @@ use crate::{console::print, nk::{
     MapPermission,
     // PTEFlags,
 }, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext, trap_handler};
+use crate::nk::{TrapContext};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;
@@ -282,6 +282,8 @@ impl TaskControlBlock {
         let tgid = pid_handle.0;
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
+
+        //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
         let task_cx_ptr = kernel_stack.push_on_top(TaskContext::goto_trap_return());
         let task_control_block = Self {
@@ -298,7 +300,8 @@ impl TaskControlBlock {
                     user_sp,
                     KERNEL_SPACE.lock().token(),
                     kernel_stack_top,
-                    trap_handler as usize,
+                    //trap_handler as usize,
+                    //Yan_ice: trap_handler
                 ),
                 trap_cx_ppn,
                 base_size: user_sp,
@@ -347,7 +350,8 @@ impl TaskControlBlock {
             user_sp,
             KERNEL_SPACE.lock().token(),
             kernel_stack_top,
-            trap_handler as usize,
+            //trap_handler as usize,
+                //Yan_ice: trap_handler
         );
         task_control_block
     }
@@ -515,7 +519,8 @@ impl TaskControlBlock {
             user_sp,
             KERNEL_SPACE.lock().token(),
             self.kernel_stack.get_top(),
-            trap_handler as usize,
+            //trap_handler as usize,
+            //Yan_ice: trap_handler
         );
         trap_cx.x[10] = args.len();
         trap_cx.x[11] = argv_base;

@@ -207,6 +207,7 @@ pub fn get_kernel_runtime_usec() -> usize{
 }
 
 
+//上下文切换，需要移入NestedKernel。
 pub fn schedule(switched_task_cx_ptr2: *const usize) {
     let core_id: usize = get_core_id();
     let idle_task_cx_ptr2 = PROCESSOR_LIST[core_id].get_idle_task_cx_ptr2();
