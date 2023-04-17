@@ -269,19 +269,20 @@ impl TaskControlBlock {
         return false;
     }
 
-
+    //PCB生成
     pub fn new(elf_data: &[u8]) -> Self {
-        // memory_set with elf program headers/trampoline/trap context/user stack
-        let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data);
-        let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap()
-            .ppn();
         // alloc a pid and a kernel stack in kernel space
         let pid_handle = pid_alloc();
         let tgid = pid_handle.0;
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
+
+        // memory_set with elf program headers/trampoline/trap context/user stack
+        let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
+        let trap_cx_ppn = memory_set
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
+            .unwrap()
+            .ppn();
 
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
@@ -372,8 +373,8 @@ impl TaskControlBlock {
     // Due to "push" operations, we will start from the bottom
     pub fn exec(&self, elf_data: &[u8], args: Vec<String>) {
         // memory_set with elf program headers/trampoline/trap context/user stack
-        
-        let (memory_set, mut user_sp, user_heap, entry_point, mut auxv) = MemorySet::from_elf(elf_data);
+        let pid = self.tgid;
+        let (memory_set, mut user_sp, user_heap, entry_point, mut auxv) = MemorySet::from_elf(elf_data,pid);
         
         // println!("user_sp {:X}", user_sp);
         let trap_cx_ppn = memory_set
@@ -534,19 +535,7 @@ impl TaskControlBlock {
     pub fn fork(self: &Arc<TaskControlBlock>, is_create_thread: bool) -> Arc<TaskControlBlock> {
         // ---- hold parent PCB lock
         let mut parent_inner = self.acquire_inner_lock();
-        // println!{"trap context of pid{}: {:X}", self.pid.0, parent_inner.trap_cx_ppn.0}
-        parent_inner.print_cx();
-        // let user_heap_top = parent_inner.heap_start + USER_HEAP_SIZE;
-        let user_heap_base = parent_inner.heap_start;
-        // copy user space(include trap context)
-        let memory_set = MemorySet::from_copy_on_write(
-            &mut parent_inner.memory_set,
-            user_heap_base,
-        );
-        let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap()
-            .ppn();
+        
         // alloc a pid and a kernel stack in kernel space
         let pid_handle = pid_alloc();
         let mut tgid = 0;
@@ -556,6 +545,23 @@ impl TaskControlBlock {
         else{
             tgid = pid_handle.0;
         }
+
+        // println!{"trap context of pid{}: {:X}", self.pid.0, parent_inner.trap_cx_ppn.0}
+        parent_inner.print_cx();
+        // let user_heap_top = parent_inner.heap_start + USER_HEAP_SIZE;
+        let user_heap_base = parent_inner.heap_start;
+        // copy user space(include trap context)
+        let memory_set = MemorySet::from_copy_on_write(
+            &mut parent_inner.memory_set,
+            user_heap_base,
+            tgid
+        );
+        let trap_cx_ppn = memory_set
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
+            .unwrap()
+            .ppn();
+        
+        
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
         // push a goto_trap_return task_cx on the top of kernel stack

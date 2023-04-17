@@ -63,6 +63,9 @@ pub fn kernel_token() -> usize {
 }
 
 pub struct MemorySet {
+    level: usize,
+    id: usize,
+
     page_table: PageTable,
     areas: Vec<MapArea>,
     chunks: ChunkArea,
@@ -74,8 +77,10 @@ impl MemorySet {
     pub fn clone_areas(&self) -> Vec<MapArea> {
         self.areas.clone()
     }
-    pub fn new_bare() -> Self {
+    pub fn new_bare(level: usize, id: usize) -> Self {
         Self {
+            level,
+            id,
             page_table: PageTable::new(),
             areas: Vec::new(),
             chunks: ChunkArea::new(MapType::Framed,
@@ -205,7 +210,7 @@ impl MemorySet {
 
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
-        let mut memory_set = Self::new_bare();
+        let mut memory_set = Self::new_bare(1,0);
         // map trampoline
         memory_set.map_trampoline();
         // map kernel sections
@@ -259,11 +264,12 @@ impl MemorySet {
         }
         memory_set
     }
+
     /// Include sections in elf and trampoline and TrapContext and user stack,
     /// also returns user_sp and entry point.
-    pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize, usize, Vec<AuxHeader>) {
+    pub fn from_elf(elf_data: &[u8], pid: usize) -> (Self, usize, usize, usize, Vec<AuxHeader>) {
         let mut auxv:Vec<AuxHeader> = Vec::new();
-        let mut memory_set = Self::new_bare();
+        let mut memory_set = Self::new_bare(2,pid);
         // map trampoline
         // memory_set.map_trampoline();
         memory_set.map_signal_trampoline();
@@ -397,8 +403,8 @@ impl MemorySet {
         (memory_set, user_stack_top, user_heap_bottom, elf.header.pt2.entry_point() as usize, auxv)
     }
  
-    pub fn from_existed_user(user_space: &MemorySet) -> MemorySet {
-        let mut memory_set = Self::new_bare();
+    pub fn from_existed_user(user_space: &MemorySet, pid: usize) -> MemorySet {
+        let mut memory_set = Self::new_bare(2,pid);
         // map trampoline
         // memory_set.map_trampoline();
         memory_set.map_signal_trampoline();
@@ -443,9 +449,9 @@ impl MemorySet {
         memory_set
     }
 
-    pub fn from_copy_on_write(user_space: &mut MemorySet, split_addr: usize) -> MemorySet {
+    pub fn from_copy_on_write(user_space: &mut MemorySet, split_addr: usize, pid: usize) -> MemorySet {
         // create a new memory_set
-        let mut memory_set = Self::new_bare();
+        let mut memory_set = Self::new_bare(2,pid);
         // This part is not for Copy on Write.
         // Including:   Trampoline
         //              Trap_Context

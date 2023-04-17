@@ -12,11 +12,14 @@ pub use mm::{VirtPageNum as VirtPageNum,
             KERNEL_SPACE as KERNEL_SPACE, 
             MapPermission as MapPermission,
             KERNEL_MMAP_AREA as KERNEL_MMAP_AREA,
+            KERNEL_TOKEN as KERNEL_TOKEN,
             PageTableEntry as PageTableEntry,
             MemorySet as MemorySet,
             MmapArea as MmapArea,
             PageTable as PageTable,
-
+            FrameTracker as FrameTracker,
+            StepByOne as StepByOne,
+            
             //以下是读取内存数据的系列接口。
             translated_refmut as translated_refmut,
             translated_ref as translated_ref,
@@ -29,7 +32,9 @@ pub use mm::{VirtPageNum as VirtPageNum,
             copy_object as copy_object,
             //或许可以实现strcpy?
 
-            //以下是mmio系列接口，还没实现
+            //以下是alloc/mmio系列接口，还没实现
+            frame_alloc as frame_alloc,
+            frame_dealloc as frame_dealloc,
             //io_map as io_map
             //io_unmap as io_unmap
 

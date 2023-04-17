@@ -3,7 +3,7 @@ use core::mem::{size_of};
 use crate::lang_items::Bytes;
 use crate::timer::get_timeval;
 use crate::{fs::{Dirent, FdSet, File, FileClass, FileDescripter, IoVec, IoVecs, Kstat, MNT_TABLE, NewStat, TTY, NullZero}, gdb_print, gdb_println, 
-        nk::{UserBuffer, translated_byte_buffer, translated_ref, translated_refmut, translated_str, print_free_pages},
+        nk::{UserBuffer, translated_raw, translated_ref, translated_refmut, translated_str, print_free_pages},
         monitor::*, 
         task::{
         FdTable,
@@ -44,7 +44,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
         }
         drop(inner);
         let size = f.write(
-            UserBuffer::new(translated_byte_buffer(token, buf, len))
+            UserBuffer::new(translated_raw(token, buf, len))
         );
         if fd == 2{
             let str = str::replace(translated_str(token, buf).as_str(), "\n", "\\n");
@@ -111,7 +111,7 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
         // release Task lock manually to avoid deadlock
         drop(inner);
         let size = file.read(
-            UserBuffer::new(translated_byte_buffer(token, buf, len))
+            UserBuffer::new(translated_raw(token, buf, len))
         );
         if fd > 2{
             gdb_println!(SYSCALL_ENABLE, "sys_read(fd: {}, buf: ?, len: {}) = {}", fd, len, size);
@@ -351,7 +351,7 @@ pub fn sys_ls(path: *const u8) -> isize{
 pub fn sys_getcwd(buf: *mut u8, len: usize)->isize{
     let token = current_user_token();
     let task = current_task().unwrap();
-    let buf_vec = translated_byte_buffer(token, buf, len);
+    let buf_vec = translated_raw(token, buf, len);
     let inner = task.acquire_inner_lock();
     
     let mut userbuf = UserBuffer::new(buf_vec);
@@ -394,7 +394,7 @@ pub fn sys_getdents64(fd:isize, buf: *mut u8, len:usize)->isize{
     //println!("=====================================");
     let token = current_user_token();
     let task = current_task().unwrap();
-    let buf_vec = translated_byte_buffer(token, buf, len);
+    let buf_vec = translated_raw(token, buf, len);
     let inner = task.acquire_inner_lock();
     let dent_len = size_of::<Dirent>();
     //let max_num = len / dent_len;
@@ -459,7 +459,7 @@ pub fn sys_getdents64(fd:isize, buf: *mut u8, len:usize)->isize{
 pub fn sys_fstat(fd:isize, buf: *mut u8)->isize{
     let token = current_user_token();
     let task = current_task().unwrap();
-    let mut buf_vec = translated_byte_buffer(token, buf, size_of::<Kstat>());
+    let mut buf_vec = translated_raw(token, buf, size_of::<Kstat>());
     let inner = task.acquire_inner_lock();
     // 使用UserBuffer结构，以便于跨页读写
     let mut userbuf = UserBuffer::new(buf_vec);
@@ -508,7 +508,7 @@ pub fn sys_fstat(fd:isize, buf: *mut u8)->isize{
 pub fn sys_newfstatat(fd:isize, path: *const u8, buf: *mut u8, flag: u32)->isize{
     let token = current_user_token();
     let task = current_task().unwrap();
-    let mut buf_vec = translated_byte_buffer(token, buf, size_of::<NewStat>());
+    let mut buf_vec = translated_raw(token, buf, size_of::<NewStat>());
     let inner = task.acquire_inner_lock();
     //println!("size = {}", size_of::<NewStat>());
     // 使用UserBuffer结构，以便于跨页读写
@@ -910,7 +910,7 @@ pub fn sys_readlinkat(dirfd: isize, pathname: *const u8, buf: *mut u8, bufsiz: u
         if path.as_str() != "/proc/self/exe" {
             panic!("sys_readlinkat: pathname not support");
         }
-        let mut userbuf = UserBuffer::new(translated_byte_buffer(token, buf, bufsiz));
+        let mut userbuf = UserBuffer::new(translated_raw(token, buf, bufsiz));
         let procinfo = "/lmbench_all\0";
         let buff = procinfo.as_bytes();
         userbuf.write(buff);
@@ -1017,7 +1017,7 @@ pub fn sys_pselect(
     let mut ubuf_rfds = {
         if readfds as usize != 0 {
             UserBuffer::new(
-                translated_byte_buffer(token, readfds, size_of::<FdSet>())
+                translated_raw(token, readfds, size_of::<FdSet>())
             )
         } else {
             UserBuffer::empty()
@@ -1028,7 +1028,7 @@ pub fn sys_pselect(
     let mut ubuf_wfds = {
         if writefds as usize != 0 {
             UserBuffer::new(
-                translated_byte_buffer(token, writefds, size_of::<FdSet>())
+                translated_raw(token, writefds, size_of::<FdSet>())
             )
         } else {
             UserBuffer::empty()
@@ -1040,7 +1040,7 @@ pub fn sys_pselect(
     let mut ubuf_efds = {
         if exceptfds as usize != 0 {
             UserBuffer::new(
-                translated_byte_buffer(token, exceptfds, size_of::<FdSet>())
+                translated_raw(token, exceptfds, size_of::<FdSet>())
             )
         } else {
             UserBuffer::empty()
@@ -1056,7 +1056,7 @@ pub fn sys_pselect(
         let fd_table = &inner.fd_table;
         if readfds as usize != 0 && !r_all_ready{
             //let mut ubuf_rfds = UserBuffer::new(
-            //    translated_byte_buffer(token, readfds, size_of::<FdSet>())
+            //    translated_raw(token, readfds, size_of::<FdSet>())
             //);
             
             if rfd_vec.len() == 0 {
@@ -1106,7 +1106,7 @@ pub fn sys_pselect(
         /* handle write fd set */
         if writefds as usize != 0 && !w_all_ready {
             //let mut ubuf_wfds = UserBuffer::new(
-            //    translated_byte_buffer(token, writefds, size_of::<FdSet>())
+            //    translated_raw(token, writefds, size_of::<FdSet>())
             //);
             //let mut wfd_set = FdSet::new();
             //ubuf_wfds.read(wfd_set.as_bytes_mut());
@@ -1157,7 +1157,7 @@ pub fn sys_pselect(
         /* Cannot handle exceptfds for now */
         if exceptfds as usize != 0 {
             //let mut ubuf_efds = UserBuffer::new(
-            //    translated_byte_buffer(token, exceptfds, size_of::<FdSet>())
+            //    translated_raw(token, exceptfds, size_of::<FdSet>())
             //);
             let mut efd_set = FdSet::new();
             ubuf_efds.read(efd_set.as_bytes_mut());

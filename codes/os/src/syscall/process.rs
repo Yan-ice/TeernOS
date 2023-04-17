@@ -6,7 +6,7 @@ use crate::nk::{
     translated_str,
     translated_refmut,
     translated_ref,
-    translated_byte_buffer, 
+    translated_raw, 
     print_free_pages,
     PageTable,
 };
@@ -74,7 +74,7 @@ pub fn sys_getrusage(who: isize, usage: *mut u8) -> isize {
     }
     let task = current_task().unwrap();
     let token = current_user_token();
-    let mut userbuf = UserBuffer::new(translated_byte_buffer(token, usage, core::mem::size_of::<RUsage>()));
+    let mut userbuf = UserBuffer::new(translated_raw(token, usage, core::mem::size_of::<RUsage>()));
     let rusage = &task.acquire_inner_lock().rusage;
     userbuf.write(rusage.as_bytes());
     gdb_println!(SYSCALL_ENABLE, "sys_getrusage(who: {}, usage: {:?}) = {}", who, rusage, 0);
@@ -91,7 +91,7 @@ pub fn sys_uname(buf: *mut u8) -> isize {
     //     domainname: b"UltraTEAM/UltraOS\0"
     // };
     let token = current_user_token();
-    let mut buf_vec = translated_byte_buffer(token, buf, size_of::<utsname>());
+    let mut buf_vec = translated_raw(token, buf, size_of::<utsname>());
     let uname = utsname::new();
     // 使用UserBuffer结构，以便于跨页读写
     let mut userbuf = UserBuffer::new(buf_vec);
@@ -158,7 +158,7 @@ pub fn sys_getitimer(which: isize, curr_value: *mut u8) -> isize{
     let token = current_user_token();
     if curr_value as usize != 0{
         let mut itimer = current_task().unwrap().acquire_inner_lock().itimer;
-        let mut buf_vec = translated_byte_buffer(token, curr_value, size_of::<ITimerVal>());
+        let mut buf_vec = translated_raw(token, curr_value, size_of::<ITimerVal>());
         // 使用UserBuffer结构，以便于跨页读写
         let mut userbuf = UserBuffer::new(buf_vec);
         if !itimer.is_zero(){
@@ -181,7 +181,7 @@ pub fn sys_setitimer(which: isize, new_value: *mut usize, old_value: *mut u8) ->
     let mut itimer_old = ITimerVal::new();
     if old_value as usize != 0{
         let mut itimer = current_task().unwrap().acquire_inner_lock().itimer;
-        let mut buf_vec = translated_byte_buffer(token, old_value, size_of::<ITimerVal>());
+        let mut buf_vec = translated_raw(token, old_value, size_of::<ITimerVal>());
         // 使用UserBuffer结构，以便于跨页读写
         let mut userbuf = UserBuffer::new(buf_vec);
         if !itimer.is_zero(){
@@ -637,7 +637,7 @@ pub fn sys_prlimit(pid:usize, resource:i32, new_limit: *const RLimit, old_limit:
     let token = current_user_token();
     let mut olimit_buf = {
         if old_limit as usize != 0 {
-            UserBuffer::new(translated_byte_buffer(token, old_limit as usize as *const u8, size_of::<RLimit>()))
+            UserBuffer::new(translated_raw(token, old_limit as usize as *const u8, size_of::<RLimit>()))
         } else {
             UserBuffer::empty()
         }
@@ -645,7 +645,7 @@ pub fn sys_prlimit(pid:usize, resource:i32, new_limit: *const RLimit, old_limit:
 
     let mut nlimit_buf = {
         if new_limit as usize != 0 {
-            UserBuffer::new(translated_byte_buffer(token, new_limit as usize as *const u8, size_of::<RLimit>()))
+            UserBuffer::new(translated_raw(token, new_limit as usize as *const u8, size_of::<RLimit>()))
         } else {
             UserBuffer::empty()
         }
