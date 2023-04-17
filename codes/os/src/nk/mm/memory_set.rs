@@ -578,6 +578,7 @@ impl MemorySet {
         0
     }
 
+    ///修改satp，切换到该页表
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
@@ -585,6 +586,7 @@ impl MemorySet {
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }
+
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.page_table.translate(vpn)
     }

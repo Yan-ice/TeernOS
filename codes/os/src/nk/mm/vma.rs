@@ -1,4 +1,4 @@
-use super::{VirtAddr, UserBuffer, translated_byte_buffer};
+use super::{VirtAddr, UserBuffer, translated_raw};
 use crate::config::PAGE_SIZE;
 use crate::fs::{File, FileClass};
 use crate::task::FdTable;
@@ -159,7 +159,7 @@ impl MmapSpace{
                     f.set_offset(offset);
                     if !f.readable() { return -1; }
                     //println!{"The va_start is 0x{:X}, offset of file is {}", va_start.0, offset};
-                    let read_len = f.read(UserBuffer::new(translated_byte_buffer(token, va_start.0 as *const u8, len)));
+                    let read_len = f.read(UserBuffer::new(translated_raw(token, va_start.0 as *const u8, len)));
                     //println!{"read {} bytes", read_len};
                 },
                 _ => { return -1; },

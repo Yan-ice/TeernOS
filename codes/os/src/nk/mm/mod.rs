@@ -12,14 +12,13 @@ pub use frame_allocator::{FrameTracker, frame_alloc, frame_dealloc,add_free, pri
 pub use page_table::{
     PageTable,
     PageTableEntry,
-    translated_byte_buffer,
+    translated_raw,
     translated_str,
     translated_ref,
     translated_refmut,
-    translated_ref_array,
-    translated_array_copy,
-    copy_from_user,
-    copy_to_user,
+    translated_refcopy,
+    copy_object,
+    copy_array,
     UserBuffer,
     UserBufferIterator,
 };

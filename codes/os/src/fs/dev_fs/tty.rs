@@ -2,14 +2,9 @@ use spin::{Mutex, RwLock};
 use alloc::collections::VecDeque;
 use lazy_static::lazy_static;
 use alloc::sync::Arc;
-use core::mem::size_of;
 use super::{ioctl::Termios};
 use crate::fs::File;
-use crate::nk::{
-    copy_from_user,
-    copy_to_user
-};
-use crate::nk::UserBuffer;
+use crate::nk::{UserBuffer,copy_object};
 use super::ioctl::*;
 
 lazy_static! {
@@ -72,33 +67,35 @@ impl File for TtyINode {
             TIOCGPGRP => {
                 //let argp = arg as *mut i32; // pid_t
                 let argp =  *self.foreground_pgid.read();
-                copy_to_user(arg, &argp as *const i32, 4);
+                copy_object(&argp as *const i32, arg as *mut i32);
+                //copy_to_user(arg, &argp as *const i32);
                 0
             }
             TIOCSPGRP => {
                 //let fpgid = unsafe { *(arg as *const i32) };
                 let mut argp:i32 = 0;
-                copy_from_user(&mut argp as *mut i32, arg, 4);
+                copy_object(arg as *const i32, &mut argp as *mut i32);
+                //copy_from_user(&mut argp as *mut i32, arg);
                 *self.foreground_pgid.write() = argp;
                 0
             }
             TIOCGWINSZ => {
                 let winsize = Winsize::default();
-                let size = size_of::<Winsize>();
                 //println!("size = {}", size);
-                copy_to_user(arg, &winsize as *const Winsize, size);
+                copy_object(&winsize as *const Winsize,arg as *mut Winsize);
+                //copy_to_user(arg, &winsize as *const Winsize);
                 0
             }
             TCGETS => {
                 let termois  = *self.termios.read();
-                let size = size_of::<Termios>();
-                copy_to_user(arg, &termois as *const Termios, size);
+                copy_object(&termois as *const Termios,arg as *mut Termios);
+                //copy_to_user(arg, &termois as *const Termios);
                 0
             }
             TCSETS => {
                 let mut termios = Termios::default();
-                let size = size_of::<Termios>();
-                copy_from_user(&mut termios as *mut Termios, arg, size);
+                copy_object(arg as *const Termios, &mut termios as *mut Termios);
+                //copy_from_user(&mut termios as *mut Termios, arg);
                 *self.termios.write() = termios;
                 0
             }

@@ -302,12 +302,17 @@ impl PageTable {
         
     }
 
+    //Yan_ice： 这个是satp！
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }
+
+
 }
 
-pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+
+/// 直接读取指定长度的字节串数据。
+pub fn translated_raw(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;
     let end = start + len;
@@ -345,7 +350,7 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
     v
 }
 
-/// Load a string from other address spaces into kernel space without an end `\0`.
+/// 读取一个字符串（遇到\0为止）
 pub fn translated_str(token: usize, ptr: *const u8) -> String {
     let page_table = PageTable::from_token(token);
     let mut string = String::new();
@@ -361,11 +366,13 @@ pub fn translated_str(token: usize, ptr: *const u8) -> String {
     string
 }
 
+///读一个指定类型数据，获取其只读引用。
 pub fn translated_ref<T>(token: usize, ptr: *const T) -> &'static T {
     let page_table = PageTable::from_token(token);
     page_table.translate_va(VirtAddr::from(ptr as usize)).unwrap().get_ref()
 }
 
+///读一个指定类型数据，获取其mutable引用。
 pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
     let page_table = PageTable::from_token(token);
     let va = ptr as usize;
@@ -384,40 +391,21 @@ pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
     pa.unwrap().get_mut()
 }
 
-/* 获取用户数组内各元素的引用 */
-/* 目前并不能处理跨页结构体 */
-pub fn translated_ref_array<T>(token: usize, ptr: *mut T, len: usize) -> Vec<&'static T>{
+///读取一个指定类型数据，获取其复制。
+/// T必须是可以复制的类型。
+pub fn translated_refcopy<T>(token: usize, ptr: *mut T) -> T where T:Copy {
     let page_table = PageTable::from_token(token);
-    let mut ref_array:Vec<&'static T> = Vec::new();
     let mut va = ptr as usize;
-    let step = core::mem::size_of::<T>();
-    for i in 0..len {
-        println!("[trans array] va = 0x{:X}", va);
-        ref_array.push( page_table.translate_va(VirtAddr::from(va)).unwrap().get_ref() );
-        va += step;
-    }
-    ref_array
-}
-
-/* 获取用户数组的一份拷贝 */
-pub fn translated_array_copy<T>(token: usize, ptr: *mut T, len: usize) -> Vec< T>
-    where T:Copy {
-    let page_table = PageTable::from_token(token);
-    let mut ref_array:Vec<T> = Vec::new();
-    let mut va = ptr as usize;
-    let step = core::mem::size_of::<T>();
+    let size = core::mem::size_of::<T>();
     //println!("step = {}, len = {}", step, len);
-    for _i in 0..len {
-        let u_buf = UserBuffer::new( translated_byte_buffer(token, va as *const u8, step) );
-        let mut bytes_vec:Vec<u8> = Vec::new();
-        u_buf.read_as_vec(&mut bytes_vec, step);
-        //println!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
-        unsafe{
-            ref_array.push(  *(bytes_vec.as_slice() as *const [u8] as *const u8 as usize as *const T) );
-        }
-        va += step;
+    
+    let u_buf = UserBuffer::new( translated_raw(token, va as *const u8, size) );
+    let mut bytes_vec:Vec<u8> = Vec::new();
+    u_buf.read_as_vec(&mut bytes_vec, size);
+    //println!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
+    unsafe{
+        return *(bytes_vec.as_slice() as *const [u8] as *const u8 as usize as *const T);
     }
-    ref_array
 }
 
 
@@ -441,22 +429,25 @@ fn trans_to_bytes_mut<T>(ptr: *mut T)->&'static mut [u8]{
     }
 }
 
-
-/* 从用户空间复制数据到指定地址 */
-pub fn copy_from_user<T>(dst: *mut T, src: usize, size: usize) {
+/**
+ * 进行memcopy。
+ */
+pub fn copy_object<T>(src: *const T, dst: *mut T) {
     let token = current_user_token();
+    let size = core::mem::size_of::<T>();
     // translated_ 实际上完成了地址合法检测
-    let buf = UserBuffer::new(translated_byte_buffer(token, src as *const u8, size));
+    let buf = UserBuffer::new(translated_raw(token, src as *const u8, size));
     let mut dst_bytes = trans_to_bytes_mut(dst);
     buf.read(dst_bytes);
 }
 
-/* 从指定地址复制数据到用户空间 */
-pub fn copy_to_user<T>(dst: usize, src: *const T, size: usize) {
+pub fn copy_array<T>(src: *const T, dst: *mut T, len: usize) {
     let token = current_user_token();
-    let mut buf = UserBuffer::new(translated_byte_buffer(token, dst as *const u8, size));
-    let src_bytes = trans_to_bytes(src);
-    buf.write(src_bytes);
+    let size = core::mem::size_of::<T>();
+    // translated_ 实际上完成了地址合法检测
+    let buf = UserBuffer::new(translated_raw(token, src as *const u8, size*len));
+    let mut dst_bytes = trans_to_bytes_mut(dst);
+    buf.read(dst_bytes);
 }
 
 

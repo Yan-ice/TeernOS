@@ -1,9 +1,10 @@
 use alloc::vec::Vec;
 use alloc::vec;
 use crate::nk::{
-    translated_byte_buffer,
-    //translated_ref_array,
-    translated_array_copy,
+    translated_raw
+};
+use crate::util::{
+    translated_array_copy
 };
 
 
@@ -25,14 +26,16 @@ impl IoVecs {
         token: usize,
     )-> Self {
         let mut iovecs: Vec<&'static mut [u8]> = vec![];
+
         let iovref_vec = translated_array_copy(token, iov_ptr, iov_num);
+
         iovecs.reserve(iovref_vec.len());
         for iovref in iovref_vec {
             if iovref.len == 0 {
                 continue;
             }
             //println!("iov.base = 0x{:X}, iov.len = {}", iovref.base as usize,iovref.len);
-            let mut buf:Vec<&'static mut [u8]> = translated_byte_buffer(token, iovref.base, iovref.len);
+            let mut buf:Vec<&'static mut [u8]> = translated_raw(token, iovref.base, iovref.len);
             iovecs.append(&mut buf);
         }
         Self(iovecs)

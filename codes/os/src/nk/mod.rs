@@ -1,8 +1,9 @@
 mod mm;   
 mod trap;
-pub mod drivers;
 
-pub use trap::{TrapContext as TrapContext, trap_return as trap_return};
+pub use trap::{TrapContext as TrapContext, 
+        trap_return};
+
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 
             PhysPageNum as PhysPageNum,
@@ -16,16 +17,27 @@ pub use mm::{VirtPageNum as VirtPageNum,
             MmapArea as MmapArea,
             PageTable as PageTable,
 
-            //以下是在当前partition中，外部用到的接口。
+            //以下是读取内存数据的系列接口。
             translated_refmut as translated_refmut,
             translated_ref as translated_ref,
-            add_free as add_free, 
-            translated_byte_buffer as translated_byte_buffer,
+            translated_refcopy as translated_refcopy,
+            translated_raw as translated_raw,
             translated_str as translated_str,
+
+            //以下是memcopy的系列接口。
+            copy_array as copy_array,
+            copy_object as copy_object,
+            //或许可以实现strcpy?
+
+            //以下是mmio系列接口，还没实现
+            //io_map as io_map
+            //io_unmap as io_unmap
+
+            //以下接口暂时未知。
+            add_free as add_free, 
             print_free_pages as print_free_pages,
-            copy_from_user as copy_from_user,
-            copy_to_user as copy_to_user,
-            translated_array_copy as translated_array_copy}; 
+
+            }; 
 
 
 pub fn nk_main(){
