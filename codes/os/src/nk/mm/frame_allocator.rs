@@ -135,8 +135,10 @@ lazy_static! {
 
 pub fn init_frame_allocator() {
     extern "C" {
+        fn snkstack();
         fn ekernel();
     }
+    println!("snkstack addr:{}, ekernel addr:{}",snkstack as usize, ekernel as usize);
     FRAME_ALLOCATOR
         .lock()
         .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(MEMORY_END).floor());

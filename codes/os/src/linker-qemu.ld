@@ -45,7 +45,16 @@ SECTIONS
 
     . = ALIGN(4K);
     ebss = .;
+
+    /* Yan_ice 给Nested Kernel划分单独的8KB栈空间 */
+    snkstack = .;
+    . = . + 8K;
+    enkstack = .;
+
+
     ekernel = .;
+
+
 
     /DISCARD/ : {
         *(.eh_frame)
