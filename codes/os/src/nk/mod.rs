@@ -41,13 +41,12 @@ pub use mm::{VirtPageNum as VirtPageNum,
             //以下接口暂时未知。
             add_free as add_free, 
             print_free_pages as print_free_pages,
-
             }; 
 
 
 pub fn nk_main(){
     mm::init();
-    mm::remap_test();
+    mm::remap_test();  //无用
     trap::init();
     trap::enable_timer_interrupt();
     println!("Nesked kernel init");
@@ -56,5 +55,6 @@ pub fn nk_main(){
 
 fn nk_call(){
     //entry gate
+    
     //exit gate
 }
