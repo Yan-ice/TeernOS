@@ -28,9 +28,10 @@ pub use memory_set::remap_test;
 pub use heap_allocator::HEAP_ALLOCATOR;
 
 pub fn init() {
-    heap_allocator::init_heap();
-    frame_allocator::init_frame_allocator();
-    KERNEL_SPACE.lock().activate();
+    heap_allocator::init_heap();  // 堆空间分配器
+    frame_allocator::init_frame_allocator();  // 物理页帧分配器
+    // KERNEL_SPACE是个lazy启动的，启动时将pagetable等数据写好
+    KERNEL_SPACE.lock().activate();  // 切换页表
     // KERNEL_SPACE.lock().print_pagetable();
 }
 

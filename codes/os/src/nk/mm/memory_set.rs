@@ -63,14 +63,13 @@ pub fn kernel_token() -> usize {
 }
 
 pub struct MemorySet {
-    level: usize,
-    id: usize,
-
+    level: usize,  // 有用么，我找不到其他有用的操作
+    id: usize,   // 这个也找不到
     page_table: PageTable,
     areas: Vec<MapArea>,
-    chunks: ChunkArea,
-    stack_chunks: ChunkArea,
-    mmap_chunks: Vec<ChunkArea>,
+    chunks: ChunkArea,  // 我感觉这里的三个数据结构都是和task control block有关的，也就是进程切换的时候，可能是用到的Lazy优化
+    stack_chunks: ChunkArea,  // check_lazy这个方法是唯一用到这两个地方的位置
+    mmap_chunks: Vec<ChunkArea>,  // 这个的引用多一些，暂时不明白
 }
 
 impl MemorySet {
@@ -212,7 +211,7 @@ impl MemorySet {
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare(1,0);
         // map trampoline
-        memory_set.map_trampoline();
+        memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
         println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
         println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
@@ -254,7 +253,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
         println!("mapping memory-mapped registers");
-        for pair in MMIO {
+        for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
                 (*pair).0.into(),
                 ((*pair).0 + (*pair).1).into(),
@@ -403,6 +402,7 @@ impl MemorySet {
         (memory_set, user_stack_top, user_heap_bottom, elf.header.pt2.entry_point() as usize, auxv)
     }
  
+    //这个方法完全没有用到过
     pub fn from_existed_user(user_space: &MemorySet, pid: usize) -> MemorySet {
         let mut memory_set = Self::new_bare(2,pid);
         // map trampoline
