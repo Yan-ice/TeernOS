@@ -2,7 +2,7 @@ mod mm;
 mod trap;
 
 pub use trap::{TrapContext as TrapContext, 
-        trap_return};
+        trap_return, trap_handler};
 
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 
@@ -50,6 +50,12 @@ pub fn nk_main(){
     trap::init();
     trap::enable_timer_interrupt();
     println!("Nesked kernel init");
+    unsafe {
+        asm!("csrsi mstatus, 0x8");
+    }
+    unsafe{
+        llvm_asm!("ecall");
+    }
 }
 
 

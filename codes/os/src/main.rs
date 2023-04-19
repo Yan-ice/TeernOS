@@ -109,6 +109,10 @@ pub fn rust_main() -> ! {
     }
     clear_bss();
     nk_main();
+    unsafe{
+        let mut mstatus: usize;
+        llvm_asm!("csrrc $0, mstatus, $1" : "=r"(mstatus) : "r"(1 << 3));
+    }
     timer::set_next_trigger();
     println!("UltraOS: interrupt initialized");
     fs::init_rootfs();
@@ -121,11 +125,10 @@ pub fn rust_main() -> ! {
     // CORE2_FLAG.lock().set_in();
     // test();
     println!("UltraOS: run tasks");
-
-    unsafe{
-        llvm_asm!("ecall");
-    }
-
+    // unsafe{
+    //     llvm_asm!("ecall");
+    // }
+    println!("UltraOS: ecall over");
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

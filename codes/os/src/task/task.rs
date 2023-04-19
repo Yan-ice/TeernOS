@@ -13,7 +13,7 @@ use crate::{console::print, nk::{
     MapPermission,
     // PTEFlags,
 }, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext};
+use crate::nk::{TrapContext, trap_handler};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;
@@ -301,7 +301,7 @@ impl TaskControlBlock {
                     user_sp,
                     KERNEL_SPACE.lock().token(),
                     kernel_stack_top,
-                    //trap_handler as usize,
+                    trap_handler as usize,
                     //Yan_ice: trap_handler
                 ),
                 trap_cx_ppn,
@@ -351,7 +351,7 @@ impl TaskControlBlock {
             user_sp,
             KERNEL_SPACE.lock().token(),
             kernel_stack_top,
-            //trap_handler as usize,
+            trap_handler as usize,
                 //Yan_ice: trap_handler
         );
         task_control_block
@@ -520,7 +520,7 @@ impl TaskControlBlock {
             user_sp,
             KERNEL_SPACE.lock().token(),
             self.kernel_stack.get_top(),
-            // trap_handler as usize,
+            trap_handler as usize,
             //Yan_ice: trap_handler
         );
         trap_cx.x[10] = args.len();

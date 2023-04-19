@@ -1,5 +1,4 @@
 mod context;
-
 use riscv::register::{
     mtvec::TrapMode,
     stvec,
@@ -53,6 +52,7 @@ fn set_kernel_trap_entry() {
 }
 
 fn set_user_trap_entry() {
+    println!("122222222222222222");
     unsafe {
         stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     }
@@ -94,6 +94,7 @@ lazy_static! {
 
 #[no_mangle]
 pub fn trap_handler() -> ! {
+    println!("{}", 123);
 
     // 因为没有Kernel到kernel的trap，直接报错
     set_kernel_trap_entry();
@@ -250,9 +251,18 @@ pub fn trap_return() -> ! {
 }
 
 #[no_mangle]
-pub fn trap_from_kernel() -> ! {
-    panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
-    // println!("trap from kernel : {}", scause::read().cause());
-}
+pub fn trap_from_kernel(){
+    // panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
 
+    println!("trap from kernel");
+    unsafe{
+    let mut sepc: usize;
+        asm!("csrr {0}, sepc", out(reg) sepc,);
+        sepc += 8;
+        asm!("csrw sepc, {0}", in(reg) sepc);
+
+        asm!("jr {0}", in(reg) sepc);
+    }
+
+}
 pub use context::{TrapContext};
