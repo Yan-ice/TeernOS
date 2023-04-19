@@ -42,6 +42,7 @@ global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
 
 pub fn init() {
+
     set_kernel_trap_entry();
 }
 
@@ -98,7 +99,6 @@ pub fn trap_handler() -> ! {
     // 因为没有Kernel到kernel的trap，直接报错
     set_kernel_trap_entry();
 
-    
     //G_SATP.lock().set(current_user_token());
     //crate::syscall::test();
     // update RUsage of process
@@ -111,6 +111,7 @@ pub fn trap_handler() -> ! {
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
+            
             // println!{"pinUserEnvCall"}
             // jump to next instruction anyway
             let mut cx = current_trap_cx();
@@ -124,6 +125,7 @@ pub fn trap_handler() -> ! {
                 }
             }
             //get system call return value
+            println!("syscall handled: {}",syscall_id);
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again
             //if syscall_id != 64 && syscall_id != 63{

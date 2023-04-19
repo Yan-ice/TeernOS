@@ -10,6 +10,7 @@
     .globl __restore
     .align 2
 __alltraps:
+
     #sd x1, 1*8(t0)
     csrrw sp, sscratch, sp
     #csrw sscratch, sp

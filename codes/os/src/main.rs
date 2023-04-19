@@ -122,9 +122,10 @@ pub fn rust_main() -> ! {
     // test();
     println!("UltraOS: run tasks");
 
-    unsafe{
-        llvm_asm!("ecall");
-    }
+    // unsafe{
+    //     ld t1, 36*8(sp)
+    //     llvm_asm!("ecall");
+    // }
 
     task::run_tasks();
     panic!("Unreachable in rust_main!");
