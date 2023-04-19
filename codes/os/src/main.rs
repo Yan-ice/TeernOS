@@ -37,23 +37,8 @@ mod timer;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
 
-fn clear_bss() {
-    extern "C" {
-        fn sbss();
-        fn ebss();
-    }
-    (sbss as usize..ebss as usize).for_each(|a| {
-        unsafe { (a as *mut u8).write_volatile(0) }
-    });
-}
 
-pub fn id() -> usize {
-    let cpu_id;
-    unsafe {
-        llvm_asm!("mv $0, tp" : "=r"(cpu_id));
-    }
-    cpu_id
-}
+
 
 pub const SYSCALL_GETPPID:usize = 173;
 pub fn test() {
@@ -87,28 +72,7 @@ lazy_static! {
     ));
 }
 
-#[no_mangle]
-pub fn rust_main() -> ! {
-    let core = id();
-    // println!("core {} is running",core);
-    if core != 0 {
-        loop{}
-        // WARNING: Multicore mode only supports customized RustSBI platform, especially not including OpenSBI
-        // We use OpenSBI in qemu and customized RustSBI in k210, if you want to try Multicore mode, you have to
-        // try to switch to RustSBI in qemu and try to wakeup, which needs some effort and you can refer to docs.
-        //
-        // while !CORE2_FLAG.lock().is_in(){}
-        // mm::init_othercore();
-        // println!("other core start");
-        // trap::init();
-        // nk::trap::enable_timer_interrupt();
-        // timer::set_next_trigger();
-        // println!("other core start run tasks");
-        // task::run_tasks();
-        // panic!("Unreachable in rust_main!");
-    }
-    clear_bss();
-    nk_main();
+pub fn outer_kernel_init(){
     timer::set_next_trigger();
     println!("UltraOS: interrupt initialized");
     fs::init_rootfs();
@@ -121,12 +85,6 @@ pub fn rust_main() -> ! {
     // CORE2_FLAG.lock().set_in();
     // test();
     println!("UltraOS: run tasks");
-
-    // unsafe{
-    //     ld t1, 36*8(sp)
-    //     llvm_asm!("ecall");
-    // }
-
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

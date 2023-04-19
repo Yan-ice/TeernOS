@@ -19,8 +19,8 @@ SECTIONS
         *(.text.signaltrampoline);
         . = ALIGN(4K);
 
-        traphandler = .;
-        *(.text.traphandler);
+        nktrampoline = .;
+        *(.text.nktrampoline);
         . = ALIGN(4K);
 
         *(.text .text.*)
@@ -52,17 +52,18 @@ SECTIONS
     . = ALIGN(4K);
     ebss = .;
 
-    /* Yan_ice 给Nested Kernel划分单独的8KB栈空间 */
-    snkstack = .;
-    . = . + 8K;
-    enkstack = .;
-
-
     ekernel = .;
-
-
 
     /DISCARD/ : {
         *(.eh_frame)
     }
+
+    . = 0x80800000;
+    sokernel = .;
+
+    sokernelstack = .;
+    . = .+8K;
+    eokernelstack = .;
+    
+    eokernel = .;
 }

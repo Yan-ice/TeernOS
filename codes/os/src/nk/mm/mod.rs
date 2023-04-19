@@ -31,8 +31,16 @@ pub fn init() {
     heap_allocator::init_heap();  // 堆空间分配器
     frame_allocator::init_frame_allocator();  // 物理页帧分配器
     // KERNEL_SPACE是个lazy启动的，启动时将pagetable等数据写好
+ 
     KERNEL_SPACE.lock().activate();  // 切换页表
     // KERNEL_SPACE.lock().print_pagetable();
+    
+    let mut reg:usize = 0;
+    unsafe{
+        llvm_asm!("mv $0,sp" : "=r"(reg));
+    }
+    println!("latter sp: {:x}",reg);
+
 }
 
 pub fn init_othercore(){

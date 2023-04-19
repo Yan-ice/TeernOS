@@ -38,7 +38,8 @@ pub const MEMORY_END: usize = 0x80800000;
 
 pub const KMMAP_BASE: usize = 0x90000000;
 pub const MMAP_BASE: usize = 0x60000000;
-pub const TRAMPOLINE: usize = usize::MAX - PAGE_SIZE + 1;
+pub const TRAMPOLINE: usize = usize::MAX - 2*PAGE_SIZE + 1;
+pub const NK_TRAMPOLINE: usize = usize::MAX - PAGE_SIZE + 1;
 pub const SIGNAL_TRAMPOLINE: usize = 0x80000000 - PAGE_SIZE;
 pub const TRAP_CONTEXT: usize = SIGNAL_TRAMPOLINE - PAGE_SIZE;
 pub const USER_STACK: usize = TRAP_CONTEXT - PAGE_SIZE;

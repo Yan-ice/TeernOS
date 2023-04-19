@@ -26,6 +26,7 @@ extern "C" {
     fn ekernel();
     fn strampoline();
     fn ssignaltrampoline();
+    fn nktrampoline();
 }
 
 
@@ -186,9 +187,16 @@ impl MemorySet {
 
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
+
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
+            PTEFlags::R | PTEFlags::X,
+        );
+        //Yan_ice: nk的跳板
+        self.page_table.map(
+            VirtAddr::from(NK_TRAMPOLINE).into(),
+            PhysAddr::from(nktrampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
     }

@@ -1,5 +1,4 @@
 mod context;
-
 use riscv::register::{
     mtvec::TrapMode,
     stvec,
@@ -34,22 +33,24 @@ use crate::task::{
     perform_signal_handler,
 };
 use crate::timer::set_next_trigger;
-use crate::config::{TRAP_CONTEXT, TRAMPOLINE, USER_STACK_SIZE};
+use crate::config::{TRAP_CONTEXT, TRAMPOLINE, NK_TRAMPOLINE, USER_STACK_SIZE};
 use crate::gdb_print;
 use crate::monitor::*;
 
 global_asm!(include_str!("trap.S"));
+global_asm!(include_str!("trap_nk.S"));
 global_asm!(include_str!("trap_signal.S"));
 
 pub fn init() {
-
     set_kernel_trap_entry();
 }
 
 // 这个啥用没有
 fn set_kernel_trap_entry() {
     unsafe {
-        stvec::write(trap_from_kernel as usize, TrapMode::Direct);
+        stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
+    
+        //stvec::write(trap_from_kernel as usize, TrapMode::Direct);
     }
 }
 
@@ -95,7 +96,6 @@ lazy_static! {
 
 #[no_mangle]
 pub fn trap_handler() -> ! {
-
     // 因为没有Kernel到kernel的trap，直接报错
     set_kernel_trap_entry();
 
@@ -125,7 +125,6 @@ pub fn trap_handler() -> ! {
                 }
             }
             //get system call return value
-            println!("syscall handled: {}",syscall_id);
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again
             //if syscall_id != 64 && syscall_id != 63{
@@ -252,9 +251,18 @@ pub fn trap_return() -> ! {
 }
 
 #[no_mangle]
-pub fn trap_from_kernel() -> ! {
-    panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
-    // println!("trap from kernel : {}", scause::read().cause());
-}
+pub fn trap_from_kernel(){
+    // panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
 
+    println!("trap from kernel");
+    unsafe{
+    let mut sepc: usize;
+        asm!("csrr {0}, sepc", out(reg) sepc,);
+        sepc += 8;
+        asm!("csrw sepc, {0}", in(reg) sepc);
+
+        asm!("jr {0}", in(reg) sepc);
+    }
+
+}
 pub use context::{TrapContext};
