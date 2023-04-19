@@ -45,6 +45,7 @@ pub fn init() {
     set_kernel_trap_entry();
 }
 
+// 这个啥用没有
 fn set_kernel_trap_entry() {
     unsafe {
         stvec::write(trap_from_kernel as usize, TrapMode::Direct);
@@ -85,13 +86,19 @@ impl GlobalSatp{
 use lazy_static::lazy_static;
 use alloc::sync::Arc;
 use spin::Mutex;
+
+// 这个也没有用，实际上和trap相关的信息也只需要在trap模块中被访问，存一个全局的信息没有什么必要
 lazy_static! {
     pub static ref G_SATP: Arc<Mutex<GlobalSatp>> = Arc::new(Mutex::new(GlobalSatp{satp:0, syscall:0}));
 }
 
 #[no_mangle]
 pub fn trap_handler() -> ! {
+
+    // 因为没有Kernel到kernel的trap，直接报错
     set_kernel_trap_entry();
+
+    
     //G_SATP.lock().set(current_user_token());
     //crate::syscall::test();
     // update RUsage of process
@@ -245,6 +252,7 @@ pub fn trap_return() -> ! {
 #[no_mangle]
 pub fn trap_from_kernel() -> ! {
     panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
+    // println!("trap from kernel : {}", scause::read().cause());
 }
 
 pub use context::{TrapContext};

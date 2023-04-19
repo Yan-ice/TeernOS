@@ -66,10 +66,10 @@ pub struct MemorySet {
     level: usize,  // 有用么，我找不到其他有用的操作
     id: usize,   // 这个也找不到
     page_table: PageTable,
-    areas: Vec<MapArea>,
-    chunks: ChunkArea,  // 我感觉这里的三个数据结构都是和task control block有关的，也就是进程切换的时候，可能是用到的Lazy优化
+    areas: Vec<MapArea>,  // 常规的Maparea
+    chunks: ChunkArea,  // lazy优化，详见文档
     stack_chunks: ChunkArea,  // check_lazy这个方法是唯一用到这两个地方的位置
-    mmap_chunks: Vec<ChunkArea>,  // 这个的引用多一些，暂时不明白
+    mmap_chunks: Vec<ChunkArea>,  // 用lazy做的优化
 }
 
 impl MemorySet {

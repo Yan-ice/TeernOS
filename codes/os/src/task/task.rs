@@ -520,7 +520,7 @@ impl TaskControlBlock {
             user_sp,
             KERNEL_SPACE.lock().token(),
             self.kernel_stack.get_top(),
-            //trap_handler as usize,
+            // trap_handler as usize,
             //Yan_ice: trap_handler
         );
         trap_cx.x[10] = args.len();

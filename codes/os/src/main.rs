@@ -121,6 +121,11 @@ pub fn rust_main() -> ! {
     // CORE2_FLAG.lock().set_in();
     // test();
     println!("UltraOS: run tasks");
+
+    unsafe{
+        llvm_asm!("ecall");
+    }
+
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }
