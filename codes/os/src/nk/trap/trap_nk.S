@@ -1,10 +1,9 @@
-.altmacro
+
     .section .text.nktrampoline
     .globl __nktraps
     .globl __nkrestore
     .align 2
 __nktraps:
-
     #sd x1, 1*8(t0)
     csrrw sp, sscratch, sp
     #csrw sscratch, sp
@@ -50,15 +49,11 @@ __nktraps:
     jr t1
 
 __nkrestore:
-    # a0: *TrapContext in user space(Constant); a1: user space token
-    # switch to user space
-    # csrw satp, a1
-    # sfence.vma
+    # a0: *TrapContext of outer kernel
+    # switch to outer kernel space
     sfence.vma zero, zero
-
     # 将a0写给sscratch
     csrw sscratch, a0
-
     # 将a0写给sp
     mv sp, a0
 

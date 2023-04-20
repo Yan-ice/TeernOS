@@ -35,7 +35,7 @@ impl TrapContext {
             sepc: entry,
             kernel_satp,
             kernel_sp,
-            trap_handler: trap_handler as usize,};
+            trap_handler: trap_handler as usize};
         cx.set_sp(sp);
         cx
     }

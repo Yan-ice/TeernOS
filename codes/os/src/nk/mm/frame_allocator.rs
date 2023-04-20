@@ -1,7 +1,7 @@
 use super::{PhysAddr, PhysPageNum};
 use alloc::vec::Vec;
 use spin::Mutex;
-use crate::config::MEMORY_END;
+use crate::config::NKSPACE_END;
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;
@@ -140,7 +140,7 @@ pub fn init_frame_allocator() {
     }
     FRAME_ALLOCATOR
         .lock()
-        .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(MEMORY_END).floor());
+        .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(NKSPACE_END).floor());
 }
 
 pub fn frame_alloc() -> Option<FrameTracker> {

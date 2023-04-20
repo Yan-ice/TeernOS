@@ -90,20 +90,23 @@ pub fn nk_main(){
     mm::remap_test();  //无用
     trap::init();
     trap::enable_timer_interrupt();
+    let sp = 0;
+
     extern "C"{
-        fn sokernelstack();
+        fn eokernelstack();
     }
     TrapContext::app_init_context(
         outer_kernel_init as usize, //返回到outer kernel init
-        sokernelstack as usize,
-        0, //outer kernel的页表
-        0 //outer kernel的栈
+        eokernelstack as usize, //os栈顶地址为eokernelstack
+        0, //outer kernel的页表, 尚未实现
+        sp //当前nk的stack pointer
     );
     //手动构造outer kernel的trap context上下文
 
-    println!("Nesked kernel init");
+    println!("Nesked kernel init success");
 
     outer_kernel_init();
+    //trap_return();
 
     return;
     unsafe {

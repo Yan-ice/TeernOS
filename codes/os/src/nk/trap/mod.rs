@@ -125,6 +125,7 @@ pub fn trap_handler() -> ! {
                 }
             }
             //get system call return value
+
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again
             //if syscall_id != 64 && syscall_id != 63{

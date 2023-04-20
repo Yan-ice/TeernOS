@@ -270,7 +270,7 @@ impl PageTable {
         let token = kernel_token();
         let kernel_pagetable = PageTable::from_token(token);
         // insert shared pte of from kernel
-        let kernel_vpn:VirtPageNum = (MEMORY_START / PAGE_SIZE).into();
+        let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
         let mut ppn = self.root_ppn;

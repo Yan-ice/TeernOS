@@ -1,13 +1,13 @@
 // See detail at /doc/Monitor.md
 #[allow(unused)]
-use crate::config::{MEMORY_END, PAGE_SIZE};
+use crate::config::{OKSPACE_END, PAGE_SIZE};
 
 
 // GDB debug pin
 
 // select open channel 
 pub const QEMU:usize = 0; // 1: open in qemu mode, 0: close in real world
-pub const MEMORY_GDB_START:usize  = MEMORY_END - PAGE_SIZE;
+pub const MEMORY_GDB_START:usize  = OKSPACE_END - PAGE_SIZE;
 pub const PROCESSOR_ENABLE:usize  = MEMORY_GDB_START + 0;
 pub const EXIT_ENABLE:usize       = MEMORY_GDB_START + 1;
 pub const EXEC_ENABLE:usize       = MEMORY_GDB_START + 2;

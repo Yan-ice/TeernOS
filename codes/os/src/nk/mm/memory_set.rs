@@ -26,7 +26,7 @@ extern "C" {
     fn ekernel();
     fn strampoline();
     fn ssignaltrampoline();
-    fn nktrampoline();
+    fn snktrampoline();
 }
 
 
@@ -187,16 +187,15 @@ impl MemorySet {
 
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
-
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
-        //Yan_ice: nk的跳板
+        //Yan_ice:额外为nested kernel trap加一个跳板
         self.page_table.map(
             VirtAddr::from(NK_TRAMPOLINE).into(),
-            PhysAddr::from(nktrampoline as usize).into(),
+            PhysAddr::from(snktrampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
     }
@@ -253,13 +252,22 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
-        println!("mapping physical memory");
+        println!("mapping nk frame memory");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
-            MEMORY_END.into(),
+            NKSPACE_END.into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
+
+        println!("mapping outer kernel space");
+        memory_set.push(MapArea::new(
+            (NKSPACE_END).into(),
+            OKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ), None);
+
         println!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(

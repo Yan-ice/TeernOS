@@ -19,7 +19,7 @@ SECTIONS
         *(.text.signaltrampoline);
         . = ALIGN(4K);
 
-        nktrampoline = .;
+        snktrampoline = .;
         *(.text.nktrampoline);
         . = ALIGN(4K);
 
@@ -58,6 +58,7 @@ SECTIONS
         *(.eh_frame)
     }
 
+    /* 新加一段outer kernel space，暂时命名为okernel */
     . = 0x80800000;
     sokernel = .;
 
