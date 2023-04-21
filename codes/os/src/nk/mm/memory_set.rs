@@ -43,6 +43,9 @@ lazy_static! {
     pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
         MemorySet::new_kernel()
     ));
+    pub static ref OUTER_KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
+        MemorySet::new_outer_kernel()
+    ));
 
     pub static ref KERNEL_TOKEN: Arc<KernelToken> = Arc::new(
         KernelToken{
@@ -216,7 +219,7 @@ impl MemorySet {
 
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
-        let mut memory_set = Self::new_bare(1,0);
+        let mut memory_set = Self::new_bare(0,0);
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
@@ -275,6 +278,69 @@ impl MemorySet {
                 ((*pair).0 + (*pair).1).into(),
                 MapType::Identical,
                 MapPermission::R | MapPermission::W,
+            ), None);
+        }
+        memory_set
+    }
+
+    pub fn new_outer_kernel() -> Self {
+        let mut memory_set = Self::new_bare(1,0);
+        // map trampoline
+        memory_set.map_trampoline();  //映射trampoline
+        // map kernel sections
+
+       println!("mapping outer kernel:");
+
+        memory_set.push(MapArea::new(
+            (stext as usize).into(),
+            (etext as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::X,
+        ), None);
+        println!("mapping .rodata section (readonly)");
+        memory_set.push(MapArea::new(
+            (srodata as usize).into(),
+            (erodata as usize).into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+        println!("mapping .data section (readonly)");
+        memory_set.push(MapArea::new(
+            (sdata as usize).into(),
+            (edata as usize).into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+        println!("mapping .bss section (readonly)");
+        memory_set.push(MapArea::new(
+            (sbss_with_stack as usize).into(),
+            (ebss as usize).into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+        println!("mapping nk frame memory (readonly)");
+        memory_set.push(MapArea::new(
+            (ekernel as usize).into(),
+            NKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+
+        println!("mapping outer kernel space");
+        memory_set.push(MapArea::new(
+            (NKSPACE_END).into(),
+            OKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ), None);
+
+        println!("mapping memory-mapped registers (readonly) ");
+        for pair in MMIO {  // 这里是config硬编码的管脚地址
+            memory_set.push(MapArea::new(
+                (*pair).0.into(),
+                ((*pair).0 + (*pair).1).into(),
+                MapType::Identical,
+                MapPermission::R,
             ), None);
         }
         memory_set

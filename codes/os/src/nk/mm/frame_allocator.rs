@@ -1,7 +1,7 @@
 use super::{PhysAddr, PhysPageNum};
 use alloc::vec::Vec;
 use spin::Mutex;
-use crate::config::NKSPACE_END;
+use crate::config::{NKSPACE_END,OKSPACE_END};
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;
@@ -131,17 +131,45 @@ type FrameAllocatorImpl = StackFrameAllocator;
 lazy_static! {
     pub static ref FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
         Mutex::new(FrameAllocatorImpl::new());
+
+    //Yan_ice: 给outer kernel新加一个allocator
+    pub static ref OUTER_FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
+        Mutex::new(FrameAllocatorImpl::new());
 }
 
 pub fn init_frame_allocator() {
     extern "C" {
         fn snkstack();
         fn ekernel();
+        fn eokernel();
     }
+
     FRAME_ALLOCATOR
         .lock()
         .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(NKSPACE_END).floor());
+    
+    //Yan_ice: 给outer kernel的allocator指定进行alloc的空间（okernel以后剩余的outer kernel space)。
+    OUTER_FRAME_ALLOCATOR
+        .lock()
+        .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
+
 }
+
+//Yan_ice 给outer kernel加俩函数,用outer kernel的frame allocator，
+//然后就暴露他俩咯
+pub fn outer_frame_alloc() -> Option<FrameTracker> {
+    OUTER_FRAME_ALLOCATOR
+        .lock()
+        .alloc()
+        .map(|ppn| FrameTracker::new(ppn))
+}
+pub fn outer_frame_dealloc(ppn: PhysPageNum) {
+    OUTER_FRAME_ALLOCATOR
+        .lock()
+        .dealloc(ppn);
+}
+
+
 
 pub fn frame_alloc() -> Option<FrameTracker> {
     FRAME_ALLOCATOR

@@ -8,7 +8,22 @@ mod vma;
 use page_table::PTEFlags;
 use address::VPNRange;
 pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne};
-pub use frame_allocator::{FrameTracker, frame_alloc, frame_dealloc,add_free, print_free_pages, frame_add_ref, enquire_refcount};
+pub use frame_allocator::{
+    FrameTracker, 
+    outer_frame_alloc, 
+    outer_frame_dealloc,
+    add_free, 
+    print_free_pages, 
+    frame_add_ref, 
+    enquire_refcount
+};
+
+//nk内部的就不暴露啦
+use frame_allocator::{
+    frame_alloc,
+    frame_dealloc
+};
+
 pub use page_table::{
     PageTable,
     PageTableEntry,
@@ -22,8 +37,9 @@ pub use page_table::{
     UserBuffer,
     UserBufferIterator,
 };
+
 pub use vma::{MmapArea, MmapSpace};
-pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_MMAP_AREA, KERNEL_TOKEN,  MapPermission, kernel_token};
+pub use memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE,KERNEL_MMAP_AREA, KERNEL_TOKEN,  MapPermission, kernel_token};
 pub use memory_set::remap_test;
 pub use heap_allocator::HEAP_ALLOCATOR;
 

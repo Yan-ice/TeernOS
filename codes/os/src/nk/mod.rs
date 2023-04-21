@@ -12,6 +12,7 @@ pub use mm::{VirtPageNum as VirtPageNum,
             PhysAddr as PhysAddr, 
             UserBuffer as UserBuffer, 
             KERNEL_SPACE as KERNEL_SPACE, 
+            OUTER_KERNEL_SPACE as OUTER_KERNEL_SPACE,
             MapPermission as MapPermission,
             KERNEL_MMAP_AREA as KERNEL_MMAP_AREA,
             KERNEL_TOKEN as KERNEL_TOKEN,
@@ -34,9 +35,11 @@ pub use mm::{VirtPageNum as VirtPageNum,
             copy_object as copy_object,
             //或许可以实现strcpy?
 
-            //以下是alloc/mmio系列接口，还没实现
-            frame_alloc as frame_alloc,
-            frame_dealloc as frame_dealloc,
+            //以下是alloc/mmio系列接口?
+            //Yan_ice: 对外暴露的其实是outer kernel的alloc
+            outer_frame_alloc as frame_alloc,
+            outer_frame_dealloc as frame_dealloc,
+
             //io_map as io_map
             //io_unmap as io_unmap
 
@@ -90,16 +93,17 @@ pub fn nk_main(){
     mm::remap_test();  //无用
     trap::init();
     trap::enable_timer_interrupt();
-    let sp = 0;
 
     extern "C"{
+        fn boot_stack_top();
         fn eokernelstack();
     }
+
     TrapContext::app_init_context(
         outer_kernel_init as usize, //返回到outer kernel init
         eokernelstack as usize, //os栈顶地址为eokernelstack
-        0, //outer kernel的页表, 尚未实现
-        sp //当前nk的stack pointer
+        OUTER_KERNEL_SPACE.lock().token(), //outer kernel的页表, 尚未实现
+        boot_stack_top as usize //TODO: 这里写什么?
     );
     //手动构造outer kernel的trap context上下文
 
