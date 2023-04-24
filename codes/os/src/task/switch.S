@@ -23,8 +23,8 @@ __switch:
         .set n, n + 1
     .endr
     # ready for loading TaskContext a1 points to
-    ld sp, 0(a1) # 加载 next task context，每一个fork还有new pcb生成时，这里都是trap handler的地址，也就是说，每次switch之前，这里都是要跳转的trap handler的位置
-                 # 这个TaskContext感觉就是负责从__switch走到trap handler再到__restore的，因为和进程相关的信息都在pcb中，这个小东西完全没有用，只是用来负责跳转 和 寄存器值的储存
+    ld sp, 0(a1) # 加载 next task context，每一个fork还有new pcb生成时，这里都是trap return的地址，也就是说，每次switch之前，这里都是要跳转的trap return的位置
+                 # 这个TaskContext感觉就是负责从__switch走到trap return再到__restore的，因为和进程相关的信息都在pcb中，这个小东西完全没有用，只是用来负责跳转 和 寄存器值的储存
     # load registers in the TaskContext
     ld ra, 0(sp) # 怎么存怎么恢复，接下来ret要调回的就是trap return
     .set n, 0
