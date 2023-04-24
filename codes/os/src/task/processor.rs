@@ -29,7 +29,7 @@ unsafe impl Sync for Processor {}
 
 struct ProcessorInner {
     current: Option<Arc<TaskControlBlock>>,
-    idle_task_cx_ptr: usize,
+    idle_task_cx_ptr: usize,  //你小子是干啥用的 
     user_clock: usize,  /* Timer usec when last enter into the user program */
     kernel_clock: usize, /* Timer usec when user program traps into the kernel*/
 }
@@ -110,7 +110,7 @@ impl Processor {
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
                         __switch(
-                            idle_task_cx_ptr2,
+                            idle_task_cx_ptr2,  // 空转，自己切自己
                             task_cx_ptr2,
                         );
                     }
@@ -214,7 +214,8 @@ pub fn schedule(switched_task_cx_ptr2: *const usize) {
     let idle_task_cx_ptr2 = PROCESSOR_LIST[core_id].get_idle_task_cx_ptr2();
     unsafe {
         __switch(
-            switched_task_cx_ptr2,
+            switched_task_cx_ptr2, // ？ 你这里没有写反？其他的__switch都是当前idle，下一个是要交换的task_cx_ptr
+                                                        // 唯独你这里特殊
             idle_task_cx_ptr2,
         );
     }
