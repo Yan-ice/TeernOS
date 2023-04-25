@@ -17,11 +17,13 @@ impl TrapContext {
     pub fn set_sp(&mut self, sp: usize) { self.x[2] = sp; }
     pub fn get_sp(& self)->usize { self.x[2] }
     pub fn app_init_context(
-        entry: usize,
-        sp: usize,
-        kernel_satp: usize,
-        kernel_sp: usize
-    ) -> Self {
+        // 只有三个函数调用过这个方法，在初始化的时候
+        //，也就是从elf得到pcb的时候，trap context要一起初始化，这里初始化为elf的header
+        entry: usize, // trap之前的上一条指令
+        sp: usize, // 当前用户栈的栈顶
+        kernel_satp: usize,  // 未理解的内核页表，这东西在干啥
+        kernel_sp: usize  // 内核栈栈顶
+) -> Self {
         let mut sstatus = sstatus::read();
         // set CPU privilege to User after trapping back
         sstatus.set_spp(SPP::User);

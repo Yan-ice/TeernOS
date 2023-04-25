@@ -10,19 +10,16 @@
     .globl __restore
     .align 2
 __alltraps:
-    # 目标：将所有寄存器（上下文）保存到常数地址0x7FFFE000，它被映射到TRAP_CONTEXT。
-    # 1. t0,t1,t2直接存入用户栈sp
-    # 2. 用t0,t1,t2计算出TRAP_CONTEXT(TC)地址，并将其放入t0
-    # 3. 将sp栈中的t0~t2存入TC (对应x5~x7)，将其他所有寄存器存入TC
-    # 4. jr跳转
-    #sd x1, 1*8(t0)
-    csrrw sp, sscratch, sp
-    #csrw sscratch, sp
-    #addi t0, zero, 8
-    #slli t0, t0, 28
-    #addi t1, t1, 1
-    #slli t1, t1, 12
-    #sub  sp, t0, t1 #sp should be 0x7FFFF000
+    # sd x1, 1*8(t0)
+    csrrw sp, sscratch, sp # 第一次进入这段汇编之前，是先进入了下面的restore汇编
+                           # 所以这里进来的之前，sscratch的值就是TRAP_CONTEXT的值，sp是用户栈的位置，因为pc指的指令触发了trap
+                           # CPU直接根据stvec的值跳转了进来，sp没有被中途改变
+    # csrw sscratch, sp
+    # addi t0, zero, 8
+    # slli t0, t0, 28
+    # addi t1, t1, 1
+    # slli t1, t1, 12
+    # sub  sp, t0, t1 #sp should be 0x7FFFF000
     # now sp->*TrapContext in user space, sscratch->user stack
     # save other general purpose registers
     sd x1, 1*8(sp)
@@ -43,7 +40,7 @@ __alltraps:
     # read user stack from sscratch and save it in TrapContext
     csrr t2, sscratch
     sd t2, 2*8(sp)
-    #fsd fs1, 34*8(sp)
+    # fsd fs1, 34*8(sp)
     .half 0xba22
     .half 0xbe26
     # load kernel_satp into t0
@@ -64,17 +61,22 @@ __restore:
     # switch to user space
     # csrw satp, a1
     # sfence.vma
+
+    # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
+
+
     sfence.vma zero, zero
-    csrw sscratch, a0
-    mv sp, a0
+    csrw sscratch, a0 # 把a0的值写入sscratch，对于每次在trap return中执行这里的时候
+                      # a0的值都是TRAP_CONTEXT，这个地方也是trap context存在的位置
+    mv sp, a0         # 把a0的值写入sp
     # now sp points to TrapContext in user space, start restoring based on it
     # restore sstatus/sepc
-    ld t0, 32*8(sp)
-    ld t1, 33*8(sp)
-    #fld fs1, 34*8(sp)
+    ld t0, 32*8(sp)   # 按照存储规则去加载trap context中的值
+    ld t1, 33*8(sp)   
+    # fld fs1, 34*8(sp)
     .half 0x3452
     .half 0x34f2
-    csrw sstatus, t0
+    csrw sstatus, t0  # 继续恢复上面的值
     csrw sepc, t1
     # restore general purpose registers except x0/sp/tp
     ld x1, 1*8(sp)
@@ -85,5 +87,10 @@ __restore:
         .set n, n+1
     .endr
     # back to user stack
+<<<<<<< HEAD
     ld sp, 2*8(sp)
     sret
+=======
+    ld sp, 2*8(sp) # 当时进来的时候，这里就是进入时的用户栈栈顶，复原栈指针
+    sret # 跳转到sepc的位置继续执行
+>>>>>>> caffe12acc9109a233d98a12ab148de4364b9fca
