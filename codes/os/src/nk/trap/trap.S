@@ -10,8 +10,9 @@
     .globl __restore
     .align 2
 __alltraps:
-    # entry gate
+    
 
+    sd sp,(zero)
     # sd x1, 1*8(t0)
     csrrw sp, sscratch, sp # 第一次进入这段汇编之前，是先进入了下面的restore汇编
                            # 所以这里进来的之前，sscratch的值就是TRAP_CONTEXT的值，sp是用户栈的位置，因为pc指的指令触发了trap
@@ -52,9 +53,10 @@ __alltraps:
     # move to kernel_sp
     ld sp, 35*8(sp)
     # switch to kernel space
-    # csrw satp, t0
+    csrw satp, t0
     # sfence.vma
     sfence.vma zero, zero
+
     # jump to trap_handler
     jr t1
 
@@ -65,7 +67,6 @@ __restore:
     # sfence.vma
 
     # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
-
 
     sfence.vma zero, zero
     csrw sscratch, a0 # 把a0的值写入sscratch，对于每次在trap return中执行这里的时候

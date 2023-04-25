@@ -1,6 +1,7 @@
 mod mm;   
 mod trap;
 
+
 use crate::outer_kernel_init;
 
 pub use trap::{TrapContext as TrapContext, 
@@ -25,7 +26,7 @@ pub use mm::{VirtPageNum as VirtPageNum,
             StepByOne as StepByOne,
             
             //以下是读取内存数据的系列接口。
-            translated_refmut as translated_refmut,
+            //translated_refmut as translated_refmut,
             translated_ref as translated_ref,
             translated_refcopy as translated_refcopy,
             translated_raw as translated_raw,
@@ -47,7 +48,16 @@ pub use mm::{VirtPageNum as VirtPageNum,
             //以下接口暂时未知。
             add_free as add_free, 
             print_free_pages as print_free_pages,
+
+            //以下是process系列接口，会转交给outer kernel.
 }; 
+
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    entry_gate();
+    let mut a = mm::translated_refmut(token, ptr);
+    exit_gate();
+    a
+}
 
 pub fn id() -> usize {
                 let cpu_id;
@@ -67,6 +77,24 @@ fn clear_bss() {
     });
 }
 
+fn entry_gate(){
+    KERNEL_SPACE.into_inner().activate();
+    // 换栈
+    // 换页表
+    // 改中断
+}
+
+fn exit_gate(){
+    //if to outer kernel: 
+    OUTER_KERNEL_SPACE.into_inner().activate();
+    //TODO: 进程页表/内核页表？
+    //if to user:
+    // trap return (so here ignore)
+
+    // 换栈
+    // 换页表
+    // 改中断
+}
 
 #[no_mangle]
 pub fn nk_main(){
@@ -98,34 +126,22 @@ pub fn nk_main(){
     extern "C"{
         fn nk_kernel_stack_top();
         fn eokernelstack();
+        fn __exit_gate();
     }
 
     TrapContext::app_init_context(
         outer_kernel_init as usize, //返回到outer kernel init
-        eokernelstack as usize, //os栈顶地址为eokernelstack
-        OUTER_KERNEL_SPACE.lock().token(), //outer kernel的页表
-        nk_kernel_stack_top as usize
+        eokernelstack as usize, //outer kernel 栈
+        KERNEL_SPACE.lock().token(), //nested kernel的页表
+        nk_kernel_stack_top as usize //nested kernel的栈
     );
     //手动构造outer kernel的trap context上下文
 
     println!("Nesked kernel init success");
 
+    exit_gate();
     outer_kernel_init();
-    //nk_trap_return();
 
     return;
-    unsafe {
-        asm!("csrsi mstatus, 0x8");
-    }
-
-    unsafe{
-        llvm_asm!("ecall");
-    }
 }
 
-
-fn nk_call(){
-    //entry gate
-    
-    //exit gate
-}
