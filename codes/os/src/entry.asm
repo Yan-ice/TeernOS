@@ -20,7 +20,7 @@ boot_stack:
     .globl boot_stack_top
 boot_stack_top:
 
-boot_stack2:
+nk_kernel_stack:
     .space 4096 * 8
-    .globl boot_stack_top2
-boot_stack_top2:
+    .globl nk_kernel_stack_top
+nk_kernel_stack_top:

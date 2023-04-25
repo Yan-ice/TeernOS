@@ -1,4 +1,4 @@
-use crate::nk::trap_return;
+use crate::nk::user_trap_return;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -10,7 +10,7 @@ pub struct TaskContext {
 impl TaskContext {
     pub fn goto_trap_return() -> Self {
         Self {
-            ra: trap_return as usize,
+            ra: user_trap_return as usize,
             s: [0; 12],
         }
     }

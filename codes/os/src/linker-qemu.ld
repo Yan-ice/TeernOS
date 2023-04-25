@@ -61,7 +61,9 @@ SECTIONS
     /* 新加一段outer kernel space，暂时命名为okernel */
     . = 0x80800000;
     sokernel = .;
-
+    sokernelcontext = .;
+    . = .+4K;
+    eokernelcontext = .;
     sokernelstack = .;
     . = .+8K;
     eokernelstack = .;

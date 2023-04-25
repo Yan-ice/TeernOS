@@ -1,5 +1,5 @@
 use riscv::register::sstatus::{Sstatus, self, SPP};
-use super::trap_handler;
+use super::{user_trap_handler,nk_trap_handler};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -10,11 +10,7 @@ pub struct TrapContext {
     pub kernel_satp: usize,
     pub kernel_sp: usize,
     pub trap_handler: usize,
-
-    //Yan_ice: trap_handler
-    //WHY address of trap handler here?
-    // 离谱，这个trap handler是trap context在进行trap上下文切换的时候动态装载进去的，虽然是个写死的
-    // 详见 trap.S的汇编里面Load的位置，trap handler没有任何一个函数直接去调用触发
+    pub nk_trap_handler: usize,
 }
 
 impl TrapContext {
@@ -25,7 +21,7 @@ impl TrapContext {
         sp: usize,
         kernel_satp: usize,
         kernel_sp: usize
-) -> Self {
+    ) -> Self {
         let mut sstatus = sstatus::read();
         // set CPU privilege to User after trapping back
         sstatus.set_spp(SPP::User);
@@ -35,9 +31,14 @@ impl TrapContext {
             sepc: entry,
             kernel_satp,
             kernel_sp,
-            trap_handler: trap_handler as usize};
+            trap_handler: user_trap_handler as usize,
+            nk_trap_handler: nk_trap_handler as usize};
         cx.set_sp(sp);
         cx
     }
+
+    
+
+
 
 }

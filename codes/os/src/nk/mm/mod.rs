@@ -41,10 +41,12 @@ pub use page_table::{
 pub use vma::{MmapArea, MmapSpace};
 pub use memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE,KERNEL_MMAP_AREA, KERNEL_TOKEN,  MapPermission, kernel_token};
 pub use memory_set::remap_test;
-pub use heap_allocator::HEAP_ALLOCATOR;
+//pub use heap_allocator::HEAP_ALLOCATOR;
 
 pub fn init() {
+
     heap_allocator::init_heap();  // 堆空间分配器
+
     frame_allocator::init_frame_allocator();  // 物理页帧分配器
     // KERNEL_SPACE是个lazy启动的，启动时将pagetable等数据写好
  

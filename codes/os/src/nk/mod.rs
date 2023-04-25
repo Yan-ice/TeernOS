@@ -3,8 +3,7 @@ mod trap;
 
 use crate::outer_kernel_init;
 
-pub use trap::{TrapContext as TrapContext, 
-        trap_return, trap_handler};
+pub use trap::{TrapContext as TrapContext, nk_trap_return, user_trap_return};
 
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 
@@ -95,22 +94,22 @@ pub fn nk_main(){
     trap::enable_timer_interrupt();
 
     extern "C"{
-        fn boot_stack_top();
+        fn nk_kernel_stack_top();
         fn eokernelstack();
     }
 
     TrapContext::app_init_context(
         outer_kernel_init as usize, //返回到outer kernel init
         eokernelstack as usize, //os栈顶地址为eokernelstack
-        OUTER_KERNEL_SPACE.lock().token(), //outer kernel的页表, 尚未实现
-        boot_stack_top as usize //TODO: 这里写什么?
+        OUTER_KERNEL_SPACE.lock().token(), //outer kernel的页表
+        nk_kernel_stack_top as usize
     );
     //手动构造outer kernel的trap context上下文
 
     println!("Nesked kernel init success");
 
     outer_kernel_init();
-    //trap_return();
+    //nk_trap_return();
 
     return;
     unsafe {

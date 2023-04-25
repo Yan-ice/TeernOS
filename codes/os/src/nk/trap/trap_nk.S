@@ -3,15 +3,14 @@
     .globl __nktraps
     .globl __nkrestore
     .align 2
+
 __nktraps:
-    #sd x1, 1*8(t0)
+    # 1. 生成outer kernel上下文并放入自己的栈
+    # 2. entry gate配置页表等相关内容
+    # 3. 将outer kernel的sp保存在CSR中，然后切换sp到nk上下文（地址固定）
+    # 4. jr跳转
     csrrw sp, sscratch, sp
-    #csrw sscratch, sp
-    #addi t0, zero, 8
-    #slli t0, t0, 28
-    #addi t1, t1, 1
-    #slli t1, t1, 12
-    #sub  sp, t0, t1 #sp should be 0x7FFFF000
+   
     # now sp->*TrapContext in user space, sscratch->user stack
     # save other general purpose registers
     sd x1, 1*8(sp)
@@ -37,8 +36,8 @@ __nktraps:
     .half 0xbe26
     # load kernel_satp into t0
     ld t0, 34*8(sp)
-    # load trap_handler into t1
-    ld t1, 36*8(sp)
+    # load nk_trap_handler into t1
+    ld t1, 37*8(sp)
     # move to kernel_sp
     ld sp, 35*8(sp)
     # switch to kernel space
@@ -49,6 +48,11 @@ __nktraps:
     jr t1
 
 __nkrestore:
+    # 1. 将nk的sp保存在固定地址
+    # 2. 从CSR中读取outer kernel的sp
+    # 3. exit gate工作，配置页表等内容
+    # 4. jr跳转
+
     # a0: *TrapContext of outer kernel
     # switch to outer kernel space
     sfence.vma zero, zero

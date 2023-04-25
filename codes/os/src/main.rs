@@ -73,6 +73,7 @@ lazy_static! {
 }
 
 pub fn outer_kernel_init(){
+    println!("UltraOS: outer kernel init.");
     timer::set_next_trigger();
     println!("UltraOS: interrupt initialized");
     fs::init_rootfs();

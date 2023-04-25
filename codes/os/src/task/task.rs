@@ -13,7 +13,7 @@ use crate::{console::print, nk::{
     MapPermission,
     // PTEFlags,
 }, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext, trap_handler};
+use crate::nk::{TrapContext};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;

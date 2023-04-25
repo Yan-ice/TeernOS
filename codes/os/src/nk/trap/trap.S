@@ -10,7 +10,11 @@
     .globl __restore
     .align 2
 __alltraps:
-
+    # 目标：将所有寄存器（上下文）保存到常数地址0x7FFFE000，它被映射到TRAP_CONTEXT。
+    # 1. t0,t1,t2直接存入用户栈sp
+    # 2. 用t0,t1,t2计算出TRAP_CONTEXT(TC)地址，并将其放入t0
+    # 3. 将sp栈中的t0~t2存入TC (对应x5~x7)，将其他所有寄存器存入TC
+    # 4. jr跳转
     #sd x1, 1*8(t0)
     csrrw sp, sscratch, sp
     #csrw sscratch, sp
