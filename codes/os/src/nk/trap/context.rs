@@ -1,5 +1,7 @@
 use riscv::register::sstatus::{Sstatus, self, SPP};
-use super::{user_trap_handler,nk_trap_handler};
+use super::{user_trap_handler
+    //,nk_trap_handler
+};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -10,7 +12,6 @@ pub struct TrapContext {
     pub kernel_satp: usize,
     pub kernel_sp: usize,
     pub trap_handler: usize,
-    pub nk_trap_handler: usize,
 }
 
 impl TrapContext {
@@ -33,8 +34,8 @@ impl TrapContext {
             sepc: entry,
             kernel_satp,
             kernel_sp,
-            trap_handler: user_trap_handler as usize,
-            nk_trap_handler: nk_trap_handler as usize};
+            trap_handler: user_trap_handler as usize
+        };
         cx.set_sp(sp);
         cx
     }

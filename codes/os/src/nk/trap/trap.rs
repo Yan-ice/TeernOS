@@ -34,7 +34,7 @@ global_asm!(include_str!("trap_signal.S"));
 
 #[no_mangle]
 pub fn user_trap_handler() -> ! {
-
+    //TODO: entry gate
     //trap到outer kernel时，切换为kernel trap。
     unsafe {
         stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
@@ -160,6 +160,8 @@ pub fn user_trap_handler() -> ! {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
         }
     }
+    //deleg to outer kernel
+    
     // println!("before trap_return");
     user_trap_return();
 }
@@ -188,6 +190,7 @@ pub fn user_trap_return() -> ! {
         fn __restore();
         fn __signal_trampoline();
     }
+    //TODO: exit gate
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
     unsafe {
         //llvm_asm!("fence.i" :::: "volatile");

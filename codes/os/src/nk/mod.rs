@@ -3,7 +3,9 @@ mod trap;
 
 use crate::outer_kernel_init;
 
-pub use trap::{TrapContext as TrapContext, nk_trap_return, user_trap_return};
+pub use trap::{TrapContext as TrapContext, 
+    //nk_trap_return, 
+    user_trap_return};
 
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 

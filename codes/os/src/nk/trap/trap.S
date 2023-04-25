@@ -10,6 +10,8 @@
     .globl __restore
     .align 2
 __alltraps:
+    # entry gate
+
     # sd x1, 1*8(t0)
     csrrw sp, sscratch, sp # 第一次进入这段汇编之前，是先进入了下面的restore汇编
                            # 所以这里进来的之前，sscratch的值就是TRAP_CONTEXT的值，sp是用户栈的位置，因为pc指的指令触发了trap
@@ -87,10 +89,6 @@ __restore:
         .set n, n+1
     .endr
     # back to user stack
-<<<<<<< HEAD
-    ld sp, 2*8(sp)
-    sret
-=======
+
     ld sp, 2*8(sp) # 当时进来的时候，这里就是进入时的用户栈栈顶，复原栈指针
     sret # 跳转到sepc的位置继续执行
->>>>>>> caffe12acc9109a233d98a12ab148de4364b9fca

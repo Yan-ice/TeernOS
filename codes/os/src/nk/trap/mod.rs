@@ -1,11 +1,11 @@
 mod context;
-mod trap_user;
+mod trap;
 mod trap_nk;
 
-use trap_user::user_trap_handler;
-use trap_nk::nk_trap_handler;
-pub use trap_user::user_trap_return;
-pub use trap_nk::nk_trap_return;
+use trap::user_trap_handler;
+//use trap_nk::nk_trap_handler;
+pub use trap::user_trap_return;
+//pub use trap_nk::nk_trap_return;
 
 use riscv::register::{
     mtvec::TrapMode,
