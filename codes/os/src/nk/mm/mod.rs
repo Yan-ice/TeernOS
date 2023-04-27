@@ -2,7 +2,7 @@ mod heap_allocator;
 mod address;
 mod frame_allocator;
 mod page_table;
-mod memory_set;
+pub(crate) mod memory_set;
 mod vma;
 
 use page_table::PTEFlags;

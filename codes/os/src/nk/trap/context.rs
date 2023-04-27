@@ -50,4 +50,6 @@ pub struct ProxyContext {
     pub outer_register: [usize; 32], //outer kernel的寄存器
     pub nksp: usize, //nk的栈指针
     pub outersp: usize, //outer kernel的栈指针
+    pub nk_satp: usize, // nk的satp
+    pub outer_satp: usize, // outer的satp
 }

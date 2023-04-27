@@ -1,10 +1,12 @@
 mod context;
 mod trap;
 
+
 use trap::user_trap_handler;
 //use trap_nk::nk_trap_handler;
 pub use trap::user_trap_return;
 //pub use trap_nk::nk_trap_return;
+pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
 
 use riscv::register::{
     mtvec::TrapMode,
@@ -73,6 +75,8 @@ lazy_static! {
             outer_register: [0; 32], 
             nksp: 0,
             outersp: eokernelstack as usize,
+            nk_satp: KERNEL_SPACE.lock().token(),
+            outer_satp: OUTER_KERNEL_SPACE.lock().token(),
         }
     ));
 }

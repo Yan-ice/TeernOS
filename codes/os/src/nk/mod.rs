@@ -27,7 +27,7 @@ pub use mm::{VirtPageNum as VirtPageNum,
             StepByOne as StepByOne,
             
             //以下是读取内存数据的系列接口。
-            //translated_refmut as translated_refmut,
+            translated_refmut as translated_refmut,
             translated_ref as translated_ref,
             translated_refcopy as translated_refcopy,
             translated_raw as translated_raw,
@@ -53,14 +53,6 @@ pub use mm::{VirtPageNum as VirtPageNum,
             //以下是process系列接口，会转交给outer kernel.
 };
 
-
-pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
-    // entry_gate();
-    let mut a = mm::translated_refmut(token, ptr);
-    // exit_gate();
-    a
-}
-
 pub fn id() -> usize {
     let cpu_id;
     unsafe {
@@ -83,17 +75,18 @@ global_asm!(include_str!("nk_gate.S"));
 
 extern "C" {
     pub fn nk_entry(
-        outer_kernel_function: *const usize,
+        proxy_address: *const usize,
     );
 }
 
-fn nk_entry_gate(proxycontext: *const usize){
+// 暂时作为让outer kernel执行完毕后得到数据
+fn nk_entry_gate(){
     // 交换页表
     KERNEL_SPACE.lock().activate();
 
-    // 先换栈，再恢复寄存器
+    // 先恢复寄存器，再换栈
     unsafe {
-        nk_entry(proxycontext);
+        nk_entry(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize);
     }
 
     // 开启中断
@@ -105,27 +98,23 @@ fn nk_entry_gate(proxycontext: *const usize){
 
 extern "C" {
     pub fn nk_exit(
-        outer_kernel_function: *const usize,
+        proxy_address: *const usize,
+        function_address: usize
     );
 }
 
-fn nk_exit_gate(proxycontext: *const usize){
+fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
     //if to outer kernel:
-
     //禁用中断
     unsafe {
         llvm_asm!("csrci sstatus, 2");
     }
 
-    //先保存寄存器，再换栈
+    //先保存寄存器，再换栈，再设置好ra，再换页表
     unsafe {
-        nk_exit(proxycontext);
+        nk_exit(proxycontext, function_address);
     }
                
-    //交换页表 
-    OUTER_KERNEL_SPACE.lock().activate();    
-    
-
     //TODO: 进程页表/内核页表？
     //if to user: 暂时未写
     // trap return (so here ignore)
@@ -150,23 +139,21 @@ pub fn nk_main(){
         fn __exit_gate();
     }
 
-
     println!("Nesked kernel init success");
 
     unsafe{
-        nk_exit_gate(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize);
         println!("{}", 1);
+        nk_exit_gate(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize, outer_kernel_init as usize);
+        println!("{}", 2);
     }
 
-    outer_kernel_init();
-
-    //手动构造user的trap context上下文，然后回到user space
-    let mut trap_context_address = &TrapContext::app_init_context(
-        outer_kernel_init as usize, //返回到outer kernel init
-        eokernelstack as usize, //outer kernel 栈
-        KERNEL_SPACE.lock().token(), //nested kernel的页表
-        nk_kernel_stack_top as usize //nested kernel的栈
-    ) as *const TrapContext;
+    // //手动构造user的trap context上下文，然后回到user space
+    // let mut trap_context_address = &TrapContext::app_init_context(
+    //     outer_kernel_init as usize, //返回到outer kernel init
+    //     eokernelstack as usize, //outer kernel 栈
+    //     KERNEL_SPACE.lock().token(), //nested kernel的页表
+    //     nk_kernel_stack_top as usize //nested kernel的栈
+    // ) as *const TrapContext;
 
     return;
 }

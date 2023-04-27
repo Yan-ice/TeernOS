@@ -345,6 +345,7 @@ impl MemorySet {
                 MapPermission::R,
             ), None);
         }
+        println!("finish outer kernel address space");
         memory_set
     }
 
