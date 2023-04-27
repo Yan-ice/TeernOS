@@ -40,8 +40,14 @@ impl TrapContext {
         cx
     }
 
-    
+}
 
 
-
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct ProxyContext {
+    pub nk_register: [usize; 32], //nk的寄存器
+    pub outer_register: [usize; 32], //outer kernel的寄存器
+    pub nksp: usize, //nk的栈指针
+    pub outersp: usize, //outer kernel的栈指针
 }

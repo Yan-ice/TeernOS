@@ -1,12 +1,13 @@
 mod mm;   
 mod trap;
 
-
-use crate::outer_kernel_init;
+use spin::Mutex;
+use alloc::sync::Arc;
+use crate::{outer_kernel_init, nk::trap::ProxyContext};
 
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
-    user_trap_return};
+    user_trap_return, PROXYCONTEXT};
 
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 
@@ -50,21 +51,22 @@ pub use mm::{VirtPageNum as VirtPageNum,
             print_free_pages as print_free_pages,
 
             //以下是process系列接口，会转交给outer kernel.
-}; 
+};
+
 
 pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
-    entry_gate();
+    // entry_gate();
     let mut a = mm::translated_refmut(token, ptr);
-    exit_gate();
+    // exit_gate();
     a
 }
 
 pub fn id() -> usize {
-                let cpu_id;
-                unsafe {
-                    llvm_asm!("mv $0, tp" : "=r"(cpu_id));
-                }
-                cpu_id
+    let cpu_id;
+    unsafe {
+        llvm_asm!("mv $0, tp" : "=r"(cpu_id));
+    }
+    cpu_id
 }
 
 fn clear_bss() {
@@ -77,49 +79,68 @@ fn clear_bss() {
     });
 }
 
-fn entry_gate(){
-    KERNEL_SPACE.into_inner().activate();
-    // 换栈
-    // 换页表
-    // 改中断
+global_asm!(include_str!("nk_gate.S"));
+
+extern "C" {
+    pub fn nk_entry(
+        outer_kernel_function: *const usize,
+    );
 }
 
-fn exit_gate(){
-    //if to outer kernel: 
-    OUTER_KERNEL_SPACE.into_inner().activate();
-    //TODO: 进程页表/内核页表？
-    //if to user:
-    // trap return (so here ignore)
+fn nk_entry_gate(proxycontext: *const usize){
+    // 交换页表
+    KERNEL_SPACE.lock().activate();
 
-    // 换栈
-    // 换页表
-    // 改中断
+    // 先换栈，再恢复寄存器
+    unsafe {
+        nk_entry(proxycontext);
+    }
+
+    // 开启中断
+    unsafe {
+        llvm_asm!("csrsi sstatus, 2");
+    }
+
+}
+
+extern "C" {
+    pub fn nk_exit(
+        outer_kernel_function: *const usize,
+    );
+}
+
+fn nk_exit_gate(proxycontext: *const usize){
+    //if to outer kernel:
+
+    //禁用中断
+    unsafe {
+        llvm_asm!("csrci sstatus, 2");
+    }
+
+    //先保存寄存器，再换栈
+    unsafe {
+        nk_exit(proxycontext);
+    }
+               
+    //交换页表 
+    OUTER_KERNEL_SPACE.lock().activate();    
+    
+
+    //TODO: 进程页表/内核页表？
+    //if to user: 暂时未写
+    // trap return (so here ignore)
 }
 
 #[no_mangle]
 pub fn nk_main(){
     let core = id();
-    // println!("core {} is running",core);
     if core != 0 {
         loop{}
-        // WARNING: Multicore mode only supports customized RustSBI platform, especially not including OpenSBI
-        // We use OpenSBI in qemu and customized RustSBI in k210, if you want to try Multicore mode, you have to
-        // try to switch to RustSBI in qemu and try to wakeup, which needs some effort and you can refer to docs.
-        //
-        // while !CORE2_FLAG.lock().is_in(){}
-        // mm::init_othercore();
-        // println!("other core start");
-        // trap::init();
-        // nk::trap::enable_timer_interrupt();
-        // timer::set_next_trigger();
-        // println!("other core start run tasks");
-        // task::run_tasks();
-        // panic!("Unreachable in rust_main!");
     }
     clear_bss();
 
     mm::init();
-    mm::remap_test();  //无用
+    mm::remap_test();
     trap::init();
     trap::enable_timer_interrupt();
 
@@ -129,18 +150,23 @@ pub fn nk_main(){
         fn __exit_gate();
     }
 
-    TrapContext::app_init_context(
+
+    println!("Nesked kernel init success");
+
+    unsafe{
+        nk_exit_gate(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize);
+        println!("{}", 1);
+    }
+
+    outer_kernel_init();
+
+    //手动构造user的trap context上下文，然后回到user space
+    let mut trap_context_address = &TrapContext::app_init_context(
         outer_kernel_init as usize, //返回到outer kernel init
         eokernelstack as usize, //outer kernel 栈
         KERNEL_SPACE.lock().token(), //nested kernel的页表
         nk_kernel_stack_top as usize //nested kernel的栈
-    );
-    //手动构造outer kernel的trap context上下文
-
-    println!("Nesked kernel init success");
-
-    exit_gate();
-    outer_kernel_init();
+    ) as *const TrapContext;
 
     return;
 }

@@ -1,6 +1,5 @@
 mod context;
 mod trap;
-mod trap_nk;
 
 use trap::user_trap_handler;
 //use trap_nk::nk_trap_handler;
@@ -61,6 +60,23 @@ lazy_static! {
     pub static ref G_SATP: Arc<Mutex<GlobalSatp>> = Arc::new(Mutex::new(GlobalSatp{satp:0, syscall:0}));
 }
 
+extern "C"{
+    fn nk_kernel_stack_top();
+    fn eokernelstack();
+    fn __exit_gate();
+}
+
+lazy_static! {
+    pub static ref PROXYCONTEXT: Arc<Mutex<ProxyContext>> = Arc::new(Mutex::new(
+        ProxyContext{
+            nk_register: [0; 32],
+            outer_register: [0; 32], 
+            nksp: 0,
+            outersp: eokernelstack as usize,
+        }
+    ));
+}
+
 
 // #[no_mangle]
 // pub fn trap_from_kernel(){
@@ -96,4 +112,4 @@ lazy_static! {
 //     panic!("Unreachable in back_to_outer_kernel!");
     
 // }
-pub use context::{TrapContext};
+pub use context::{TrapContext, ProxyContext};
