@@ -13,21 +13,30 @@ use riscv::register::{
     sie,
     stvec,
 };
-use crate::config::{NK_TRAMPOLINE};
+use crate::config::{TRAMPOLINE};
 
 fn trap_in_nk() -> !{
-    panic!("ERROR: trap occured in Nested Kernel!");
+    unsafe{
+        
+        let mut val = 1111;
+        //llvm_asm!("addi $0, x31, 0" : "=r"(val));
+        llvm_asm!("ld $0, 1*8(x10)" : "=r"(val));
+        println!("register: {:x}",val); 
+        panic!("ERROR: trap occured in Nested Kernel!");
+        
+    }
+    
 }
 
 pub fn init(){
-    // unsafe {
-    //     stvec::write(trap_in_nk as usize, TrapMode::Direct);
-    // }
+    unsafe {
+        stvec::write(trap_in_nk as usize, TrapMode::Direct);
+    }
 
     //由于暂时nk的trap还没做好，所以先放nk trampoline吧
-    unsafe {
-        stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
-    }
+    // unsafe {
+    //     stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
+    // }
 }
 pub fn enable_timer_interrupt() {
     unsafe { sie::set_stimer(); }
@@ -69,16 +78,14 @@ extern "C"{
 }
 
 lazy_static! {
-    pub static ref PROXYCONTEXT: Arc<Mutex<ProxyContext>> = Arc::new(Mutex::new(
-        ProxyContext{
-            nk_register: [0; 32],
-            outer_register: [0; 32], 
-            nksp: 0,
-            outersp: eokernelstack as usize,
-            nk_satp: KERNEL_SPACE.lock().token(),
-            outer_satp: OUTER_KERNEL_SPACE.lock().token(),
-        }
-    ));
+    pub static ref PROXYCONTEXT: ProxyContext = ProxyContext{
+        nk_register: [0; 32],
+        outer_register: [0; 32], 
+        nksp: eokernelstack as usize,
+        outersp: eokernelstack as usize,
+        nk_satp: KERNEL_SPACE.lock().token(),
+        outer_satp: OUTER_KERNEL_SPACE.lock().token(),
+    };
 }
 
 

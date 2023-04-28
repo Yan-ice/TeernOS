@@ -1,10 +1,10 @@
 .altmacro
 .macro SAVE_REGISTER n
-    sd x\n, \n*8(sp)
+    sd x\n, \n*8(x10)
 .endm
 
 .macro LOAD_REGISTER n
-    ld x\n, \n*8(sp)
+    ld x\n, \n*8(x10)
 .endm
 
 .globl nk_exit
@@ -21,19 +21,17 @@
     # 低地址
     # #####################################
 nk_exit:
-
-    # store nk sp
-    sd sp, 8*64(x10)
-    # change sp to PROXYCONEXT address
-    ld sp, 0(x10)
+    
     # store all nk registers
-    .set n, 0
-    .rept 32
+    .set n, 1
+    .rept 31
         SAVE_REGISTER %n
         .set n, n+1
     .endr
+    
     # restore all outer kernel registers
-    addi sp, sp, 32*8
+    addi sp, x10, 32*8
+
     ld x1, 1*8(sp)
     ld x3, 3*8(sp) 
     .set n, 5
@@ -42,14 +40,15 @@ nk_exit:
         .set n, n+1
     .endr
     # set ra
-    addi x7, sp, -168
-    ld x6, 0(x7)
+
+    ld x6, -21*8(sp)
+    addi sp, sp, 32*8
+
     # change satp  
-    addi sp, sp, 33*8
-    ld x7, 16(sp)
-    csrw satp, x7
+    # ld x7, 3*8(x10)
+    # csrw satp, x7
     # change stack
-    ld sp, (sp)  # bug
+    ld sp, 1*8(sp)  # bug
     jr x6
 
 

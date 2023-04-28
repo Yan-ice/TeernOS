@@ -38,7 +38,7 @@ __entry_gate:
     # load kernel_satp into t0
     ld t0, 34*8(sp)
     # load nk_trap_handler into t1
-    ld t1, 37*8(sp)
+    ld t1, 36*8(sp)
     # move to kernel_sp
     ld sp, 35*8(sp)
     # switch to kernel space

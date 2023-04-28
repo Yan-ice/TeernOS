@@ -32,12 +32,16 @@ use crate::monitor::*;
 global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
 
+fn nk_trap(){
+    println!("WARN: nk trap");
+    return;
+}
 #[no_mangle]
 pub fn user_trap_handler() -> ! {
     //TODO: entry gate
     //trap到outer kernel时，切换为kernel trap。
     unsafe {
-        stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(nk_trap as usize, TrapMode::Direct);
     }
 
     //G_SATP.lock().set(current_user_token());

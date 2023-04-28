@@ -86,12 +86,12 @@ fn nk_entry_gate(){
 
     // 先恢复寄存器，再换栈
     unsafe {
-        nk_entry(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize);
+        nk_entry(&*PROXYCONTEXT as *const ProxyContext as *const usize);
     }
 
-    // 开启中断
+    // 禁用中断
     unsafe {
-        llvm_asm!("csrsi sstatus, 2");
+        llvm_asm!("csrci sstatus, 2");
     }
 
 }
@@ -105,17 +105,18 @@ extern "C" {
 
 fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
     //if to outer kernel:
-    //禁用中断
+    //开启中断
     unsafe {
-        llvm_asm!("csrci sstatus, 2");
+        llvm_asm!("csrsi sstatus, 2");
+        llvm_asm!("ecall");
     }
-
+    println!("ready for exit gate");
     //先保存寄存器，再换栈，再设置好ra，再换页表
     unsafe {
         nk_exit(proxycontext, function_address);
     }
                
-    //TODO: 进程页表/内核页表？
+    //TODO: 进程页表/内核页表
     //if to user: 暂时未写
     // trap return (so here ignore)
 }
@@ -143,7 +144,8 @@ pub fn nk_main(){
 
     unsafe{
         println!("{}", 1);
-        nk_exit_gate(&*PROXYCONTEXT as *const Arc<Mutex<ProxyContext>> as *const ProxyContext as *const usize, outer_kernel_init as usize);
+    
+        nk_exit_gate((&(*PROXYCONTEXT)) as *const ProxyContext as *const usize, outer_kernel_init as usize);
         println!("{}", 2);
     }
 

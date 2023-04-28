@@ -67,6 +67,6 @@ SECTIONS
     sokernelstack = .;
     . = .+8K;
     eokernelstack = .;
-    
+    . = .+8K;
     eokernel = .;
 }
