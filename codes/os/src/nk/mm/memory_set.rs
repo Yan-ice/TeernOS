@@ -43,6 +43,8 @@ lazy_static! {
     pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
         MemorySet::new_kernel()
     ));
+
+    //为outer kernel准备专门的页表。
     pub static ref OUTER_KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
         MemorySet::new_outer_kernel()
     ));

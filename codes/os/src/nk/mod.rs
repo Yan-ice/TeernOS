@@ -108,9 +108,8 @@ fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
     //开启中断
     unsafe {
         llvm_asm!("csrsi sstatus, 2");
-        llvm_asm!("ecall");
     }
-    println!("ready for exit gate");
+
     //先保存寄存器，再换栈，再设置好ra，再换页表
     unsafe {
         nk_exit(proxycontext, function_address);

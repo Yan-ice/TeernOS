@@ -21,7 +21,8 @@
     # 低地址
     # #####################################
 nk_exit:
-    
+    sd sp, 8*64(x10)
+
     # store all nk registers
     .set n, 1
     .rept 31
@@ -45,8 +46,9 @@ nk_exit:
     addi sp, sp, 32*8
 
     # change satp  
-    # ld x7, 3*8(x10)
-    # csrw satp, x7
+    ld x7, 3*8(sp)
+    csrw satp, x7
+
     # change stack
     ld sp, 1*8(sp)  # bug
     jr x6

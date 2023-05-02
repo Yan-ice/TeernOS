@@ -84,7 +84,7 @@ pub fn outer_kernel_init(){
     let mask:usize = 1 << 1;
     sbi_send_ipi(&mask as *const usize as usize);
     // CORE2_FLAG.lock().set_in();
-    // test();
+    //test();
     println!("UltraOS: run tasks");
     task::run_tasks();
     panic!("Unreachable in rust_main!");
