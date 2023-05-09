@@ -1,3 +1,5 @@
+use core::alloc::Allocator;
+
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr};          
 use super::{FrameTracker, frame_alloc, frame_add_ref, enquire_refcount, print_free_pages};
@@ -5,6 +7,7 @@ use super::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
 use alloc::vec::Vec;
+use buddy_system_allocator::FrameAllocator;
 use riscv::register::satp;
 use alloc::sync::Arc;
 use lazy_static::*;
@@ -75,7 +78,7 @@ pub struct MemorySet {
     areas: Vec<MapArea>,  // 常规的Maparea
     chunks: ChunkArea,  // lazy优化，详见文档
     stack_chunks: ChunkArea,  // check_lazy这个方法是唯一用到这两个地方的位置
-    mmap_chunks: Vec<ChunkArea>,  // 用lazy做的优化
+    mmap_chunks: Vec<ChunkArea>  // 用lazy做的优化
 }
 
 impl MemorySet {
@@ -92,7 +95,7 @@ impl MemorySet {
                                 MapPermission::R | MapPermission::W | MapPermission::U),
             mmap_chunks: Vec::new(),
             stack_chunks: ChunkArea::new(MapType::Framed,
-                                MapPermission::R | MapPermission::W | MapPermission::U),
+                                MapPermission::R | MapPermission::W | MapPermission::U)
         }
     }
     pub fn set_cow(&mut self, vpn: VirtPageNum) {
@@ -173,6 +176,7 @@ impl MemorySet {
     fn push_mapped(&mut self, mut map_area: MapArea) {
         self.areas.push(map_area);
     }
+
     fn push_chunk(&mut self, vpn: VirtPageNum) {
         // self.chunks.vpn_table.push(vpn);
         // self.chunks.map_one(&mut self.page_table, vpn);
@@ -181,6 +185,7 @@ impl MemorySet {
     fn push_stack_chunk(&mut self, vpn: VirtPageNum) {
         self.stack_chunks.push_vpn(vpn, &mut self.page_table)
     }
+
     fn push_with_offset(&mut self, mut map_area: MapArea, offset: usize, data: Option<&[u8]>){
         // println!{"3"}
         map_area.map(&mut self.page_table);
@@ -612,7 +617,7 @@ impl MemorySet {
                 let vpn_copy: VirtPageNum = vpn.0.into();
                 // memory_set.chunks.vpn_table.push(vpn_copy);
                 // memory_set.chunks.map_one(&mut memory_set.page_table, vpn_copy);
-                new_mmap_area.push_vpn(vpn_copy, &mut memory_set.page_table);
+                new_mmap_area.push_vpn(vpn_copy, &mut memory_set.page_table, 1);
                 let src_ppn = user_space.translate(vpn_copy).unwrap().ppn();
                 let dst_ppn = memory_set.translate(vpn_copy).unwrap().ppn();
                 dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
@@ -738,9 +743,9 @@ impl ChunkArea {
         self.mmap_end = end;
     }
 
-    pub fn push_vpn(&mut self, vpn: VirtPageNum, page_table: &mut PageTable) {
+    pub fn push_vpn(&mut self, vpn: VirtPageNum, page_table: &mut PageTable, level:usize) {
         self.vpn_table.push(vpn);
-        self.map_one(page_table, vpn);
+        self.map_one(page_table, vpn, level);
     }
 
     pub fn from_another(another: &ChunkArea) -> Self {
@@ -755,20 +760,32 @@ impl ChunkArea {
     }
 
     // Alloc and map one page
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum, level: usize) {
         let ppn: PhysPageNum;
         match self.map_type {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Framed => {
-                if let Some(frame) = frame_alloc(){
-                    ppn = frame.ppn;
-                    self.data_frames.insert(vpn, frame);
+                //Yan_ice: use the corresponding allocator.
+                if(level==0){
+                    if let Some(frame) = frame_alloc(){
+                        ppn = frame.ppn;
+                        self.data_frames.insert(vpn, frame);
+                    }
+                    else{
+                        panic!("No more memory!");
+                    }
+                }else{
+                    if let Some(frame) = outer_frame_alloc(){
+                        ppn = frame.ppn;
+                        self.data_frames.insert(vpn, frame);
+                    }
+                    else{
+                        panic!("No more memory!");
+                    }
                 }
-                else{
-                    panic!("No more memory!");
-                }
+                
             }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
@@ -830,7 +847,7 @@ impl MapArea {
     }
 
     // Alloc and map one page
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum, level: usize) {
         // println!{"map one!!!"}
         let ppn: PhysPageNum;
         match self.map_type {
@@ -838,14 +855,26 @@ impl MapArea {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Framed => {
-                if let Some(frame) = frame_alloc(){
-                    ppn = frame.ppn;
-                    self.data_frames.insert(vpn, frame);
+                //Yan_ice: assign corresponding space
+                if(level==0){
+                    if let Some(frame) = frame_alloc(){
+                        ppn = frame.ppn;
+                        self.data_frames.insert(vpn, frame);
+                    }else{
+                        print_free_pages();
+                        panic!("No more memory!");
+                    }
+                }else{
+                    if let Some(frame) = outer_frame_alloc(){
+                        ppn = frame.ppn;
+                        self.data_frames.insert(vpn, frame);
+                    }else{
+                        print_free_pages();
+                        panic!("No more memory!");
+                    }
                 }
-                else{
-                    print_free_pages();
-                    panic!("No more memory!");
-                }
+                
+                
             }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
@@ -902,11 +931,6 @@ impl MapArea {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum MapType {
-    Identical,
-    Framed,
-}
 
 bitflags! {
     pub struct MapPermission: u8 {

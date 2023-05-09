@@ -34,7 +34,7 @@ global_asm!(include_str!("trap_signal.S"));
 
 fn nk_trap(){
     println!("WARN: nk trap");
-    return;
+    return;q
 }
 #[no_mangle]
 pub fn user_trap_handler() -> ! {

@@ -88,22 +88,29 @@ impl PageTableEntry {
 
 
 pub struct PageTable {
+    pt_id: usize,
     root_ppn: PhysPageNum,
     frames: Vec<FrameTracker>,
 }
 
 /// Assume that it won't oom when creating/mapping.
 impl PageTable {
-    pub fn new() -> Self {
+    pub fn id(&self) -> usize{
+        return self.pt_id;
+    }
+    pub fn new(id: usize) -> Self {
         let frame = frame_alloc().unwrap();
         PageTable {
+            pt_id: id,
             root_ppn: frame.ppn,
             frames: vec![frame],
         }
     }
+
     /// Temporarily used to get arguments from user space.
-    pub fn from_token(satp: usize) -> Self {
+    pub fn from_token(satp: usize, id: usize) -> Self {
         Self {
+            pt_id: id,
             root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
             frames: Vec::new(),
         }

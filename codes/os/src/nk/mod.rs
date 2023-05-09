@@ -4,7 +4,7 @@ mod trap;
 use spin::Mutex;
 use alloc::sync::Arc;
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
-
+use mm::
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
     user_trap_return, PROXYCONTEXT};
