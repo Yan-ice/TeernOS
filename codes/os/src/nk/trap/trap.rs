@@ -11,8 +11,6 @@ use riscv::register::{
 };
 use crate::nk::{
     VirtAddr,
-    VirtPageNum,
-    print_free_pages,
 };
 use crate::syscall::{syscall};
 use crate::task::{
@@ -25,7 +23,7 @@ use crate::task::{
     perform_signal_handler,
 };
 use crate::timer::set_next_trigger;
-use crate::config::{TRAP_CONTEXT, TRAMPOLINE, NK_TRAMPOLINE, USER_STACK_SIZE};
+use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
 use crate::gdb_print;
 use crate::monitor::*;
 

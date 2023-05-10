@@ -134,16 +134,22 @@ pub fn pt_init(pt: PageTable){
 
 //the function below would expose to outer kernel
 
+//Yan_ice: this function is used to create a new bare pagetable for user process.
 pub fn nkapi_pt_init(pt_handle: usize){
+    
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
             return;
         }
     }
 
+    //Yan_ice: here we create a new pagetable.
     let mut pt = PageTable::new(pt_handle);
+    println!("Creating PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
-    // mapping signal trampoline
+    println!("[debug] Mapping trampoline.");
+
+    //Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
         PhysAddr::from(ssignaltrampoline as usize).into(),
         PTEFlags::R | PTEFlags::X | PTEFlags::U,
@@ -153,12 +159,17 @@ pub fn nkapi_pt_init(pt_handle: usize){
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
         PTEFlags::R | PTEFlags::X);
+
     pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
             PhysAddr::from(snktrampoline as usize).into(),
             PTEFlags::R | PTEFlags::X);
 
+    pt.print_pagetable();
+
+    println!("[debug ]Mapping kernel_shared space.");
     pt.map_kernel_shared();
 
+    println!("Creating Pagetable success.");
     PAGE_TABLE_LIST.lock().push(pt);
 }
 

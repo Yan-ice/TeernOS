@@ -142,7 +142,7 @@ pub fn nk_main(){
     mm::init();
     mm::remap_test();
     trap::init();
-    trap::enable_timer_interrupt();
+    //trap::enable_timer_interrupt();
 
     extern "C"{
         fn nk_kernel_stack_top();

@@ -203,10 +203,13 @@ impl PageTable {
 
 
     pub fn print_pagetable(&mut self){
+        println!("[pt] printing pagetable {:x}",self.token());
+
         let idxs = [0 as usize;3];
         let mut ppns = [PhysPageNum(0);3];
         ppns[0] = self.root_ppn;
         for i in 0..512{
+            println!("[pt] printing progress ({}/512)",i);
             let pte = &mut ppns[0].get_pte_array()[i];
             if !pte.is_valid(){
                 continue;

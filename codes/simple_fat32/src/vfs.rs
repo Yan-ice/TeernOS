@@ -97,11 +97,13 @@ impl VFile{
     }
 
     pub fn read_short_dirent<V>(&self, f: impl FnOnce(&ShortDirEntry) -> V)->V{ 
+        
         if self.short_sector == 0 {
             let root_dirent = self.fs.read().get_root_dirent();
             let rr = root_dirent.read();
             f(& rr)
         } else {
+            
             get_info_cache(
                 self.short_sector,
                 self.block_device.clone(),
@@ -302,9 +304,11 @@ impl VFile{
         // FAT32目录没有大小，只能搜，read_at已经做了完善的适配
         self.read_short_dirent(|short_ent:&ShortDirEntry|{
             if name_.len() > 8 || ext_.len() > 3 { //长文件名
-                return self.find_long_name(name, short_ent)
+                let a = self.find_long_name(name, short_ent);
+                return a;
             } else { // 短文件名
-                return self.find_short_name(name, short_ent) 
+                let a = self.find_short_name(name, short_ent);
+                return a;
             }
         })
     }

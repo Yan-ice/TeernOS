@@ -23,11 +23,11 @@ impl IoVecs {
     pub unsafe fn new(
         iov_ptr: *mut IoVec,
         iov_num: usize,
-        token: usize,
+        id: usize,
     )-> Self {
         let mut iovecs: Vec<&'static mut [u8]> = vec![];
 
-        let iovref_vec = translated_array_copy(token, iov_ptr, iov_num);
+        let iovref_vec = translated_array_copy(id, iov_ptr, iov_num);
 
         iovecs.reserve(iovref_vec.len());
         for iovref in iovref_vec {
@@ -35,7 +35,7 @@ impl IoVecs {
                 continue;
             }
             //println!("iov.base = 0x{:X}, iov.len = {}", iovref.base as usize,iovref.len);
-            let mut buf:Vec<&'static mut [u8]> = translated_raw(token, iovref.base, iovref.len);
+            let mut buf:Vec<&'static mut [u8]> = translated_raw(id, iovref.base, iovref.len);
             iovecs.append(&mut buf);
         }
         Self(iovecs)

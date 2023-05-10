@@ -232,6 +232,9 @@ impl MemorySet {
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare(0,0);
+
+        println!("mapping nested kernel");
+
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
@@ -298,12 +301,12 @@ impl MemorySet {
 
     // 这里肯定不对，现在有个问题，outer kernel和 nested kernel的地址空间已经重合了
     pub fn new_outer_kernel() -> Self {
+
         let mut memory_set = Self::new_bare(1,0);
+        println!("mapping outer kernel");
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-
-       println!("mapping outer kernel:");
 
         memory_set.push(MapArea::new(
             (stext as usize).into(),
