@@ -34,7 +34,7 @@ global_asm!(include_str!("trap_signal.S"));
 
 fn nk_trap(){
     println!("WARN: nk trap");
-    return;q
+    return;
 }
 #[no_mangle]
 pub fn user_trap_handler() -> ! {
@@ -123,7 +123,7 @@ pub fn user_trap_handler() -> ! {
                 // page fault exit code
                 let current_task = current_task().unwrap();
                 if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-                    current_task.acquire_inner_lock().memory_set.print_pagetable();
+                    //current_task.acquire_inner_lock().memory_set.print_pagetable();
                     println!(
                         "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                         scause.cause(),

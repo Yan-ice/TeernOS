@@ -167,12 +167,22 @@ pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR_LIST[core_id].current()
 }
 
+
+//temporaily be lazy to rename it :D
 pub fn current_user_token() -> usize {
     // let core_id: usize = get_core_id();
     let task = current_task().unwrap();
-    let token = task.acquire_inner_lock().get_user_token();
+    let token = task.acquire_inner_lock().get_user_id();
     token
 }
+
+pub fn current_user_id() -> usize {
+    // let core_id: usize = get_core_id();
+    let task = current_task().unwrap();
+    let token = task.acquire_inner_lock().get_user_id();
+    token
+}
+
 
 pub fn current_trap_cx() -> &'static mut TrapContext {
     current_task().unwrap().acquire_inner_lock().get_trap_cx()

@@ -10,7 +10,7 @@ use crate::{fs::{Dirent, FdSet, File, FileClass, FileDescripter, IoVec, IoVecs, 
         TaskControlBlockInner,
         TimeVal,
     }};
-use crate::task::{current_user_token, current_task, suspend_current_and_run_next/* , print_core_info*/};
+use crate::task::{current_user_id as current_user_token, current_task, suspend_current_and_run_next/* , print_core_info*/};
 use crate::fs::{make_pipe, OpenFlags, open, ch_dir, list_files, DiskInodeType};
 use alloc::sync::Arc;
 use alloc::vec::Vec;

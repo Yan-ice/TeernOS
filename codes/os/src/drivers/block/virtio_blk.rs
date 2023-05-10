@@ -5,6 +5,7 @@ use crate::nk::{
     VirtAddr,
     frame_alloc,
     frame_dealloc,
+    nkapi_translate_va,
     PhysPageNum,
     FrameTracker,
     StepByOne,
@@ -90,5 +91,9 @@ pub extern "C" fn virtio_phys_to_virt(paddr: PhysAddr) -> VirtAddr {
 
 #[no_mangle]
 pub extern "C" fn virtio_virt_to_phys(vaddr: VirtAddr) -> PhysAddr {
-    PageTable::from_token(KERNEL_TOKEN.token()).translate_va(vaddr).unwrap()
+    if let Some(pa) = nkapi_translate_va(0, vaddr){
+        return pa;
+    }else{
+        return PhysAddr{0: vaddr.0};
+    }
 }

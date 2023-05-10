@@ -2,7 +2,6 @@ use super::{VirtAddr, UserBuffer, translated_raw};
 use crate::config::PAGE_SIZE;
 use crate::fs::{File, FileClass};
 use crate::task::FdTable;
-use alloc::sync::{Arc};
 use alloc::vec::Vec;
 
 bitflags! {
@@ -46,12 +45,12 @@ impl MmapArea {
 
     pub fn get_mmap_top(&mut self) -> VirtAddr { self.mmap_top }
 
-    pub fn lazy_map_page(&mut self, stval: usize, fd_table: FdTable, token: usize) {
+    pub fn lazy_map_page(&mut self, stval: usize, fd_table: FdTable, id: usize) {
         for mmap_space in self.mmap_set.iter_mut() {
             if stval >= mmap_space.oaddr.0 && stval < mmap_space.oaddr.0 + mmap_space.length {
                 // let va: VirtAddr = stval.into();
                 let page_start: VirtAddr = (stval & !(PAGE_SIZE - 1)).into();
-                mmap_space.lazy_map_page(page_start, fd_table, token);
+                mmap_space.lazy_map_page(page_start, fd_table, id);
                 return 
             }
         }
@@ -135,13 +134,13 @@ impl MmapSpace{
         Self {oaddr, length, prot, flags, valid, fd, offset}
     }
 
-    pub fn lazy_map_page(&mut self, page_start: VirtAddr, fd_table: FdTable, token: usize) {
+    pub fn lazy_map_page(&mut self, page_start: VirtAddr, fd_table: FdTable, pt_id: usize) {
         let offset: usize = self.offset - self.oaddr.0 + page_start.0;
         //println!("map file 0x{:X} = 0x{:X} - 0x{:X} + 0x{:X}", offset, self.offset, self.oaddr.0, page_start.0);
-        self.map_file(page_start, PAGE_SIZE, offset, fd_table, token);
+        self.map_file(page_start, PAGE_SIZE, offset, fd_table, pt_id);
     }
 
-    pub fn map_file(&mut self, va_start: VirtAddr, len: usize, offset: usize, fd_table: FdTable, token: usize) -> isize {
+    pub fn map_file(&mut self, va_start: VirtAddr, len: usize, offset: usize, fd_table: FdTable, pt_id: usize) -> isize {
         let flags = MmapFlags::from_bits(self.flags).unwrap();
         // print!("map_file: va_strat:0x{:X} flags:{:?}",va_start.0, flags);
         if flags.contains(MmapFlags::MAP_ANONYMOUS)
@@ -159,7 +158,7 @@ impl MmapSpace{
                     f.set_offset(offset);
                     if !f.readable() { return -1; }
                     //println!{"The va_start is 0x{:X}, offset of file is {}", va_start.0, offset};
-                    let read_len = f.read(UserBuffer::new(translated_raw(token, va_start.0 as *const u8, len)));
+                    let read_len = f.read(UserBuffer::new(translated_raw(pt_id, va_start.0 as *const u8, len)));
                     //println!{"read {} bytes", read_len};
                 },
                 _ => { return -1; },

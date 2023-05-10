@@ -1,5 +1,6 @@
-use crate::{console::print, nk::{
-    MemorySet,
+use crate::util::MemorySet;
+
+use crate::{nk::{
     PhysPageNum,
     KERNEL_SPACE, 
     KERNEL_MMAP_AREA, 
@@ -7,13 +8,12 @@ use crate::{console::print, nk::{
     //PageTable,
     VirtAddr,
     VirtPageNum,
-    PageTableEntry,
     translated_refmut,
     MmapArea,
     MapPermission,
     // PTEFlags,
 }, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext};
+use crate::nk::{TrapContext, nkapi_translate};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;
@@ -98,8 +98,8 @@ impl TaskControlBlockInner {
         // println!{"trap_cx_ppn: {:X}", self.trap_cx_ppn.0}
         self.trap_cx_ppn.get_mut()
     }
-    pub fn get_user_token(&self) -> usize {
-        self.memory_set.token()
+    pub fn get_user_id(&self) -> usize {
+        self.memory_set.id()
     }
     fn get_status(&self) -> TaskStatus {
         self.task_status
@@ -126,17 +126,15 @@ impl TaskControlBlockInner {
     pub fn get_work_path(&self)->String{
         self.current_path.clone()
     }
-    pub fn translate_vpn(&self, vpn: VirtPageNum) -> PageTableEntry {
-        self.memory_set.translate(vpn).unwrap()
+    pub fn enquire_vpn(&self, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum> {
+        return self.memory_set.translate(vpn, write);
     }
-    pub fn enquire_vpn(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.memory_set.translate(vpn)
-    }
-    pub fn cow_alloc(&mut self, vpn: VirtPageNum, former_ppn: PhysPageNum) -> usize {
-        let ret = self.memory_set.cow_alloc(vpn, former_ppn);
-        // println!{"finished cow_alloc!"}
-        ret
-    }
+
+    // pub fn cow_alloc(&mut self, vpn: VirtPageNum, former_ppn: PhysPageNum) -> usize {
+    //     let ret = self.memory_set.cow_alloc(vpn, former_ppn);
+    //     // println!{"finished cow_alloc!"}
+    //     ret
+    // }
 
     pub fn add_signal(&mut self, signal: Signals){
         self.siginfo.signal_pending.push(signal);
@@ -280,9 +278,7 @@ impl TaskControlBlock {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
         let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap()
-            .ppn();
+            .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
 
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
@@ -378,9 +374,8 @@ impl TaskControlBlock {
         
         // println!("user_sp {:X}", user_sp);
         let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap()
-            .ppn();
+            .translate(VirtAddr::from(TRAP_CONTEXT).into(),false)
+            .unwrap();
         
         ////////////// envp[] ///////////////////
         let mut env: Vec<String> = Vec::new();
@@ -406,10 +401,10 @@ impl TaskControlBlock {
             let mut p = user_sp;
             // write chars to [user_sp, user_sp + len]
             for c in env[i].as_bytes() {
-                *translated_refmut(memory_set.token(), p as *mut u8) = *c;
+                *translated_refmut(memory_set.id(), p as *mut u8) = *c;
                 p += 1;
             }
-            *translated_refmut(memory_set.token(), p as *mut u8) = 0;
+            *translated_refmut(memory_set.id(), p as *mut u8) = 0;
         }
         // make the user_sp aligned to 8B for k210 platform
         user_sp -= user_sp % core::mem::size_of::<usize>();
@@ -425,11 +420,11 @@ impl TaskControlBlock {
             let mut p = user_sp;
             // write chars to [user_sp, user_sp + len]
             for c in args[i].as_bytes() {
-                *translated_refmut(memory_set.token(), p as *mut u8) = *c;
+                *translated_refmut(memory_set.id(), p as *mut u8) = *c;
                 // print!("({})",*c as char);
                 p += 1;
             }
-            *translated_refmut(memory_set.token(), p as *mut u8) = 0;
+            *translated_refmut(memory_set.id(), p as *mut u8) = 0;
         }
         // make the user_sp aligned to 8B for k210 platform
         user_sp -= user_sp % core::mem::size_of::<usize>();
@@ -440,17 +435,17 @@ impl TaskControlBlock {
         user_sp -= user_sp % core::mem::size_of::<usize>();
         let mut p = user_sp;
         for c in platform.as_bytes() {
-            *translated_refmut(memory_set.token(), p as *mut u8) = *c;
+            *translated_refmut(memory_set.id(), p as *mut u8) = *c;
             p += 1;
         }
-        *translated_refmut(memory_set.token(), p as *mut u8) = 0;
+        *translated_refmut(memory_set.id(), p as *mut u8) = 0;
 
         ////////////// rand bytes ///////////////////
         user_sp -= 16;
         p = user_sp;
         auxv.push(AuxHeader{aux_type: AT_RANDOM, value: user_sp});
         for i in 0..0xf {
-            *translated_refmut(memory_set.token(), p as *mut u8) = i as u8;
+            *translated_refmut(memory_set.id(), p as *mut u8) = i as u8;
             p += 1;
         }
         
@@ -466,30 +461,30 @@ impl TaskControlBlock {
         for i in 0..auxv.len() {
             // println!("[auxv]: {:?}", auxv[i]);
             let addr = user_sp + core::mem::size_of::<AuxHeader>() * i;
-            *translated_refmut(memory_set.token(), addr as *mut usize) = auxv[i].aux_type ;
-            *translated_refmut(memory_set.token(), (addr + core::mem::size_of::<usize>()) as *mut usize) = auxv[i].value ;
+            *translated_refmut(memory_set.id(), addr as *mut usize) = auxv[i].aux_type ;
+            *translated_refmut(memory_set.id(), (addr + core::mem::size_of::<usize>()) as *mut usize) = auxv[i].value ;
         }
 
 
         ////////////// *envp [] //////////////////////
         user_sp -= (env.len() + 1) * core::mem::size_of::<usize>();
         let envp_base = user_sp;
-        *translated_refmut(memory_set.token(), (user_sp + core::mem::size_of::<usize>() * (env.len())) as *mut usize) = 0;
+        *translated_refmut(memory_set.id(), (user_sp + core::mem::size_of::<usize>() * (env.len())) as *mut usize) = 0;
         for i in 0..env.len() {
-            *translated_refmut(memory_set.token(), (user_sp + core::mem::size_of::<usize>() * i) as *mut usize) = envp[i] ;
+            *translated_refmut(memory_set.id(), (user_sp + core::mem::size_of::<usize>() * i) as *mut usize) = envp[i] ;
         }
         
         ////////////// *argv [] //////////////////////
         user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
         let argv_base = user_sp;
-        *translated_refmut(memory_set.token(), (user_sp + core::mem::size_of::<usize>() * (args.len())) as *mut usize) = 0;
+        *translated_refmut(memory_set.id(), (user_sp + core::mem::size_of::<usize>() * (args.len())) as *mut usize) = 0;
         for i in 0..args.len() {
-            *translated_refmut(memory_set.token(), (user_sp + core::mem::size_of::<usize>() * i) as *mut usize) = argv[i] ;
+            *translated_refmut(memory_set.id(), (user_sp + core::mem::size_of::<usize>() * i) as *mut usize) = argv[i] ;
         }
 
         ////////////// argc //////////////////////
         user_sp -= core::mem::size_of::<usize>();
-        *translated_refmut(memory_set.token(), user_sp as *mut usize) = args.len();
+        *translated_refmut(memory_set.id(), user_sp as *mut usize) = args.len();
 
 
         // **** hold current PCB lock
@@ -556,12 +551,8 @@ impl TaskControlBlock {
             user_heap_base,
             tgid
         );
-        let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into())
-            .unwrap()
-            .ppn();
-        
-        
+        let trap_cx_ppn = nkapi_translate(memory_set.id(), VirtPageNum::from(TRAP_CONTEXT).into(), false);
+
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
         // push a goto_trap_return task_cx on the top of kernel stack
@@ -586,7 +577,7 @@ impl TaskControlBlock {
                 itimer: ITimerVal::new(),
                 siginfo: parent_inner.siginfo.clone(),
                 trapcx_backup: parent_inner.get_trap_cx().clone(),
-                trap_cx_ppn,
+                trap_cx_ppn: trap_cx_ppn.unwrap(),
                 base_size: parent_inner.base_size,
                 heap_start: parent_inner.heap_start,
                 heap_pt: parent_inner.heap_pt,
@@ -652,20 +643,17 @@ impl TaskControlBlock {
             self.lazy_mmap(va.0, is_load)
         } else if va.0 >= heap_base && va.0 <= heap_pt {
             self.acquire_inner_lock().lazy_alloc_heap(vpn);
-            return 0;
+            0
         } else if va.0 >= stack_bottom && va.0 <= stack_top {
             //println!{"lazy_stack_page: {:?}", va}
             self.acquire_inner_lock().lazy_alloc_stack(vpn);
             0
         } else {
+            //Yan_ice: manage CoW
             // get the PageTableEntry that faults
-            let pte = self.acquire_inner_lock().enquire_vpn(vpn);
-            // if the virtPage is a CoW
-            if pte.is_some() && pte.unwrap().is_cow() {
-                let former_ppn = pte.unwrap().ppn();
-                self.acquire_inner_lock().cow_alloc(vpn, former_ppn);
+            if let Some(ppn) = self.acquire_inner_lock().enquire_vpn(vpn,true) {
                 0
-            } else {
+            }else{
                 -1
             }
         }
@@ -676,11 +664,11 @@ impl TaskControlBlock {
         // println!("lazy_mmap");
         let mut inner = self.acquire_inner_lock();
         let fd_table = inner.fd_table.clone();
-        let token = inner.get_user_token();
+        let pt_id = inner.get_user_id();
         let lazy_result = inner.memory_set.lazy_mmap(stval.into());
 
         if lazy_result == 0 || is_load {
-            inner.mmap_area.lazy_map_page(stval, fd_table, token);
+            inner.mmap_area.lazy_map_page(stval, fd_table, pt_id);
         }
         // println!("lazy_mmap");
         return lazy_result;
@@ -694,7 +682,7 @@ impl TaskControlBlock {
         } 
         let mut inner = self.acquire_inner_lock();
         let fd_table = inner.fd_table.clone();
-        let token = inner.get_user_token();
+        let pt_id = inner.get_user_id();
         let mut va_top = inner.mmap_area.get_mmap_top();
         let mut end_va = VirtAddr::from(va_top.0 + len);
         // "prot<<1" is equal to  meaning of "MapPermission"
@@ -703,19 +691,21 @@ impl TaskControlBlock {
         let mut startvpn = start/PAGE_SIZE;
         
         if start != 0 { // "Start" va Already mapped
-            while startvpn < (start+len)/PAGE_SIZE {
-                if inner.memory_set.set_pte_flags(startvpn.into(), map_flags as usize) == -1{
-                    panic!("mmap: start_va not mmaped");
-                }
-                startvpn +=1;
-            }
+            print!("WARN: case start already mapped (TODO)");
+            // while startvpn < (start+len)/PAGE_SIZE {
+            //     nkapi_mmap(pt_id, VirtPageNum{0:startvpn}, ppn, perm);
+            //     if inner.memory_set.set_pte_flags(startvpn.into(), map_flags as usize) == -1{
+            //         panic!("mmap: start_va not mmaped");
+            //     }
+            //     startvpn +=1;
+            // }
             return start;
         }
         else{ // "Start" va not mapped
             //inner.memory_set.insert_kernel_mmap_area(va_top, end_va, MapPermission::from_bits(map_flags).unwrap());
             inner.memory_set.insert_mmap_area(va_top, end_va, MapPermission::from_bits(map_flags).unwrap());
             //inner.mmap_area.push_kernel(va_top.0, len, prot, flags, fd, off, fd_table, token);
-            inner.mmap_area.push(va_top.0, len, prot, flags, fd, off, fd_table, token);
+            inner.mmap_area.push(va_top.0, len, prot, flags, fd, off, fd_table,pt_id);
             va_top.0
         }
     }

@@ -1,10 +1,7 @@
 mod mm;   
 mod trap;
 
-use spin::Mutex;
-use alloc::sync::Arc;
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
-use mm::
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
     user_trap_return, PROXYCONTEXT};
@@ -17,15 +14,17 @@ pub use mm::{VirtPageNum as VirtPageNum,
             KERNEL_SPACE as KERNEL_SPACE, 
             OUTER_KERNEL_SPACE as OUTER_KERNEL_SPACE,
             MapPermission as MapPermission,
+            MapType as MapType,
+            PTEFlags as PTEFlags,
             KERNEL_MMAP_AREA as KERNEL_MMAP_AREA,
             KERNEL_TOKEN as KERNEL_TOKEN,
             PageTableEntry as PageTableEntry,
-            MemorySet as MemorySet,
             MmapArea as MmapArea,
             PageTable as PageTable,
             FrameTracker as FrameTracker,
             StepByOne as StepByOne,
-            
+            VPNRange as VPNRange,
+
             //以下是读取内存数据的系列接口。
             translated_refmut as translated_refmut,
             translated_ref as translated_ref,
@@ -43,14 +42,26 @@ pub use mm::{VirtPageNum as VirtPageNum,
             outer_frame_alloc as frame_alloc,
             outer_frame_dealloc as frame_dealloc,
 
+            nkapi_pt_init as nkapi_pt_init,
+            nkapi_alloc as nkapi_alloc,
+            nkapi_dealloc as nkapi_dealloc,
+            nkapi_activate as nkapi_activate,
+            nkapi_copyTo as nkapi_copyTo,
+
             //io_map as io_map
             //io_unmap as io_unmap
+            nkapi_mmap as nkapi_mmap,
+            nkapi_unmap as nkapi_unmap,
+            nkapi_set_permission as nkapi_set_permission,
+            nkapi_translate as nkapi_translate,
+            nkapi_translate_va as nkapi_translate_va,
 
             //以下接口暂时未知。
             add_free as add_free, 
             print_free_pages as print_free_pages,
 
-            //以下是process系列接口，会转交给outer kernel.
+            //DANGER
+            nkapi_vun_getpt as nkapi_vun_getpt
 };
 
 pub fn id() -> usize {

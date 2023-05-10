@@ -6,7 +6,6 @@ pub fn translated_array_copy<T>(token: usize, ptr: *mut T, len: usize) -> Vec<T>
 
     let mut ref_vec:Vec<T> = Vec::new();
     let mut va = ptr as usize;
-    let step = core::mem::size_of::<T>();
     for i in 0..len{
         ref_vec.push(translated_refcopy(token,va as *mut T));
     }
@@ -19,7 +18,6 @@ pub fn translated_array_ref<T>(token: usize, ptr: *mut T, len: usize) -> Vec<&'s
 
     let mut ref_vec:Vec<&'static T> = Vec::new();
     let mut va = ptr as usize;
-    let step = core::mem::size_of::<T>();
     for i in 0..len{
         ref_vec.push(translated_refmut(token,va as *mut T));
     }
