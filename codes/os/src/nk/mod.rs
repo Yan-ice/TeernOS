@@ -4,7 +4,6 @@ mod trap;
 use spin::Mutex;
 use alloc::sync::Arc;
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
-use mm::
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
     user_trap_return, PROXYCONTEXT};
@@ -74,13 +73,13 @@ fn clear_bss() {
 global_asm!(include_str!("nk_gate.S"));
 
 extern "C" {
-    pub fn nk_entry(
+    fn nk_entry(
         proxy_address: *const usize,
     );
 }
 
 // 暂时作为让outer kernel执行完毕后得到数据
-fn nk_entry_gate(){
+pub fn nk_entry_gate(){
     // 交换页表
     KERNEL_SPACE.lock().activate();
 
@@ -143,7 +142,7 @@ pub fn nk_main(){
 
     unsafe{
         println!("{}", 1);
-    
+        PROXYCONTEXT.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
         nk_exit_gate((&(*PROXYCONTEXT)) as *const ProxyContext as *const usize, outer_kernel_init as usize);
         println!("{}", 2);
     }

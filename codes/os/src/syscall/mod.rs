@@ -70,30 +70,47 @@ pub use fs::*;
 use process::*;
 use crate::gdb_print;
 use crate::monitor::*;
+use crate::nk::nk_entry_gate;
 use crate::sbi::shutdown;
 use crate::timer::get_timeval;
 
 //use crate::fs::Dirent;
 
-pub fn test() {
-    if sys_getpid() == 1{
-        let start = get_timeval();
-        // println!("test: run sys_getppid 1000000 times, start {:?}",start);
-        for _ in 0..1000000{
-            syscall(SYSCALL_GETPPID,[0,0,0,0,0,0]);
-            // unsafe{
-            //     asm!(
-            //         "sfence.vma",
-            //     );
-            // }
-        }
-        let end = get_timeval();
-        // println!("test: run sys_getppid 1000000 times, end {:?}",end);
-        println!("test: run sys_getppid + sfence.vma 1000000 times, spent {:?}",end-start);
-    }
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref SYSCALLPARAMETER: SyscallParameter = SyscallParameter { 
+        parameter: [0; 7] 
+    }; 
 }
 
-pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
+// pub fn test() {
+//     if sys_getpid() == 1{
+//         let start = get_timeval();
+//         // println!("test: run sys_getppid 1000000 times, start {:?}",start);
+//         for _ in 0..1000000{
+//             syscall(SYSCALL_GETPPID,[0,0,0,0,0,0]);
+//             // unsafe{
+//             //     asm!(
+//             //         "sfence.vma",
+//             //     );
+//             // }
+//         }
+//         let end = get_timeval();
+//         // println!("test: run sys_getppid 1000000 times, end {:?}",end);
+//         println!("test: run sys_getppid + sfence.vma 1000000 times, spent {:?}",end-start);
+//     }
+// }
+
+pub fn syscall() -> isize {
+    let syscall_id = SYSCALLPARAMETER.parameter[0];
+    let mut args: [usize; 6] = [0; 6];
+    args[0] = SYSCALLPARAMETER.parameter[1];
+    args[1] = SYSCALLPARAMETER.parameter[2];
+    args[2] = SYSCALLPARAMETER.parameter[3];
+    args[3] = SYSCALLPARAMETER.parameter[4];
+    args[4] = SYSCALLPARAMETER.parameter[5];
+    args[5] = SYSCALLPARAMETER.parameter[6];
     gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
     //if syscall_id != 64 && syscall_id != 63 && syscall_id != 61 {
     //    gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
@@ -109,7 +126,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     // }
 
     
-    match syscall_id {
+    let ans: isize = match syscall_id {
         SYSCALL_SIGRETURN => sys_sigreturn(),
         SYSCALL_GETCWD=> sys_getcwd(args[0] as *mut u8, args[1] as usize),
         SYSCALL_DUP=> sys_dup(args[0]),
@@ -146,7 +163,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[0] as usize, args[1] as *mut u8, 
             args[2] as *mut u8, args[3] as *mut u8, 
             args[4] as *mut usize
-        )},
+            )
+        },
         SYSCALL_READLINKAT=> sys_readlinkat(args[0] as isize, args[1] as *const u8, args[2] as *mut u8, args[3] as usize),
         SYSCALL_NEW_FSTATAT => sys_newfstatat(args[0] as isize, args[1] as *const u8, args[2] as *mut u8, args[3] as u32),
         SYSCALL_FSTAT=> sys_fstat(args[0] as isize, args[1] as *mut u8),
@@ -230,7 +248,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             }
             sys_munmap(args[0] as usize, args[1] as usize) 
         },
-        SYSCALL_MPROTECT => {sys_mprotect(args[0] as usize, args[1] as usize, args[2] as isize)},
+        SYSCALL_MPROTECT => sys_mprotect(args[0] as usize, args[1] as usize, args[2] as isize),
         SYSCALL_LS => sys_ls(args[0] as *const u8),
         SYSCALL_SHUTDOWN => shutdown(),
         SYSCALL_CLEAR => sys_clear(args[0] as *const u8),
@@ -238,7 +256,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         //_ => {println!("Unsupported syscall_id:{}, arg0={} arg1={}", syscall_id, args[0], args[1]); 0}
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
 
-    }
+    };
+    // nk_entry_gate(proxy_address);
+    
 }
 
 

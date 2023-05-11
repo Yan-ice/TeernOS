@@ -8,22 +8,18 @@
 .endm
 
 .globl nk_exit
-    # 入参 x10 PROXYCONTEXT地址， x11 待代理的方法的地址
     # 结构 
     # #####################################
     # 高地址
     # 维护: nk satp
-    # 加载: outer satp  寄在这里
-    # 加载：outersp
-    # 保存：nksp
+    # 加载: outer satp
     # 加载: outer register (0, 1, ......, 31)
     # 保存：nk register (0, 1, ......, 31)
     # 低地址
     # #####################################
 nk_exit:
-    sd sp, 8*64(x10)
 
-    # store all nk registers
+    # store all nk registers, 包括栈指针
     .set n, 1
     .rept 31
         SAVE_REGISTER %n
@@ -40,17 +36,17 @@ nk_exit:
         LOAD_REGISTER %n
         .set n, n+1
     .endr
-    # set ra
 
+    # set ra
     ld x6, -21*8(sp)
     addi sp, sp, 32*8
 
     # change satp  
-    ld x7, 3*8(sp)
+    ld x7, 0(sp)
     csrw satp, x7
 
     # change stack
-    ld sp, 1*8(sp)  # bug
+    ld sp, -30*8(sp)
     jr x6
 
 
@@ -61,8 +57,6 @@ nk_exit:
     # 高地址
     # 加载: nk satp
     # 维护: outer satp
-    # 加载：outersp
-    # 保存：nksp
     # 加载: outer register (0, 1, ......, 31)
     # 保存：nk register (0, 1, ......, 31)
     # 低地址

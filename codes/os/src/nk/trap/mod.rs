@@ -81,8 +81,6 @@ lazy_static! {
     pub static ref PROXYCONTEXT: ProxyContext = ProxyContext{
         nk_register: [0; 32],
         outer_register: [0; 32], 
-        nksp: eokernelstack as usize,
-        outersp: eokernelstack as usize,
         nk_satp: KERNEL_SPACE.lock().token(),
         outer_satp: OUTER_KERNEL_SPACE.lock().token(),
     };
