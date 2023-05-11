@@ -9,13 +9,11 @@ use riscv::register::{
     stval,
     stvec, hpmcounter21::read
 };
-use crate::nk::{
+use crate::config::NK_TRAMPOLINE;
+use crate::{nk::{
     VirtAddr,
-    VirtPageNum,
-    print_free_pages,
     nk_exit_gate,
-    nk_entry_gate,
-};
+}};
 use crate::syscall::{syscall, SYSCALLPARAMETER};
 use crate::task::{
     exit_current_and_run_next,
@@ -27,9 +25,10 @@ use crate::task::{
     perform_signal_handler,
 };
 
+pub use super::context::ProxyContext;
 use crate::PROXYCONTEXT;
 use crate::timer::set_next_trigger;
-use crate::config::{TRAP_CONTEXT, TRAMPOLINE, NK_TRAMPOLINE, USER_STACK_SIZE};
+use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
 use crate::gdb_print;
 use crate::monitor::*;
 
@@ -55,7 +54,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
                 // page fault exit code
                 let current_task = current_task().unwrap();
                 if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-                    current_task.acquire_inner_lock().memory_set.print_pagetable();
+                    // current_task.acquire_inner_lock().memory_set.print_pagetable();
                     println!(
                         "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                         scause.cause(),
@@ -71,8 +70,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
                 llvm_asm!("fence.i" :::: "volatile");
             }
             // println!{"Trap solved..."}
-
-}
+        }
 
 pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
     //TODO: entry gate
@@ -94,19 +92,26 @@ pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
             }
             //get system call return value
             
+            let mut p = SYSCALLPARAMETER.lock();
+            
+            p.parameter[0] = syscall_id; 
+            p.parameter[1] = cx.x[10]; 
+            p.parameter[2] = cx.x[11];
+            p.parameter[3] = cx.x[12];
+            p.parameter[4] = cx.x[13];
+            p.parameter[5] = cx.x[14];
+            p.parameter[6] = cx.x[15];
 
-            SYSCALLPARAMETER = [syscall_id, cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]];
-            let return_value: iszie = nk_exit_gate(PROXYCONTEXT, syscall);
+            nk_exit_gate(&(SYSCALLPARAMETER.lock().parameter) as *const usize, syscall as usize);
+
             // let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
 
-
-
             // cx is changed during sys_exec, so we have to call it again
-            //if syscall_id != 64 && syscall_id != 63{
+            // if syscall_id != 64 && syscall_id != 63{
             //    println!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
-            //} 
-            cx = current_trap_cx();
-            cx.x[10] = result as usize;
+            // } 
+            // cx = current_trap_cx();
+            // cx.x[10] = result as usize;
             // println!{"cx written..."}
         }
         Trap::Exception(Exception::InstructionFault) |
@@ -129,7 +134,45 @@ pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
                 exit_current_and_run_next(-2);
             }
         }
-        
+        Trap::Exception(Exception::LoadFault) |
+        Trap::Exception(Exception::StoreFault) |
+        Trap::Exception(Exception::StorePageFault) |
+        Trap::Exception(Exception::LoadPageFault) => {
+            // println!("page fault 1");
+            let is_load: bool;
+            if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
+                is_load = true;
+            } else {
+                is_load = false;
+            }
+            let va: VirtAddr = (stval as usize).into();
+            // The boundary decision
+            if va > TRAMPOLINE.into() {
+                panic!("VirtAddr out of range!");
+            }
+            //println!("check_lazy 1");
+            let lazy = current_task().unwrap().check_lazy(va, is_load);
+            if lazy != 0 {
+                // page fault exit code
+                let current_task = current_task().unwrap();
+                if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
+                    //current_task.acquire_inner_lock().memory_set.print_pagetable();
+                    println!(
+                        "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                        scause.cause(),
+                        stval,
+                        current_trap_cx().sepc,
+                    );
+                    drop(current_task);
+                    exit_current_and_run_next(-2);
+                }
+            }
+            unsafe {
+                llvm_asm!("sfence.vma" :::: "volatile");
+                llvm_asm!("fence.i" :::: "volatile");
+            }
+            // println!{"Trap solved..."}
+        }
         Trap::Exception(Exception::IllegalInstruction) => {
             // println!{"pinIllegalInstruction"}
             println!("[kernel] IllegalInstruction in application, continue.");

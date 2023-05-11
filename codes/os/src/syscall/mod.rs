@@ -70,18 +70,20 @@ pub use fs::*;
 use process::*;
 use crate::gdb_print;
 use crate::monitor::*;
-use crate::nk::nk_entry_gate;
 use crate::sbi::shutdown;
-use crate::timer::get_timeval;
+use crate::task::current_trap_cx;
+use spin::Mutex;
+
+use crate::nk::nk_entry_gate;
 
 //use crate::fs::Dirent;
 
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub static ref SYSCALLPARAMETER: SyscallParameter = SyscallParameter { 
-        parameter: [0; 7] 
-    }; 
+    pub static ref SYSCALLPARAMETER: Mutex<SyscallParameter> = Mutex::new(SyscallParameter { 
+        parameter: [0 as usize; 7]
+    }); 
 }
 
 // pub fn test() {
@@ -102,15 +104,17 @@ lazy_static! {
 //     }
 // }
 
-pub fn syscall() -> isize {
-    let syscall_id = SYSCALLPARAMETER.parameter[0];
+pub fn syscall(){
+    let mut p = SYSCALLPARAMETER.lock();
+    let syscall_id = p.parameter[0];
     let mut args: [usize; 6] = [0; 6];
-    args[0] = SYSCALLPARAMETER.parameter[1];
-    args[1] = SYSCALLPARAMETER.parameter[2];
-    args[2] = SYSCALLPARAMETER.parameter[3];
-    args[3] = SYSCALLPARAMETER.parameter[4];
-    args[4] = SYSCALLPARAMETER.parameter[5];
-    args[5] = SYSCALLPARAMETER.parameter[6];
+    args[0] = p.parameter[1];
+    args[1] = p.parameter[2];
+    args[2] = p.parameter[3];
+    args[3] = p.parameter[4];
+    args[4] = p.parameter[5];
+    args[5] = p.parameter[6];
+
     gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
     //if syscall_id != 64 && syscall_id != 63 && syscall_id != 61 {
     //    gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
@@ -257,8 +261,13 @@ pub fn syscall() -> isize {
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
 
     };
+
+    //TODO: 改成用gate传回去
     // nk_entry_gate(proxy_address);
-    
+    let mut cx = current_trap_cx();
+    cx.x[10] = ans as usize; // 把syscall的返回值存入user process context
+    drop(p); 
+    nk_entry_gate();
 }
 
 

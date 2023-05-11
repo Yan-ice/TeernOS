@@ -63,19 +63,23 @@ nk_exit:
     # #####################################
 nk_entry:
 
-    # store outer kernel sp
-    sd sp, 8*65(x10)
-    # change sp to PROXYCONEXT address
-    ld sp, 0(x10)
-    # store all outer registers
-    addi sp, sp, 32*8
+    # store all outer kernel registers, 包括栈指针
+
+    addi sp, sp, 32
+
+
     .set n, 0
-    .rept 32
+    .rept 31
         SAVE_REGISTER %n
         .set n, n+1
     .endr
-    # restore all nested kernel registers
-    addi sp, sp, -32*8
+
+    addi sp, sp, -32
+    
+    sd sp, 34(sp)
+
+    # restore register except sp
+
     ld x1, 1*8(sp)
     ld x3, 3*8(sp) 
     .set n, 5
@@ -83,6 +87,9 @@ nk_entry:
         LOAD_REGISTER %n
         .set n, n+1
     .endr
-    # change stack
-    ld sp, 64*8(sp)
-    jr ra
+
+    ld sp, 34*8(sp)
+
+    # exit gate怎么进来就怎么回去
+
+    jr x1

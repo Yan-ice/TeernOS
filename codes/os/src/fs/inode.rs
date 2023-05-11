@@ -437,10 +437,11 @@ pub fn open(work_path: &str, path: &str, flags: OpenFlags, type_: DiskInodeType)
         }
     };
     let mut pathv:Vec<&str> = path.split('/').collect();
-    // println!("[open] pathv = {:?}", pathv);
-
     // shell应当保证此处输入的path不为空
+    
     let (readable, writable) = flags.read_write();
+    //println!("[debug] open pathv = {:?}", pathv);
+
     if flags.contains(OpenFlags::CREATE) {
         if let Some(inode) = cur_inode.find_vfile_bypath(pathv.clone()) {
             // clear size

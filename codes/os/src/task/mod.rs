@@ -27,6 +27,7 @@ pub use context::TaskContext;
 pub use processor::{
     run_tasks,
     current_task,
+    current_user_id,
     current_user_token,
     current_trap_cx,
     take_current_task,

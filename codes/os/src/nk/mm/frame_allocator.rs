@@ -163,6 +163,11 @@ pub fn outer_frame_alloc() -> Option<FrameTracker> {
         .alloc()
         .map(|ppn| FrameTracker::new(ppn))
 }
+pub fn outer_frame_alloc_raw() -> Option<PhysPageNum> {
+    OUTER_FRAME_ALLOCATOR
+        .lock()
+        .alloc()
+}
 pub fn outer_frame_dealloc(ppn: PhysPageNum) {
     OUTER_FRAME_ALLOCATOR
         .lock()
@@ -208,7 +213,9 @@ pub fn add_free(ppn: usize){
 pub fn print_free_pages(){
     FRAME_ALLOCATOR.lock().print_free();
 }
-
+pub fn outer_print_free_pages(){
+    OUTER_FRAME_ALLOCATOR.lock().print_free();
+}
 // #[allow(unused)]
 // pub fn frame_allocator_test() {
 //     let mut v: Vec<FrameTracker> = Vec::new();

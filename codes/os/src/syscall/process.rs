@@ -6,9 +6,7 @@ use crate::nk::{
     translated_str,
     translated_refmut,
     translated_ref,
-    translated_raw, 
-    print_free_pages,
-    PageTable,
+    translated_raw
 };
 use crate::fs::{DiskInodeType, FileClass, FileDescripter, OpenFlags, open};
 use crate::config::{PAGE_SIZE, CLOCK_FREQ};
@@ -70,7 +68,7 @@ pub fn sys_get_time_of_day(time: *mut u64) -> isize {
 pub fn sys_getrusage(who: isize, usage: *mut u8) -> isize {
     if who != RUSAGE_SELF {
         panic!("sys_getrusage: \"who\" not supported!");
-        return -1;
+
     }
     let task = current_task().unwrap();
     let token = current_user_token();
@@ -387,7 +385,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     let flags = CloneFlags::from_bits(flags).unwrap();
     if flags.contains(CloneFlags::CLONE_CHILD_SETTID) && ctid != 0{
         new_task.acquire_inner_lock().address.set_child_tid = ctid; 
-        *translated_refmut(new_task.acquire_inner_lock().get_user_token(), ctid as *mut i32) = tid  as i32;
+        *translated_refmut(new_task.acquire_inner_lock().get_user_id(), ctid as *mut i32) = tid  as i32;
     }
     if flags.contains(CloneFlags::CLONE_CHILD_CLEARTID) && ctid != 0{
         new_task.acquire_inner_lock().address.clear_child_tid = ctid;
@@ -502,7 +500,7 @@ pub fn sys_wait4(pid: isize, wstatus: *mut i32, option: isize) -> isize {
             let exit_code = waited_child.acquire_inner_lock().exit_code;
             let ret_status = exit_code << 8;
             if (wstatus as usize) != 0{
-                *translated_refmut(inner.memory_set.token(), wstatus) = ret_status;
+                *translated_refmut(inner.memory_set.id(), wstatus) = ret_status;
             }
             // println!("=============The pid being waited is {}===================", pid);
             // println!("=============The exit code of waiting_pid is {}===========", exit_code);
@@ -551,7 +549,7 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
         // ++++ temporarily hold child lock
         let exit_code = child.acquire_inner_lock().exit_code;
         // ++++ release child PCB lock
-        *translated_refmut(inner.memory_set.token(), exit_code_ptr) = exit_code;
+        *translated_refmut(inner.memory_set.id(), exit_code_ptr) = exit_code;
         found_pid as isize
     } else {
         -2
@@ -590,11 +588,7 @@ pub fn sys_mprotect(addr: usize, len: usize, prot: isize) -> isize{
     let memory_set = &mut task.acquire_inner_lock().memory_set;
     let start_vpn = addr / PAGE_SIZE;
     for i in 0..(len/PAGE_SIZE){
-        // here (prot << 1) is identical to BitFlags of X/W/R in pte flags
-        if memory_set.set_pte_flags(start_vpn.into(), (prot as usize)<<1) == -1{
-            // if fail
-            panic!("sys_mprotect: No such pte");
-        }
+        memory_set.set_pte_flags(start_vpn.into(), (prot as usize)<<1)
     }
     unsafe {
         llvm_asm!("sfence.vma" :::: "volatile");

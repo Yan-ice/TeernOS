@@ -10,7 +10,7 @@ use crate::{fs::{Dirent, FdSet, File, FileClass, FileDescripter, IoVec, IoVecs, 
         TaskControlBlockInner,
         TimeVal,
     }};
-use crate::task::{current_user_token, current_task, suspend_current_and_run_next/* , print_core_info*/};
+use crate::task::{current_user_id as current_user_token, current_task, suspend_current_and_run_next/* , print_core_info*/};
 use crate::fs::{make_pipe, OpenFlags, open, ch_dir, list_files, DiskInodeType};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -68,6 +68,7 @@ pub fn sys_writev(fd:usize, iov_ptr: usize, iov_num:usize)->isize{
     let iov_head = iov_ptr as *mut IoVec;
     
     let token = current_user_token();
+    println!("[debug] current pagetable id: {}",token);
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
     if fd >= inner.fd_table.len() {

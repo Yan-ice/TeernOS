@@ -1,29 +1,55 @@
 mod context;
 mod trap;
 
-
+use riscv::register::{
+    mtvec::TrapMode,
+    scause::{
+        self,
+        Trap,
+        Exception,
+        Interrupt,
+    },
+    sie,
+    stval,
+    stvec
+};
+pub use context::{TrapContext, ProxyContext};
 use trap::user_trap_handler;
 //use trap_nk::nk_trap_handler;
 pub use trap::user_trap_return;
 //pub use trap_nk::nk_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
 
-use riscv::register::{
-    mtvec::TrapMode,
-    sie,
-    stvec,
-};
-use crate::config::{TRAMPOLINE};
 
 fn trap_in_nk() -> !{
     unsafe{
         
-        let mut val = 1111;
-        //llvm_asm!("addi $0, x31, 0" : "=r"(val));
-        llvm_asm!("ld $0, 1*8(x10)" : "=r"(val));
-        println!("register: {:x}",val); 
-        panic!("ERROR: trap occured in Nested Kernel!");
-        
+        let scause = scause::read();
+        match scause.cause() {
+            Trap::Exception(Exception::UserEnvCall) => {
+                panic!("ERROR: syscall exception occured in Nested Kernel!");
+            }
+            Trap::Exception(Exception::InstructionFault) |
+            Trap::Exception(Exception::InstructionPageFault) => {
+                panic!("ERROR: pagefault exception occured in Nested Kernel!");
+            }
+            Trap::Exception(Exception::LoadFault) |
+            Trap::Exception(Exception::StoreFault) |
+            Trap::Exception(Exception::StorePageFault) |
+            Trap::Exception(Exception::LoadPageFault) => {
+                panic!("ERROR: load/store exception occured in Nested Kernel!");
+            }
+            Trap::Exception(Exception::IllegalInstruction) => {
+                panic!("ERROR: illegal instruction in Nested Kernel!");
+            }
+            Trap::Interrupt(Interrupt::SupervisorTimer) => {
+                panic!("ERROR: timer interrupt occured in Nested Kernel!");
+            }
+            _ => {
+                panic!("Unsupported trap {:?}!", scause.cause());
+            }
+        }
+
     }
     
 }
@@ -78,12 +104,12 @@ extern "C"{
 }
 
 lazy_static! {
-    pub static ref PROXYCONTEXT: ProxyContext = ProxyContext{
+    pub static ref PROXYCONTEXT: Mutex<ProxyContext> = Mutex::new(ProxyContext{
         nk_register: [0; 32],
         outer_register: [0; 32], 
         nk_satp: KERNEL_SPACE.lock().token(),
         outer_satp: OUTER_KERNEL_SPACE.lock().token(),
-    };
+    });
 }
 
 
@@ -121,4 +147,3 @@ lazy_static! {
 //     panic!("Unreachable in back_to_outer_kernel!");
     
 // }
-pub use context::{TrapContext, ProxyContext};

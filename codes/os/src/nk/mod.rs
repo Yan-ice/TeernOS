@@ -1,8 +1,6 @@
 mod mm;   
 mod trap;
 
-use spin::Mutex;
-use alloc::sync::Arc;
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
@@ -16,15 +14,17 @@ pub use mm::{VirtPageNum as VirtPageNum,
             KERNEL_SPACE as KERNEL_SPACE, 
             OUTER_KERNEL_SPACE as OUTER_KERNEL_SPACE,
             MapPermission as MapPermission,
+            MapType as MapType,
+            PTEFlags as PTEFlags,
             KERNEL_MMAP_AREA as KERNEL_MMAP_AREA,
             KERNEL_TOKEN as KERNEL_TOKEN,
             PageTableEntry as PageTableEntry,
-            MemorySet as MemorySet,
             MmapArea as MmapArea,
             PageTable as PageTable,
             FrameTracker as FrameTracker,
             StepByOne as StepByOne,
-            
+            VPNRange as VPNRange,
+
             //以下是读取内存数据的系列接口。
             translated_refmut as translated_refmut,
             translated_ref as translated_ref,
@@ -42,14 +42,26 @@ pub use mm::{VirtPageNum as VirtPageNum,
             outer_frame_alloc as frame_alloc,
             outer_frame_dealloc as frame_dealloc,
 
+            nkapi_pt_init as nkapi_pt_init,
+            nkapi_alloc as nkapi_alloc,
+            nkapi_dealloc as nkapi_dealloc,
+            nkapi_activate as nkapi_activate,
+            nkapi_copyTo as nkapi_copyTo,
+
             //io_map as io_map
             //io_unmap as io_unmap
+            nkapi_mmap as nkapi_mmap,
+            nkapi_unmap as nkapi_unmap,
+            nkapi_set_permission as nkapi_set_permission,
+            nkapi_translate as nkapi_translate,
+            nkapi_translate_va as nkapi_translate_va,
 
             //以下接口暂时未知。
             add_free as add_free, 
             print_free_pages as print_free_pages,
 
-            //以下是process系列接口，会转交给outer kernel.
+            //DANGER
+            nkapi_vun_getpt as nkapi_vun_getpt
 };
 
 pub fn id() -> usize {
@@ -78,14 +90,14 @@ extern "C" {
     );
 }
 
-// 暂时作为让outer kernel执行完毕后得到数据
+// syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
 pub fn nk_entry_gate(){
     // 交换页表
     KERNEL_SPACE.lock().activate();
 
     // 先恢复寄存器，再换栈
     unsafe {
-        nk_entry(&*PROXYCONTEXT as *const ProxyContext as *const usize);
+        nk_entry(&(PROXYCONTEXT.lock().nk_register) as *const usize);
     }
 
     // 禁用中断
@@ -130,7 +142,7 @@ pub fn nk_main(){
     mm::init();
     mm::remap_test();
     trap::init();
-    trap::enable_timer_interrupt();
+    //trap::enable_timer_interrupt();
 
     extern "C"{
         fn nk_kernel_stack_top();
@@ -142,8 +154,11 @@ pub fn nk_main(){
 
     unsafe{
         println!("{}", 1);
-        PROXYCONTEXT.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
-        nk_exit_gate((&(*PROXYCONTEXT)) as *const ProxyContext as *const usize, outer_kernel_init as usize);
+        let mut proxycontext = PROXYCONTEXT.lock();
+        proxycontext.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        drop(proxycontext);
+
+        nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
         println!("{}", 2);
     }
 

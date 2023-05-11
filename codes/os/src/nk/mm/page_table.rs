@@ -1,17 +1,16 @@
+use super::memory_set::outerkernel_pt;
 use super::{
-    frame_alloc,
+    frame_alloc_raw,
     PhysPageNum,
-    FrameTracker,
     VirtPageNum,
     VirtAddr,
     PhysAddr,
     StepByOne,
-    kernel_token,
+    pt_get,
 };
 use crate::config::*;
 use crate::task::{current_user_token, current_task};
 use alloc::vec::Vec;
-use alloc::vec;
 use alloc::string::String;
 use bitflags::*;
 
@@ -67,6 +66,8 @@ impl PageTableEntry {
         let new_flags: u8 = flags.bits().clone();
         self.bits = (self.bits & 0xFFFF_FFFF_FFFF_FF00) | (new_flags as usize);
     }
+
+    // the 9th flag is used as COW flag.
     pub fn set_cow(&mut self) {
         (*self).bits = self.bits | (1 << 9);
     }
@@ -87,10 +88,11 @@ impl PageTableEntry {
 }
 
 
+#[derive(Copy, Clone)]
 pub struct PageTable {
     pt_id: usize,
     root_ppn: PhysPageNum,
-    frames: Vec<FrameTracker>,
+    //frames: Vec<PhysPageNum>,
 }
 
 /// Assume that it won't oom when creating/mapping.
@@ -99,20 +101,21 @@ impl PageTable {
         return self.pt_id;
     }
     pub fn new(id: usize) -> Self {
-        let frame = frame_alloc().unwrap();
+        let ppn = frame_alloc_raw().unwrap();
         PageTable {
             pt_id: id,
-            root_ppn: frame.ppn,
-            frames: vec![frame],
+            root_ppn: ppn,
+            //frames: vec![ppn],
         }
     }
 
     /// Temporarily used to get arguments from user space.
-    pub fn from_token(satp: usize, id: usize) -> Self {
-        Self {
-            pt_id: id,
-            root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
-            frames: Vec::new(),
+    pub fn from_id(id: usize) -> Self {
+        if let Some(pt) = super::pt_get(id) {
+            return pt;
+        }else{
+            super::nkapi_pt_init(id);
+            return PageTable::from_id(id);
         }
     }
     
@@ -128,9 +131,9 @@ impl PageTable {
             }
             if !pte.is_valid() {
                 // println!{"invalid!!!!!!!!"}
-                let frame = frame_alloc().unwrap();
-                *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
-                self.frames.push(frame);
+                let ppn = frame_alloc_raw().unwrap();
+                *pte = PageTableEntry::new(ppn, PTEFlags::V);
+                //self.frames.push(ppn);
             }
             ppn = pte.ppn();
         }
@@ -200,10 +203,13 @@ impl PageTable {
 
 
     pub fn print_pagetable(&mut self){
+        println!("[pt] printing pagetable {:x}",self.token());
+
         let idxs = [0 as usize;3];
         let mut ppns = [PhysPageNum(0);3];
         ppns[0] = self.root_ppn;
         for i in 0..512{
+            println!("[pt] printing progress ({}/512)",i);
             let pte = &mut ppns[0].get_pte_array()[i];
             if !pte.is_valid(){
                 continue;
@@ -254,13 +260,14 @@ impl PageTable {
             .map(|pte| {pte.clone()})
     }
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
-        self.find_pte(va.clone().floor())
-            .map(|pte| {
-                let aligned_pa: PhysAddr = pte.ppn().into();
-                let offset = va.page_offset();
-                let aligned_pa_usize: usize = aligned_pa.into();
-                (aligned_pa_usize + offset).into()
-            })
+        if let Some(pte) = self.find_pte(va.clone().floor()) {
+            if pte.is_valid() {
+                let pa: PhysAddr = PhysAddr{0: pte.ppn().0 + va.page_offset()};
+                return Some(pa);
+            }
+        }
+        None
+        
     }
     pub fn set_cow(&mut self, vpn: VirtPageNum) {
         self.find_pte_create(vpn).unwrap().set_cow();
@@ -274,8 +281,7 @@ impl PageTable {
 
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self){
-        let token = kernel_token();
-        let kernel_pagetable = PageTable::from_token(token);
+        let kernel_pagetable = outerkernel_pt();
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
@@ -319,100 +325,110 @@ impl PageTable {
 
 
 /// 直接读取指定长度的字节串数据。
-pub fn translated_raw(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
-    let page_table = PageTable::from_token(token);
-    let mut start = ptr as usize;
-    let end = start + len;
-    let mut v = Vec::new();
-    while start < end {
-        let start_va = VirtAddr::from(start);
-        let mut vpn = start_va.floor();
-        //println!("tbb vpn = 0x{:X}", vpn.0);
-        // let ppn: PhysPageNum;
-        if page_table.translate(vpn).is_none() {
+pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+    if let Some(page_table) = pt_get(pt_handle){
+        let mut start = ptr as usize;
+        let end = start + len;
+        let mut v = Vec::new();
+        while start < end {
+            let start_va = VirtAddr::from(start);
+            let mut vpn = start_va.floor();
+            //println!("tbb vpn = 0x{:X}", vpn.0);
+            // let ppn: PhysPageNum;
+            if page_table.translate(vpn).is_none() {
+                // println!{"preparing into checking lazy..."}
+                //println!("check_lazy 3");
+                current_task().unwrap().check_lazy(start_va, true);
+                unsafe {
+                    llvm_asm!("sfence.vma" :::: "volatile");
+                    llvm_asm!("fence.i" :::: "volatile");
+                }
+                //println!{"preparing into checking lazy..."}
+            }
+            let ppn = page_table
+                .translate(vpn)
+                .unwrap()
+                .ppn();
+            //println!("vpn = {} ppn = {}", vpn.0, ppn.0);
+            vpn.step();
+            let mut end_va: VirtAddr = vpn.into();
+            end_va = end_va.min(VirtAddr::from(end));
+            if end_va.page_offset() == 0 {
+                v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+            } else {
+                v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+            }
+            start = end_va.into();
+        }
+        return v;
+    }
+    panic!("Unknown pagetable handle index.");
+}
+
+/// 读取一个字符串（遇到\0为止）
+pub fn translated_str(pt_handle: usize, ptr: *const u8) -> String {
+    if let Some(page_table) = pt_get(pt_handle) {
+        let mut string = String::new();
+        let mut va = ptr as usize;
+        loop {
+            let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
+            if ch == 0 {
+                break;
+            }
+            string.push(ch as char);
+            va += 1;
+        }
+        return string;
+    }
+    panic!("Unknown pagetable handle index.");
+}
+
+///读一个指定类型数据，获取其只读引用。
+pub fn translated_ref<T>(pt_handle: usize, ptr: *const T) -> &'static T{
+    if let Some(page_table) = pt_get(pt_handle) {
+        return page_table.translate_va(VirtAddr::from(ptr as usize)).unwrap().get_ref();
+    }
+    panic!("Unknown pagetable handle index.");
+}
+
+///读一个指定类型数据，获取其mutable引用。
+pub fn translated_refmut<T>(pt_handle: usize, ptr: *mut T) -> &'static mut T {
+    if let Some(page_table) = pt_get(pt_handle){
+        let va = ptr as usize;
+        let vaddr = VirtAddr::from(va);
+        if page_table.translate_va(vaddr).is_none() {
             // println!{"preparing into checking lazy..."}
-            //println!("check_lazy 3");
-            current_task().unwrap().check_lazy(start_va, true);
+            //println!("check_lazy 2");
+            current_task().unwrap().check_lazy(vaddr,true);
             unsafe {
                 llvm_asm!("sfence.vma" :::: "volatile");
                 llvm_asm!("fence.i" :::: "volatile");
             }
-            //println!{"preparing into checking lazy..."}
         }
-        let ppn = page_table
-            .translate(vpn)
-            .unwrap()
-            .ppn();
-        //println!("vpn = {} ppn = {}", vpn.0, ppn.0);
-        vpn.step();
-        let mut end_va: VirtAddr = vpn.into();
-        end_va = end_va.min(VirtAddr::from(end));
-        if end_va.page_offset() == 0 {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
-        } else {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
-        }
-        start = end_va.into();
+        let pa = page_table.translate_va(VirtAddr::from(vaddr));
+        // print!("[translated_refmut pa:{:?}]",pa);
+        return pa.unwrap().get_mut()
     }
-    v
-}
-
-/// 读取一个字符串（遇到\0为止）
-pub fn translated_str(token: usize, ptr: *const u8) -> String {
-    let page_table = PageTable::from_token(token);
-    let mut string = String::new();
-    let mut va = ptr as usize;
-    loop {
-        let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
-        if ch == 0 {
-            break;
-        }
-        string.push(ch as char);
-        va += 1;
-    }
-    string
-}
-
-///读一个指定类型数据，获取其只读引用。
-pub fn translated_ref<T>(token: usize, ptr: *const T) -> &'static T {
-    let page_table = PageTable::from_token(token);
-    page_table.translate_va(VirtAddr::from(ptr as usize)).unwrap().get_ref()
-}
-
-///读一个指定类型数据，获取其mutable引用。
-pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
-    let page_table = PageTable::from_token(token);
-    let va = ptr as usize;
-    let vaddr = VirtAddr::from(va);
-    if page_table.translate_va(vaddr).is_none() {
-        // println!{"preparing into checking lazy..."}
-        //println!("check_lazy 2");
-        current_task().unwrap().check_lazy(vaddr,true);
-        unsafe {
-            llvm_asm!("sfence.vma" :::: "volatile");
-            llvm_asm!("fence.i" :::: "volatile");
-        }
-    }
-    let pa = page_table.translate_va(VirtAddr::from(vaddr));
-    // print!("[translated_refmut pa:{:?}]",pa);
-    pa.unwrap().get_mut()
+    panic!("Unknown pagetable handle index.");
 }
 
 ///读取一个指定类型数据，获取其复制。
 /// T必须是可以复制的类型。
-pub fn translated_refcopy<T>(token: usize, ptr: *mut T) -> T where T:Copy {
-    let page_table = PageTable::from_token(token);
-    let mut va = ptr as usize;
-    let size = core::mem::size_of::<T>();
-    //println!("step = {}, len = {}", step, len);
-    
-    let u_buf = UserBuffer::new( translated_raw(token, va as *const u8, size) );
-    let mut bytes_vec:Vec<u8> = Vec::new();
-    u_buf.read_as_vec(&mut bytes_vec, size);
-    //println!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
-    unsafe{
-        return *(bytes_vec.as_slice() as *const [u8] as *const u8 as usize as *const T);
+pub fn translated_refcopy<T>(pt_handle: usize, ptr: *mut T) -> T where T:Copy {
+    if let Some(page_table) = pt_get(pt_handle){
+        let mut va = ptr as usize;
+        let size = core::mem::size_of::<T>();
+        //println!("step = {}, len = {}", step, len);
+        
+        let u_buf = UserBuffer::new( translated_raw(pt_handle, va as *const u8, size) );
+        let mut bytes_vec:Vec<u8> = Vec::new();
+        u_buf.read_as_vec(&mut bytes_vec, size);
+        //println!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
+        unsafe{
+            return *(bytes_vec.as_slice() as *const [u8] as *const u8 as usize as *const T);
+        }
     }
+    panic!("Unknown pagetable handle index.");
 }
 
 
