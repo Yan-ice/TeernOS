@@ -73,6 +73,8 @@ lazy_static! {
 }
 
 pub fn outer_kernel_init(){
+
+    //temoraily have to add to make program run. only for test.
     KERNEL_SPACE.lock().activate();
 
     println!("UltraOS: outer kernel init.");
