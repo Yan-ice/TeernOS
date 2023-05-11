@@ -85,19 +85,19 @@ fn clear_bss() {
 global_asm!(include_str!("nk_gate.S"));
 
 extern "C" {
-    pub fn nk_entry(
+    fn nk_entry(
         proxy_address: *const usize,
     );
 }
 
-// 暂时作为让outer kernel执行完毕后得到数据
-fn nk_entry_gate(){
+// syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
+pub fn nk_entry_gate(){
     // 交换页表
     KERNEL_SPACE.lock().activate();
 
     // 先恢复寄存器，再换栈
     unsafe {
-        nk_entry(&*PROXYCONTEXT as *const ProxyContext as *const usize);
+        nk_entry(&(PROXYCONTEXT.lock().nk_register) as *const usize);
     }
 
     // 禁用中断
@@ -154,8 +154,11 @@ pub fn nk_main(){
 
     unsafe{
         println!("{}", 1);
-    
-        nk_exit_gate((&(*PROXYCONTEXT)) as *const ProxyContext as *const usize, outer_kernel_init as usize);
+        let mut proxycontext = PROXYCONTEXT.lock();
+        proxycontext.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        drop(proxycontext);
+
+        nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
         println!("{}", 2);
     }
 

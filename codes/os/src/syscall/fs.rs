@@ -23,6 +23,11 @@ pub const FD_LIMIT:usize = 128;
 
 // TODO: change FD_LIMIT to task_inner.resource_list[RLIMIT_NOFILE].get_cur()
 
+pub struct SyscallParameter{
+    pub parameter: [usize; 7]
+}
+
+
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     //if fd == 6 || fd == 5 {
     //    panic!("write 6/5");

@@ -13,12 +13,13 @@ use riscv::register::{
     stval,
     stvec
 };
-
+pub use context::{TrapContext, ProxyContext};
 use trap::user_trap_handler;
 //use trap_nk::nk_trap_handler;
 pub use trap::user_trap_return;
 //pub use trap_nk::nk_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
+
 
 fn trap_in_nk() -> !{
     unsafe{
@@ -103,14 +104,12 @@ extern "C"{
 }
 
 lazy_static! {
-    pub static ref PROXYCONTEXT: ProxyContext = ProxyContext{
+    pub static ref PROXYCONTEXT: Mutex<ProxyContext> = Mutex::new(ProxyContext{
         nk_register: [0; 32],
         outer_register: [0; 32], 
-        nksp: eokernelstack as usize,
-        outersp: eokernelstack as usize,
         nk_satp: KERNEL_SPACE.lock().token(),
         outer_satp: OUTER_KERNEL_SPACE.lock().token(),
-    };
+    });
 }
 
 
@@ -148,4 +147,3 @@ lazy_static! {
 //     panic!("Unreachable in back_to_outer_kernel!");
     
 // }
-pub use context::{TrapContext, ProxyContext};
