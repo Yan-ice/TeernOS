@@ -147,18 +147,22 @@ pub fn nkapi_pt_init(pt_handle: usize){
     let mut pt = PageTable::new(pt_handle);
     println!("Creating PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
-    println!("[debug] Mapping trampoline.");
+    println!("[debug] Mapping signal trampoline.");
 
-    //Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
+    // Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
         PhysAddr::from(ssignaltrampoline as usize).into(),
         PTEFlags::R | PTEFlags::X | PTEFlags::U,
     );
 
+    println!("[debug] Mapping trampoline.");
+
     // mapping trampoline
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
         PTEFlags::R | PTEFlags::X);
+
+    println!("[debug] Mapping Nk trampoline.");
 
     pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
             PhysAddr::from(snktrampoline as usize).into(),

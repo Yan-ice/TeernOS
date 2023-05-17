@@ -92,6 +92,9 @@ extern "C" {
 
 // syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
 pub fn nk_entry_gate(){
+
+    println!("enter nk");
+
     // 交换页表
     KERNEL_SPACE.lock().activate();
 
@@ -115,6 +118,9 @@ extern "C" {
 }
 
 fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
+
+    println!("exit nk");
+
     //if to outer kernel:
     //开启中断
     unsafe {

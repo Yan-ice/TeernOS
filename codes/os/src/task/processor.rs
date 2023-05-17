@@ -110,7 +110,7 @@ impl Processor {
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
                         __switch(
-                            idle_task_cx_ptr2,  // 空转，自己切自己
+                            idle_task_cx_ptr2, 
                             task_cx_ptr2,
                         );
                     }
@@ -118,24 +118,30 @@ impl Processor {
             // False: First time to fetch a task
             } else {
                 // Keep fetching
+                println!("first fetch");
                 gdb_print!(PROCESSOR_ENABLE,"[run:no current task]");
                 if let Some(task) = fetch_task() {
+                    println!("ready to context switch");
                     // acquire
                     let idle_task_cx_ptr2 = self.get_idle_task_cx_ptr2();
                     let mut task_inner = task.acquire_inner_lock();
                     let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
                     task_inner.task_status = TaskStatus::Running;
+                    self.inner.borrow_mut().current = Some(task);
+
+                    // 加上gate
+                    ///////////////////////////////////////////////
                     task_inner.memory_set.activate();// change satp
                     // release
                     drop(task_inner);
-                    self.inner.borrow_mut().current = Some(task);
                     unsafe {
                         __switch(
                             idle_task_cx_ptr2,
                             next_task_cx_ptr2,
                         );
                     }
-                    println!("switch finish");
+                    //////////////////////////////////////////////////
+                    // println!("switch finish");
                 }
             }
         }

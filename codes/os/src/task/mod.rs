@@ -211,12 +211,12 @@ pub fn add_initproc_into_fs() {
 
 
     // release
-    let mut start_ppn = app_start[0] / PAGE_SIZE + 1;
-    println!("Recycle memory: {:x}-{:x}", start_ppn* PAGE_SIZE, (app_start[2] / PAGE_SIZE)* PAGE_SIZE);
-    while start_ppn < app_start[2] / PAGE_SIZE {
-        add_free(start_ppn);
-        start_ppn += 1;
-    }
+    // let mut start_ppn = app_start[0] / PAGE_SIZE + 1;
+    // println!("Recycle memory: {:x}-{:x}", start_ppn* PAGE_SIZE, (app_start[2] / PAGE_SIZE)* PAGE_SIZE);
+    // while start_ppn < app_start[2] / PAGE_SIZE {
+    //     add_free(start_ppn);
+    //     start_ppn += 1;
+    // }
 
 }
 

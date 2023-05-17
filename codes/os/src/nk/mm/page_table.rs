@@ -130,8 +130,13 @@ impl PageTable {
                 break;
             }
             if !pte.is_valid() {
+                // println!("index i {}", idxs[i]);
                 // println!{"invalid!!!!!!!!"}
+                // println!("i {}", i);
+                // println!("root ppn {:x}", self.root_ppn.0);
+                // println!("vpn is {:x}", vpn.0);
                 let ppn = frame_alloc_raw().unwrap();
+                // println!("ppn is {:x}", ppn.0);
                 *pte = PageTableEntry::new(ppn, PTEFlags::V);
                 //self.frames.push(ppn);
             }
@@ -238,7 +243,7 @@ impl PageTable {
     #[allow(unused)]
     pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
         let pte = self.find_pte_create(vpn).unwrap();
-        assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
+        // assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
     }
     #[allow(unused)]

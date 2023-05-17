@@ -47,6 +47,7 @@ impl MemorySet {
         self.areas.clone()
     }
     pub fn new_bare(level: usize, id: usize) -> Self {
+        println!("new {}", id);
         nkapi_pt_init(id);
         Self {
             level,
