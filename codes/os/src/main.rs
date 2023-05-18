@@ -76,7 +76,11 @@ pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     //KERNEL_SPACE.lock().activate();
 
-    register_info();
+    extern "C"{
+        fn snkheap();
+    }
+    debug_register_info();
+    debug_print_raw_data(snkheap as usize, 4096);
 
     println!("UltraOS: outer kernel init:");
     timer::set_next_trigger();

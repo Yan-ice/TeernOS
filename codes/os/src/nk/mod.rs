@@ -198,8 +198,11 @@ pub fn nk_main(){
         
         drop(proxycontext);
 
-        context_info();
-        register_info();
+        debug_context_info();
+        debug_register_info();
+        
+        debug_print_raw_data(snkheap as usize,4096);
+
         nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
         panic!("not reachable");
     }

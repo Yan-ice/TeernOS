@@ -83,7 +83,6 @@ pub fn kernel_token() -> usize {
 }
 
 pub struct MemorySet {
-    level: usize,  // 有用么，我找不到其他有用的操作
     id: usize,   // 这个也找不到
     page_table: PageTable,
     areas: Vec<MapArea>,  // 常规的Maparea
@@ -96,11 +95,10 @@ impl MemorySet {
     pub fn clone_areas(&self) -> Vec<MapArea> {
         self.areas.clone()
     }
-    pub fn new_bare(level: usize, id: usize) -> Self {
+    pub fn new_bare(id: usize) -> Self {
         Self {
-            level,
             id,
-            page_table: PageTable::new(0),
+            page_table: PageTable::new(id),
             areas: Vec::new(),
             chunks: ChunkArea::new(MapType::Framed,
                                 MapPermission::R | MapPermission::W | MapPermission::U),
@@ -237,7 +235,7 @@ impl MemorySet {
 
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
-        let mut memory_set = Self::new_bare(0,0);
+        let mut memory_set = Self::new_bare(0);
 
         println!("mapping nested kernel");
 
@@ -317,62 +315,71 @@ impl MemorySet {
 
     // 这里肯定不对，现在有个问题，outer kernel和 nested kernel的地址空间已经重合了
     pub fn new_outer_kernel() -> Self {
+        let mut memory_set = Self::new_bare(0);
 
-        let mut memory_set = Self::new_bare(1,0);
-        println!("mapping outer kernel");
+        println!("mapping nested kernel");
+
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-
+        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+        println!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
-            MapPermission::R | MapPermission::X | MapPermission::W,
+            MapPermission::R | MapPermission::X,
         ), None);
-        println!("mapping .rodata section (readonly)");
+        println!("mapping .rodata section");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
-            MapPermission::R | MapPermission::W,
+            MapPermission::R,
         ), None);
-        println!("mapping .data section (readonly)");
+        println!("mapping .data section");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
             MapType::Identical,
-            MapPermission::R | MapPermission::W,
+            MapPermission::R,
         ), None);
-        println!("mapping .bss section (readonly)");
+
+        println!("mapping .bss section");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
             MapType::Identical,
+            MapPermission::R | MapPermission::W, 
+            //temporiliy cannot be readonly
+        ), None);
+
+        println!("mapping nk heap memory");
+        memory_set.push(MapArea::new(
+            (snkheap as usize).into(),
+            (enkheap as usize).into(),
+            MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
-        println!("mapping nk frame memory (readonly)");
+
+        println!("mapping okheap memory");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+        
+        println!("mapping nk frame memory");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
             NKSPACE_END.into(),
             MapType::Identical,
             MapPermission::R,
-        ), None);
-
-        // println!("mapping nkheap memory (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R| MapPermission::W,
-        // ), None);
-
-        println!("mapping okheap memory");
-        memory_set.push(MapArea::new(
-            (snkheap as usize).into(),
-            (enkheap as usize).into(),
-            MapType::Specified(PhysAddr{0: sokheap as usize}),
-            MapPermission::R | MapPermission::W,
         ), None);
 
         println!("mapping outer kernel space");
@@ -383,17 +390,93 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping memory-mapped registers (readonly) ");
+        println!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
                 (*pair).0.into(),
                 ((*pair).0 + (*pair).1).into(),
                 MapType::Identical,
-                MapPermission::R | MapPermission::W
+                MapPermission::R | MapPermission::W,
             ), None);
         }
-        println!("finish outer kernel address space");
         memory_set
+
+        // let mut memory_set = Self::new_bare(0);
+        // println!("mapping outer kernel");
+        // // map trampoline
+        // memory_set.map_trampoline();  //映射trampoline
+        // // map kernel sections
+
+        // memory_set.push(MapArea::new(
+        //     (stext as usize).into(),
+        //     (etext as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::X | MapPermission::W,
+        // ), None);
+        // println!("mapping .rodata section (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (srodata as usize).into(),
+        //     (erodata as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+        // println!("mapping .data section (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (sdata as usize).into(),
+        //     (edata as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+        // println!("mapping .bss section (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (sbss_with_stack as usize).into(),
+        //     (ebss as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+        // println!("mapping nk frame memory (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (ekernel as usize).into(),
+        //     NKSPACE_END.into(),
+        //     MapType::Identical,
+        //     MapPermission::R,
+        // ), None);
+
+        // // println!("mapping nkheap memory (readonly)");
+        // // memory_set.push(MapArea::new(
+        // //     (snkheap as usize).into(),
+        // //     (enkheap as usize).into(),
+        // //     MapType::Identical,
+        // //     MapPermission::R| MapPermission::W,
+        // // ), None);
+
+        // println!("mapping okheap memory");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+
+        // println!("mapping outer kernel space");
+        // memory_set.push(MapArea::new(
+        //     (NKSPACE_END).into(),
+        //     OKSPACE_END.into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+
+        // println!("mapping memory-mapped registers (readonly) ");
+        // for pair in MMIO {  // 这里是config硬编码的管脚地址
+        //     memory_set.push(MapArea::new(
+        //         (*pair).0.into(),
+        //         ((*pair).0 + (*pair).1).into(),
+        //         MapType::Identical,
+        //         MapPermission::R | MapPermission::W
+        //     ), None);
+        // }
+        // println!("finish outer kernel address space");
+        // memory_set
     }
 
     /// Include sections in elf and trampoline and TrapContext and user stack,
@@ -401,7 +484,7 @@ impl MemorySet {
     /// 倒数第二个是trap context的entry point
     pub fn from_elf(elf_data: &[u8], pid: usize) -> (Self, usize, usize, usize, Vec<AuxHeader>) {
         let mut auxv:Vec<AuxHeader> = Vec::new();
-        let mut memory_set = Self::new_bare(2,pid);
+        let mut memory_set = Self::new_bare(pid);
         // map trampoline
         // memory_set.map_trampoline();
         memory_set.map_signal_trampoline();
@@ -584,7 +667,7 @@ impl MemorySet {
 
     pub fn from_copy_on_write(user_space: &mut MemorySet, split_addr: usize, pid: usize) -> MemorySet {
         // create a new memory_set
-        let mut memory_set = Self::new_bare(2,pid);
+        let mut memory_set = Self::new_bare(pid);
         // This part is not for Copy on Write.
         // Including:   Trampoline
         //              Trap_Context
