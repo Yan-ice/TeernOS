@@ -26,7 +26,8 @@ pub use mm::{VirtPageNum as VirtPageNum,
             PageTableEntry as PageTableEntry,
             MmapArea as MmapArea,
             PageTable as PageTable,
-            FrameTracker as FrameTracker,
+            StackFrameAllocator as StackFrameAllocator,
+            FrameAllocator as FrameAllocator,
             StepByOne as StepByOne,
             VPNRange as VPNRange,
 
@@ -41,11 +42,6 @@ pub use mm::{VirtPageNum as VirtPageNum,
             copy_array as copy_array,
             copy_object as copy_object,
             //或许可以实现strcpy?
-
-            //以下是alloc/mmio系列接口?
-            //Yan_ice: 对外暴露的其实是outer kernel的alloc
-            outer_frame_alloc as frame_alloc,
-            outer_frame_dealloc as frame_dealloc,
 
             nkapi_pt_init as nkapi_pt_init,
             nkapi_alloc as nkapi_alloc,
@@ -97,7 +93,6 @@ extern "C" {
 
 // syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
 pub fn nk_entry_gate(){
-    println!("1");
     // 交换页表
     KERNEL_SPACE.lock().activate();
     // println!("2");
@@ -151,6 +146,7 @@ pub fn nk_main(){
     mm::init();
     mm::remap_test();
     trap::init();
+
     //trap::enable_timer_interrupt();
 
     extern "C"{
@@ -177,15 +173,6 @@ pub fn nk_main(){
             let mut dst_data = from_raw_parts_mut(a2 as *mut u8, unit_size);
             dst_data.copy_from_slice(src_data);
         }  
-
-        //for testing
-        for part in 0..1000{
-            let a1 = from_addr+unit_size*part;
-            let a2 = to_addr+unit_size*part;
-            let mut src_data = from_raw_parts(a1 as *const u8, unit_size);
-            let mut dst_data = from_raw_parts(a2 as *const u8, unit_size);
-            assert_eq!(src_data[0],dst_data[0]);
-        }
     }
 
 
@@ -200,8 +187,6 @@ pub fn nk_main(){
 
         debug_context_info();
         debug_register_info();
-        
-        debug_print_raw_data(snkheap as usize,4096);
 
         nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
         panic!("not reachable");
@@ -215,6 +200,6 @@ pub fn nk_main(){
     //     nk_kernel_stack_top as usize //nested kernel的栈
     // ) as *const TrapContext;
     
-    return;
+
 }
 

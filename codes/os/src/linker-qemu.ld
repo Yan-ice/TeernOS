@@ -64,9 +64,10 @@ SECTIONS
     /* 新加一段outer kernel space，暂时命名为okernel */
     . = 0x80800000;
     sokernel = .;
-
     outer_allocator = .;
-    . = .+4K;
+    . = .+1K;
+    outer_static = .;
+    . = .+3K;
 
     sokheap = .;
     . = . + 1024*4K;
@@ -77,4 +78,7 @@ SECTIONS
     eokernelstack = .;
     . = .+8K;
     eokernel = .;
+
+    /* . = 0x88000000; */
+    /* OUTER SPACE END */
 }

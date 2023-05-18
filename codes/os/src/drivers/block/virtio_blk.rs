@@ -3,16 +3,18 @@ use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 use crate::nk::{
     PhysAddr,
     VirtAddr,
-    frame_alloc,
-    frame_dealloc,
     nkapi_translate_va,
     PhysPageNum,
-    FrameTracker,
     StepByOne,
     PageTable,
     //kernel_token,
     KERNEL_TOKEN,
 };
+use crate::{
+    outer_frame_alloc,
+    outer_frame_dealloc
+};
+
 use super::BlockDevice;
 use spin::Mutex;
 use alloc::vec::Vec;
@@ -66,7 +68,7 @@ impl VirtIOBlock {
 pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
     let mut ppn_base = PhysPageNum(0);
     for i in 0..pages {
-        let frame_ppn = frame_alloc().unwrap();
+        let frame_ppn = outer_frame_alloc().unwrap();
         if i == 0 { ppn_base = frame_ppn; }
         QUEUE_FRAMES.lock().push(ppn_base);
     }
@@ -77,7 +79,7 @@ pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
 pub extern "C" fn virtio_dma_dealloc(pa: PhysAddr, pages: usize) -> i32 {
     let mut ppn_base: PhysPageNum = pa.into();
     for _ in 0..pages {
-        frame_dealloc(ppn_base);
+        outer_frame_dealloc(ppn_base);
         ppn_base.step();
     }
     0

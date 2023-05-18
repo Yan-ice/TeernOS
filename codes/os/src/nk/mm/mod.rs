@@ -12,11 +12,12 @@ use spin::Mutex;
 use alloc::vec::Vec;
 use riscv::register::satp;
 
+use crate::outer_frame_alloc;
+
 pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRange};
 pub use frame_allocator::{
-    FrameTracker, 
-    outer_frame_alloc,
-    outer_frame_dealloc,
+    StackFrameAllocator, 
+    FrameAllocator,
     add_free, 
     print_free_pages, 
     outer_print_free_pages, 
@@ -99,7 +100,7 @@ pub fn init() {
  
     KERNEL_SPACE.lock().activate();  // 切换页表
     // KERNEL_SPACE.lock().print_pagetable();
-    
+
     let mut reg:usize = 0;
     unsafe{
         llvm_asm!("mv $0,sp" : "=r"(reg));
@@ -120,6 +121,11 @@ lazy_static! {
 
 //get the Pagetable from its handle(id)
 pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
+    //TODO: bogus descriptor?
+    if pt_handle == 0{
+        return Some(outerkernel_pt());
+    }
+
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
             return Some(i.clone());
@@ -128,17 +134,15 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
     return None
 }
 
-pub fn pt_init(pt: PageTable){
-    &PAGE_TABLE_LIST.lock().push(pt);
-}
-
-
 
 //the function below would expose to outer kernel
 
-
 pub fn nkapi_pt_init(pt_handle: usize){
     
+    if pt_handle == 0{
+        println!("WARN: cannot init pagetable with handle_id 0 !");
+        return;
+    }
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
             //pagetable with this handle already exist
@@ -195,8 +199,9 @@ pub fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     // find target pagetable
     if let Some(mut target_pt) = pt_get(pt_handle){
         target_pt.set_pte_flags(vpn, flags);
+        return;
     }
-    
+    println!("nk_set_perm: cannot find pagetable!");
 }
 pub fn pt_destroy(pt_handle: usize){
     // TODO
@@ -218,12 +223,13 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
                 }
             }
             MapType::FramedInNK => {
-                if let Some(ppn) = frame_alloc(){
-                    target_ppn = ppn;
-                }else{
-                    print_free_pages();
-                    panic!("No more memory in Nested Kernel!");
-                }
+                panic!("outer kernel trying alloc NK frame!");
+                // if let Some(ppn) = frame_alloc(){
+                //     target_ppn = ppn;
+                // }else{
+                //     print_free_pages();
+                //     panic!("No more memory in Nested Kernel!");
+                // }
             }
             MapType::Identical => {
                 target_ppn = PhysPageNum::from(vpn.0);
@@ -244,7 +250,7 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
 
         return target_ppn
     }
-
+    println!("nk_alloc: cannot find pagetable!");
     return PhysPageNum{0: vpn.0};
 
 }
@@ -252,8 +258,9 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
 pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
     if let Some(mut pt) = pt_get(pt_handle){
         pt.unmap(vpn);
+        return;
     }
-    
+    println!("nk_dealloc: cannot find pagetable!");
 }
 
 // while translating COW with write==True, it would start alloc and copy.
@@ -284,13 +291,18 @@ pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Optio
             
         }
     }
+    println!("nk_translate: cannot find pagetable!");
     None
 }
 
 pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     if let Some(pt) = pt_get(pt_handle){
-        return pt.translate_va(va);
+        let pa = pt.translate_va(va);
+        // [debug] [TODO]
+        println!("Translating {:?} => {:?}", pa.unwrap(), va); 
+        return pa;
     }
+    //println!("nk_translate_va: cannot find pagetable!");
     None
 }
 
@@ -315,9 +327,12 @@ pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8],
             }
             current_vpn.step();
         }
+        return;
     }
-    
+    println!("nk_copyTo: cannot find pagetable!");
 }
+
+use self::memory_set::outerkernel_pt;
 
 use super::nk_entry_gate;
 use crate::task::__switch;
@@ -336,7 +351,9 @@ pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) 
                 end,
             );
         }
+        return;
     }
+    println!("nk_activate: cannot find pagetable!");
 }
 
 
@@ -344,16 +361,18 @@ pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) 
 pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
     if let Some(mut pt) = pt_get(pt_handle) {
         pt.map(vpn, ppn, perm.flags());
+        return;
     }
-    
+    println!("nk_mmap: cannot find pagetable!");
 }
 
 //will be replaced by nkapi_dealloc
 pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
     if let Some(mut pt) = pt_get(pt_handle){
         pt.unmap(vpn);
+        return;
     }
-    
+    println!("nk_unmap: cannot find pagetable!");
 }
 
 // this function is temporaily used. it is vulunerable!

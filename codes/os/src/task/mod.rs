@@ -25,6 +25,7 @@ use crate::utils::log2;
 pub use context::TaskContext;
 
 pub use processor::{
+    Processor,
     run_tasks,
     current_task,
     current_user_id,
@@ -39,7 +40,7 @@ pub use processor::{
     get_user_runtime_usec, 
     get_kernel_runtime_usec,
 };
-pub use manager::{add_task, find_task};
+pub use manager::{TaskManager, add_task, find_task};
 pub use pid::{PidHandle, pid_alloc, KernelStack};
 pub use task::AuxHeader;
 
@@ -68,56 +69,57 @@ pub fn suspend_current_and_run_next() -> isize{
 pub fn exit_current_and_run_next(exit_code: i32) {
     // println!("exit 1");
     // Forbid more than one process exit (by acquiring lock of INITPROC)
-    let mut initproc_inner = INITPROC.acquire_inner_lock();
-    let task = take_current_task().unwrap();
-    // println!("strong count of pid{} = {}", task.pid.0, Arc::strong_count(&task));
-    //if task.pid.0 == 2{
-    //    crate::fs::clear_cache();
-    //}
+    unsafe{
+        let initproc = crate::INITPROC();
+        let mut initproc_inner = initproc.acquire_inner_lock();
+        let task = take_current_task().unwrap();
+        // println!("strong count of pid{} = {}", task.pid.0, Arc::strong_count(&task));
+        //if task.pid.0 == 2{
+        //    crate::fs::clear_cache();
+        //}
 
-    //send signal SIGCHLD to parent
-    {
-        let parent_task = task.get_parent().unwrap(); // this will acquire inner of current task
-        let mut parent_inner = parent_task.acquire_inner_lock();
-        parent_inner.add_signal(Signals::SIGCHLD);
-    }
-    let mut inner = task.acquire_inner_lock();
-    // println!("exit 2");
-    // reset user tid area
-    // let clear_child_tid = inner.address.clear_child_tid;
-    // if clear_child_tid != 0{
-    //     *translated_refmut(inner.get_user_token(), clear_child_tid as *mut i32) = 0;
-    // }
-    gdb_print!(EXIT_ENABLE,"[exit{}]",task.pid.0);
-    // Change status to Zombie
-    inner.task_status = TaskStatus::Zombie;
-    inner.exit_code = exit_code;
-    for child in inner.children.iter() {
-        child.acquire_inner_lock().parent = Some(Arc::downgrade(&INITPROC));
-        initproc_inner.children.push(child.clone());
-    }
+        //send signal SIGCHLD to parent
+        {
+            let parent_task = task.get_parent().unwrap(); // this will acquire inner of current task
+            let mut parent_inner = parent_task.acquire_inner_lock();
+            parent_inner.add_signal(Signals::SIGCHLD);
+        }
+        let mut inner = task.acquire_inner_lock();
+        // println!("exit 2");
+        // reset user tid area
+        // let clear_child_tid = inner.address.clear_child_tid;
+        // if clear_child_tid != 0{
+        //     *translated_refmut(inner.get_user_token(), clear_child_tid as *mut i32) = 0;
+        // }
+        gdb_print!(EXIT_ENABLE,"[exit{}]",task.pid.0);
+        // Change status to Zombie
+        inner.task_status = TaskStatus::Zombie;
+        inner.exit_code = exit_code;
+        let initproc = crate::INITPROC();
+        for child in inner.children.iter() {
+        
+            child.acquire_inner_lock().parent = Some(Arc::downgrade(&initproc));
+            initproc_inner.children.push(child.clone());
+        }
 
-    // println!("exit 3");
-    // recycle all the data of task
-    inner.children.clear();
-    // deallocate user space
-    inner.memory_set.recycle_data_pages();
-    // drop task manually to maintain rc correctly
-    drop(inner);
-    drop(task);
-    drop(initproc_inner);
-    // we do not have to save task context
-    let _unused: usize = 0;
-    schedule(&_unused as *const _);
+        // println!("exit 3");
+        // recycle all the data of task
+        inner.children.clear();
+        // deallocate user space
+        inner.memory_set.recycle_data_pages();
+        // drop task manually to maintain rc correctly
+        drop(inner);
+        drop(task);
+        drop(initproc_inner);
+        // we do not have to save task context
+        let _unused: usize = 0;
+        schedule(&_unused as *const _);
+        
+    }
+    
+
 }
 
-lazy_static! {
-    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new({
-        let inode = open("/","initproc", OpenFlags::RDONLY, DiskInodeType::File).unwrap();
-        let v = inode.read_all();
-        TaskControlBlock::new(v.as_slice())
-    });
-}
 
 // Write initproc & user_shell into file system to be executed
 // And then release them to fram_allocator
@@ -222,7 +224,14 @@ pub fn add_initproc_into_fs() {
 
 pub fn add_initproc() {
     add_initproc_into_fs();
-    add_task(INITPROC.clone());
+    unsafe{
+        println!("ready to read initproc");
+        let initproc = crate::INITPROC();
+        let proc = initproc.clone();
+        println!("ready to add task");
+        add_task(proc);
+        println!("add task success");
+    }
 }
 
 // if there is unhandled signal, it will automatic change trap_cx which makes it unseen in codes outside the func

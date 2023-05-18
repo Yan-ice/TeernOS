@@ -302,18 +302,21 @@ pub fn sys_kill(pid: isize, signal: isize) -> isize {
     }
     // send to child
     // ATTENTION: May cause deadlock, so hold initproc to avoid.(just as what func "exit" does)
-    let mut initproc_inner = INITPROC.acquire_inner_lock();
-    let mut inner = current_task.acquire_inner_lock();
-    for child in inner.children.iter() {
-        if child.pid.0 == pid {
-            let mut child_inner = child.acquire_inner_lock();
-            child_inner.add_signal(signal);
-            gdb_println!(SYSCALL_ENABLE,"sys_kill(pid: {}(child), signal: {:?}) = {}", pid, signal, 0);
-            return 0;
+    unsafe{
+        let initproc = crate::INITPROC();
+        let mut initproc_inner = initproc.acquire_inner_lock();
+        let mut inner = current_task.acquire_inner_lock();
+        for child in inner.children.iter() {
+            if child.pid.0 == pid {
+                let mut child_inner = child.acquire_inner_lock();
+                child_inner.add_signal(signal);
+                gdb_println!(SYSCALL_ENABLE,"sys_kill(pid: {}(child), signal: {:?}) = {}", pid, signal, 0);
+                return 0;
+            }
         }
+        gdb_println!(SYSCALL_ENABLE,"sys_kill(pid: {}, signal: {:?}) = {}", pid, signal, -1);
+        -1
     }
-    gdb_println!(SYSCALL_ENABLE,"sys_kill(pid: {}, signal: {:?}) = {}", pid, signal, -1);
-    -1
 }
 
 pub fn sys_set_tid_address(tidptr: usize) -> isize {

@@ -1,7 +1,7 @@
 
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr, MapType, MapPermission};          
-use super::{FrameTracker, frame_add_ref, enquire_refcount, print_free_pages};
+use super::{frame_add_ref, enquire_refcount, print_free_pages};
 use super::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
@@ -14,8 +14,8 @@ use spin::Mutex;
 use crate::config::*;
 use super::vma::*;
 
-use super::frame_allocator::{frame_alloc,outer_frame_alloc};
-
+use super::frame_allocator::{frame_alloc};
+use crate::outer_frame_alloc;
 use crate::monitor::*;
 use crate::task::AuxHeader;
 
@@ -366,15 +366,15 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping okheap memory");
+        // println!("mapping okheap memory");
         // memory_set.push(MapArea::new(
         //     (snkheap as usize).into(),
         //     (enkheap as usize).into(),
         //     MapType::Specified(PhysAddr{0: sokheap as usize}),
         //     MapPermission::R | MapPermission::W,
         // ), None);
-        
-        println!("mapping nk frame memory");
+
+        println!("mapping nk frame memory (readonly)");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
             NKSPACE_END.into(),

@@ -37,7 +37,7 @@ impl Drop for FrameTracker {
     }
 }
 
-trait FrameAllocator {
+pub trait FrameAllocator {
     fn new() -> Self;
     fn alloc(&mut self) -> Option<PhysPageNum>;
     fn dealloc(&mut self, ppn: PhysPageNum);
@@ -137,7 +137,6 @@ extern "C" {
     fn snkstack();
     fn ekernel();
     fn eokernel();
-    fn outer_allocator();
 }
 
 pub fn init_frame_allocator() {
@@ -150,33 +149,7 @@ pub fn init_frame_allocator() {
     // OUTER_FRAME_ALLOCATOR
     //     .lock()
     //     .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
-
-    unsafe{
-        let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
-        *all = Mutex::new(FrameAllocatorImpl::new());
-        (*all).lock()
-        .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
-
-    }
-    
 }
-
-//Yan_ice 给outer kernel加俩函数,用outer kernel的frame allocator，
-//然后就暴露他俩咯
-pub fn outer_frame_alloc() -> Option<PhysPageNum> {
-    let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
-    unsafe{
-        (*all).lock().alloc()
-    }
-    
-}
-pub fn outer_frame_dealloc(ppn: PhysPageNum) {
-    let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
-    unsafe{
-        (*all).lock().dealloc(ppn);
-    }
-}
-
 
 
 pub fn frame_alloc() -> Option<PhysPageNum> {
