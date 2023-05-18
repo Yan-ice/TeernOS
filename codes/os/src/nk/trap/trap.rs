@@ -36,9 +36,9 @@ global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
 
 pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
-            println!("page fault 1");
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
+                println!("page fault");
                 is_load = true;
             } else {
                 is_load = false;
@@ -238,6 +238,8 @@ pub fn user_trap_return() -> ! {
     perform_signal_handler();
     
     //return到user space时，切换为user trap。
+
+    println!("user trap return");
     unsafe {
         stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     }

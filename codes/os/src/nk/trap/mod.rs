@@ -15,12 +15,11 @@ use riscv::register::{
 };
 pub use context::{TrapContext, ProxyContext};
 use trap::user_trap_handler;
-//use trap_nk::nk_trap_handler;
 pub use trap::user_trap_return;
-//pub use trap_nk::nk_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
 
 
+// 无用
 fn trap_in_nk() -> !{
     unsafe{
         
@@ -56,7 +55,7 @@ fn trap_in_nk() -> !{
 
 pub fn init(){
     unsafe {
-        stvec::write(trap_in_nk as usize, TrapMode::Direct);
+        stvec::write(user_trap_handler as usize, TrapMode::Direct);
     }
 
     //由于暂时nk的trap还没做好，所以先放nk trampoline吧

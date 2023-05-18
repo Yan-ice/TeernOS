@@ -130,8 +130,13 @@ impl PageTable {
                 break;
             }
             if !pte.is_valid() {
+                // println!("index i {}", idxs[i]);
                 // println!{"invalid!!!!!!!!"}
+                // println!("i {}", i);
+                // println!("root ppn {:x}", self.root_ppn.0);
+                // println!("vpn is {:x}", vpn.0);
                 let ppn = frame_alloc_raw().unwrap();
+                // println!("ppn is {:x}", ppn.0);
                 *pte = PageTableEntry::new(ppn, PTEFlags::V);
                 //self.frames.push(ppn);
             }
@@ -209,7 +214,7 @@ impl PageTable {
         let mut ppns = [PhysPageNum(0);3];
         ppns[0] = self.root_ppn;
         for i in 0..512{
-            println!("[pt] printing progress ({}/512)",i);
+            // println!("[pt] printing progress ({}/512)",i);
             let pte = &mut ppns[0].get_pte_array()[i];
             if !pte.is_valid(){
                 continue;

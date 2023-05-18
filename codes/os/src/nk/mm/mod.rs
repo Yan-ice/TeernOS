@@ -158,10 +158,14 @@ pub fn nkapi_pt_init(pt_handle: usize){
         PTEFlags::R | PTEFlags::X | PTEFlags::U,
     );
 
+    println!("[debug] Mapping trampoline.");
+
     // mapping trampoline
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
         PTEFlags::R | PTEFlags::X);
+
+    println!("[debug] Mapping Nk trampoline.");
 
     pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
             PhysAddr::from(snktrampoline as usize).into(),
@@ -316,15 +320,24 @@ pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8],
     
 }
 
-pub fn nkapi_activate(pt_handle: usize) {
+use super::nk_entry_gate;
+use crate::task::__switch;
+pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) {
     if let Some(page_table) = pt_get(pt_handle) {
-        let satp = page_table.token();
+        // let satp = page_table.token();
+        nk_entry_gate();
+        // unsafe {
+        //     satp::write(satp);
+        //     llvm_asm!("sfence.vma" :::: "volatile");
+        // }
+        println!("in nk before context switch");
         unsafe {
-            satp::write(satp);
-            llvm_asm!("sfence.vma" :::: "volatile");
+            __switch(
+                start,
+                end,
+            );
         }
     }
-    
 }
 
 

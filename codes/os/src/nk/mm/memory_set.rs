@@ -325,28 +325,28 @@ impl MemorySet {
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
-            MapPermission::R | MapPermission::X,
+            MapPermission::R | MapPermission::X | MapPermission::W,
         ), None);
         println!("mapping .rodata section (readonly)");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
-            MapPermission::R,
+            MapPermission::R | MapPermission::W,
         ), None);
         println!("mapping .data section (readonly)");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
             MapType::Identical,
-            MapPermission::R,
+            MapPermission::R | MapPermission::W,
         ), None);
         println!("mapping .bss section (readonly)");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
             MapType::Identical,
-            MapPermission::R,
+            MapPermission::R | MapPermission::W,
         ), None);
         println!("mapping nk frame memory (readonly)");
         memory_set.push(MapArea::new(
@@ -356,21 +356,21 @@ impl MemorySet {
             MapPermission::R,
         ), None);
 
-        // println!("mapping nkheap memory (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R,
-        // ), None);
-
-        println!("mapping okheap memory");
+        println!("mapping nkheap memory (readonly)");
         memory_set.push(MapArea::new(
             (snkheap as usize).into(),
             (enkheap as usize).into(),
-            MapType::Specified(PhysAddr{0: sokheap as usize}),
-            MapPermission::R | MapPermission::W,
+            MapType::Identical,
+            MapPermission::R| MapPermission::W,
         ), None);
+
+        // println!("mapping okheap memory");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
 
         println!("mapping outer kernel space");
         memory_set.push(MapArea::new(
@@ -386,7 +386,7 @@ impl MemorySet {
                 (*pair).0.into(),
                 ((*pair).0 + (*pair).1).into(),
                 MapType::Identical,
-                MapPermission::R,
+                MapPermission::R | MapPermission::W
             ), None);
         }
         println!("finish outer kernel address space");
@@ -717,7 +717,10 @@ impl MemorySet {
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
+            println!("{:?}", satp::read());
+            println!("{}", satp);
             satp::write(satp);
+            println!("{:?}", satp::read());
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }

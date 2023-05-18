@@ -4,21 +4,21 @@
 .endm
 
 .macro LOAD_REGISTER n
-    ld x\n, \n*8(x10)
+    ld x\n, \n*8(sp)
 .endm
 
 .globl nk_exit
     # 结构 
     # #####################################
     # 高地址
-    # 维护: nk satp
     # 加载: outer satp
+    # 维护: nk satp
     # 加载: outer register (0, 1, ......, 31)
     # 保存：nk register (0, 1, ......, 31)
     # 低地址
     # #####################################
 nk_exit:
-
+    
     # store all nk registers, 包括栈指针
     .set n, 1
     .rept 31
@@ -26,15 +26,15 @@ nk_exit:
         .set n, n+1
     .endr
     
-    # restore all outer kernel registers
     addi sp, x10, 32*8
+    # restore all outer kernel registers
 
     ld x1, 1*8(sp)
-    ld x3, 3*8(sp) 
+    ld x3, 3*8(sp)
     .set n, 5
     .rept 27
-        LOAD_REGISTER %n
-        .set n, n+1
+         LOAD_REGISTER %n
+    .set n, n+1
     .endr
 
     # set ra
@@ -42,9 +42,9 @@ nk_exit:
     addi sp, sp, 32*8
 
     # change satp  
-    ld x7, 0(sp)
+    ld x7, 8(sp)
     csrw satp, x7
-
+    
     # change stack
     ld sp, -30*8(sp)
     jr x6
@@ -55,8 +55,8 @@ nk_exit:
     # 结构
     # #####################################
     # 高地址
-    # 加载: nk satp
     # 维护: outer satp
+    # 加载: nk satp
     # 加载: outer register (0, 1, ......, 31)
     # 保存：nk register (0, 1, ......, 31)
     # 低地址
@@ -67,9 +67,9 @@ nk_entry:
 
     addi sp, sp, 32
 
-
     .set n, 0
     .rept 31
+    # has mistakes if use SAVE_REGISTER macro
         SAVE_REGISTER %n
         .set n, n+1
     .endr

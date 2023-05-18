@@ -1,10 +1,13 @@
 mod mm;   
 mod trap;
+mod debug_util;
 
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
     user_trap_return, PROXYCONTEXT};
+
+pub use debug_util::*;
 
 pub use mm::{VirtPageNum as VirtPageNum, 
             VirtAddr as VirtAddr, 
@@ -92,19 +95,20 @@ extern "C" {
 
 // syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
 pub fn nk_entry_gate(){
+    println!("1");
     // 交换页表
     KERNEL_SPACE.lock().activate();
-
+    // println!("2");
+    // // 禁用中断
+    // unsafe {
+    //     llvm_asm!("csrci sstatus, 2");
+    // }
+    // println!("3");
     // 先恢复寄存器，再换栈
     unsafe {
         nk_entry(&(PROXYCONTEXT.lock().nk_register) as *const usize);
     }
-
-    // 禁用中断
-    unsafe {
-        llvm_asm!("csrci sstatus, 2");
-    }
-
+    println!("enter nk");
 }
 
 extern "C" {
@@ -115,6 +119,9 @@ extern "C" {
 }
 
 fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
+
+    println!("exit nk");
+
     //if to outer kernel:
     //开启中断
     unsafe {
@@ -153,13 +160,15 @@ pub fn nk_main(){
     println!("Nesked kernel init success");
 
     unsafe{
-        println!("{}", 1);
         let mut proxycontext = PROXYCONTEXT.lock();
         proxycontext.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        
         drop(proxycontext);
 
+        context_info();
+        register_info();
         nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
-        println!("{}", 2);
+        panic!("not reachable");
     }
 
     // //手动构造user的trap context上下文，然后回到user space
@@ -169,7 +178,7 @@ pub fn nk_main(){
     //     KERNEL_SPACE.lock().token(), //nested kernel的页表
     //     nk_kernel_stack_top as usize //nested kernel的栈
     // ) as *const TrapContext;
-
+    
     return;
 }
 
