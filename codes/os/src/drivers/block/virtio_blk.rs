@@ -6,9 +6,6 @@ use crate::nk::{
     nkapi_translate_va,
     PhysPageNum,
     StepByOne,
-    PageTable,
-    //kernel_token,
-    KERNEL_TOKEN,
 };
 use crate::{
     outer_frame_alloc,
@@ -85,14 +82,35 @@ pub extern "C" fn virtio_dma_dealloc(pa: PhysAddr, pages: usize) -> i32 {
     0
 }
 
+
+// #[derive(Copy,Clone)]
+// struct MPair{
+//     va: VirtAddr,
+//     pa: PhysAddr
+// }
+// lazy_static! {
+//     static ref RECORD: Mutex<Vec<MPair>> = Mutex::new(Vec::new());
+// }
+
 #[no_mangle]
 pub extern "C" fn virtio_phys_to_virt(paddr: PhysAddr) -> VirtAddr {
+    // for p in RECORD.lock().clone().into_iter(){
+    //     if p.pa == paddr{
+    //         return p.va.clone();
+    //     }
+    // }
     VirtAddr(paddr.0)
 }
 
 #[no_mangle]
 pub extern "C" fn virtio_virt_to_phys(vaddr: VirtAddr) -> PhysAddr {
     if let Some(pa) = nkapi_translate_va(0, vaddr){
+        // for p in RECORD.lock().clone().into_iter(){
+        //     if p.va == vaddr{
+        //         return pa.clone();
+        //     }
+        // }
+        // RECORD.lock().push(MPair{va:vaddr,pa});
         return pa;
     }else{
         return PhysAddr{0: vaddr.0};

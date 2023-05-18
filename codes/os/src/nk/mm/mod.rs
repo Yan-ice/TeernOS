@@ -299,10 +299,13 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     if let Some(pt) = pt_get(pt_handle){
         let pa = pt.translate_va(va);
         // [debug] [TODO]
-        println!("Translating {:?} => {:?}", pa.unwrap(), va); 
+        if va.0 % 4096 == 0{
+            println!("Translating {:?} => {:?}", pa.unwrap(), va); 
+        }
+        
         return pa;
     }
-    //println!("nk_translate_va: cannot find pagetable!");
+    println!("nk_translate_va: cannot find pagetable!");
     None
 }
 

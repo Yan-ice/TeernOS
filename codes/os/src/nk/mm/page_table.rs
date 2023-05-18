@@ -267,7 +267,7 @@ impl PageTable {
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
         if let Some(pte) = self.find_pte(va.clone().floor()) {
             if pte.is_valid() {
-                let pa: PhysAddr = PhysAddr{0: pte.ppn().0 + va.page_offset()};
+                let pa: PhysAddr = PhysAddr{0: pte.ppn().0*crate::config::PAGE_SIZE + va.page_offset()};
                 return Some(pa);
             }
         }
