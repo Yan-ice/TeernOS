@@ -70,6 +70,7 @@ extern "C" {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
     Identical,
+    Specified(PhysAddr),
     Framed,
     FramedInNK
 }
@@ -83,6 +84,7 @@ bitflags! {
     }
     
 }
+
 impl MapPermission{
     pub fn flags(self) -> PTEFlags{
         PTEFlags::from_bits(self.bits).unwrap()
@@ -132,23 +134,24 @@ pub fn pt_init(pt: PageTable){
 }
 
 
+
 //the function below would expose to outer kernel
 
-//Yan_ice: this function is used to create a new bare pagetable for user process.
+
 pub fn nkapi_pt_init(pt_handle: usize){
     
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
+            //pagetable with this handle already exist
             return;
         }
     }
 
-    //Yan_ice: here we create a new pagetable.
+    //Yan_ice: here we create a new pagetable,
     let mut pt = PageTable::new(pt_handle);
     println!("Creating PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
     println!("[debug] Mapping trampoline.");
-
     //Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
         PhysAddr::from(ssignaltrampoline as usize).into(),
@@ -166,7 +169,7 @@ pub fn nkapi_pt_init(pt_handle: usize){
 
     pt.print_pagetable();
 
-    println!("[debug ]Mapping kernel_shared space.");
+    println!("[debug] Mapping kernel_shared space.");
     pt.map_kernel_shared();
 
     println!("Creating Pagetable success.");
@@ -222,6 +225,9 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
             MapType::Identical => {
                 target_ppn = PhysPageNum::from(vpn.0);
             }
+            MapType::Specified(ppn) => {
+                target_ppn = ppn.floor();
+            }
         }
 
         //clean the page frame
@@ -241,20 +247,6 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
 }
 
 pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
-    if let Some(mut pt) = pt_get(pt_handle){
-        pt.unmap(vpn);
-    }
-    
-}
-
-pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
-    if let Some(mut pt) = pt_get(pt_handle) {
-        pt.map(vpn, ppn, perm.flags());
-    }
-    
-}
-
-pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
     if let Some(mut pt) = pt_get(pt_handle){
         pt.unmap(vpn);
     }
@@ -335,6 +327,22 @@ pub fn nkapi_activate(pt_handle: usize) {
     
 }
 
+
+//will be replace by nkapi_alloc
+pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
+    if let Some(mut pt) = pt_get(pt_handle) {
+        pt.map(vpn, ppn, perm.flags());
+    }
+    
+}
+
+//will be replaced by nkapi_dealloc
+pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
+    if let Some(mut pt) = pt_get(pt_handle){
+        pt.unmap(vpn);
+    }
+    
+}
 
 // this function is temporaily used. it is vulunerable!
 pub fn nkapi_vun_getpt(pt_handle: usize) -> PageTable{

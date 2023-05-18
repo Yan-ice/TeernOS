@@ -26,6 +26,9 @@ extern "C" {
     fn sbss_with_stack();
     fn ebss();
     fn ekernel();
+    fn snkheap();
+    fn enkheap();
+    fn sokheap();
     fn strampoline();
     fn ssignaltrampoline();
     fn snktrampoline();
@@ -242,6 +245,7 @@ impl MemorySet {
         println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
         println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
         println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
         println!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
@@ -270,6 +274,15 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
+
+        println!("mapping nk heap memory");
+        memory_set.push(MapArea::new(
+            (snkheap as usize).into(),
+            (enkheap as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ), None);
+
         println!("mapping nk frame memory");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
@@ -341,6 +354,22 @@ impl MemorySet {
             NKSPACE_END.into(),
             MapType::Identical,
             MapPermission::R,
+        ), None);
+
+        // println!("mapping nkheap memory (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R,
+        // ), None);
+
+        println!("mapping okheap memory");
+        memory_set.push(MapArea::new(
+            (snkheap as usize).into(),
+            (enkheap as usize).into(),
+            MapType::Specified(PhysAddr{0: sokheap as usize}),
+            MapPermission::R | MapPermission::W,
         ), None);
 
         println!("mapping outer kernel space");
@@ -773,6 +802,9 @@ impl ChunkArea {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
             }
+            MapType::Specified(pa) => {
+                ppn = pa.floor();
+            }
             MapType::Framed => {
                 if let Some(alppn) = frame_alloc_raw(){
                     ppn = alppn;
@@ -791,6 +823,7 @@ impl ChunkArea {
                     panic!("No more memory!");
                 }
             }
+
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         // [WARNING]:因为没有map，所以不能使用
@@ -858,6 +891,9 @@ impl MapArea {
         match self.map_type {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
+            }
+            MapType::Specified(pa) => {
+                ppn = pa.floor();
             }
             MapType::Framed => {
                 if let Some(alppn) = frame_alloc_raw(){

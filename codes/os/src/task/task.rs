@@ -615,6 +615,7 @@ impl TaskControlBlock {
         self.tgid
     }
     
+    //used to solve page fault
     pub fn check_lazy(&self, va: VirtAddr, is_load: bool) -> isize {
         let vpn: VirtPageNum = va.floor();
         //unsafe {

@@ -11,13 +11,19 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
 }
 
 // 这里应该变成双堆
-static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+//static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+
+//Yan_ice let heap be another block in memory,
+//change heap by only modifying pagetable (same va, diff pa).
+extern "C"{
+    fn snkheap();
+} 
 
 pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR
             .lock()
-            .init(HEAP_SPACE.as_ptr() as usize, KERNEL_HEAP_SIZE);
+            .init(snkheap as usize, KERNEL_HEAP_SIZE);
     }
 }
 

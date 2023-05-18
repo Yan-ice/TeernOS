@@ -25,32 +25,35 @@ SECTIONS
 
         *(.text .text.*)
     }
-
     . = ALIGN(4K);
     etext = .;
+
     srodata = .;
     .rodata : {
         *(.rodata .rodata.*)
     }
-
     . = ALIGN(4K);
     erodata = .;
+
     sdata = .;
     .data : {
         *(.data .data.*)
     }
-
     . = ALIGN(4K);
     edata = .;
+
     sbss_with_stack = .;
     .bss : {
         *(.bss.stack)
         sbss = .;
         *(.bss .bss.*)
     }
-
     . = ALIGN(4K);
     ebss = .;
+
+    snkheap = .;
+    . = . + 1024*4K;
+    enkheap = .;
 
     ekernel = .;
 
@@ -64,6 +67,11 @@ SECTIONS
     sokernelcontext = .;
     . = .+4K;
     eokernelcontext = .;
+
+    sokheap = .;
+    . = . + 1024*4K;
+    eokheap = .;
+
     sokernelstack = .;
     . = .+8K;
     eokernelstack = .;
