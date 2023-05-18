@@ -38,12 +38,14 @@ global_asm!(include_str!("trap_signal.S"));
 pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-                println!("page fault");
+                println!("{:?}", scause.cause());
                 is_load = true;
             } else {
                 is_load = false;
             }
             let va: VirtAddr = (stval as usize).into();
+
+            println!("pte va {:x}", va.0);
             // The boundary decision
             if va > TRAMPOLINE.into() {
                 panic!("VirtAddr out of range!");

@@ -351,14 +351,6 @@ impl MemorySet {
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
-        println!("mapping nk frame memory (readonly)");
-        memory_set.push(MapArea::new(
-            (ekernel as usize).into(),
-            NKSPACE_END.into(),
-            MapType::Identical,
-            MapPermission::R,
-        ), None);
-
         // println!("mapping nkheap memory (readonly)");
         // memory_set.push(MapArea::new(
         //     (snkheap as usize).into(),
@@ -373,6 +365,14 @@ impl MemorySet {
             (enkheap as usize).into(),
             MapType::Specified(PhysAddr{0: sokheap as usize}),
             MapPermission::R | MapPermission::W,
+        ), None);
+
+        println!("mapping nk frame memory (readonly)");
+        memory_set.push(MapArea::new(
+            (ekernel as usize).into(),
+            NKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R,
         ), None);
 
         println!("mapping outer kernel space");
