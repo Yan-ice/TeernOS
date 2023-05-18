@@ -41,12 +41,11 @@ nk_exit:
     addi sp, sp, 32*8
 
     # change satp  
-    ld x7, 32(sp)
+    ld x7, 0(sp)
     csrw satp, x7
-    jr x6
     
     # change stack
-    ld sp, 2*8(sp)
+    ld sp, -30*8(sp)
     jr x6
 
 
