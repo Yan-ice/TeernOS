@@ -1,6 +1,6 @@
 use super::memory_set::outerkernel_pt;
 use super::{
-    frame_alloc_raw,
+    frame_alloc,
     PhysPageNum,
     VirtPageNum,
     VirtAddr,
@@ -101,7 +101,7 @@ impl PageTable {
         return self.pt_id;
     }
     pub fn new(id: usize) -> Self {
-        let ppn = frame_alloc_raw().unwrap();
+        let ppn = frame_alloc().unwrap();
         PageTable {
             pt_id: id,
             root_ppn: ppn,
@@ -135,7 +135,7 @@ impl PageTable {
                 // println!("i {}", i);
                 // println!("root ppn {:x}", self.root_ppn.0);
                 // println!("vpn is {:x}", vpn.0);
-                let ppn = frame_alloc_raw().unwrap();
+                let ppn = frame_alloc().unwrap();
                 // println!("ppn is {:x}", ppn.0);
                 *pte = PageTableEntry::new(ppn, PTEFlags::V);
                 //self.frames.push(ppn);

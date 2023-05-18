@@ -131,68 +131,64 @@ type FrameAllocatorImpl = StackFrameAllocator;
 lazy_static! {
     pub static ref FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
         Mutex::new(FrameAllocatorImpl::new());
+}
 
-    //Yan_ice: 给outer kernel新加一个allocator
-    pub static ref OUTER_FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
-        Mutex::new(FrameAllocatorImpl::new());
+extern "C" {
+    fn snkstack();
+    fn ekernel();
+    fn eokernel();
+    fn outer_allocator();
 }
 
 pub fn init_frame_allocator() {
-    extern "C" {
-        fn snkstack();
-        fn ekernel();
-        fn eokernel();
-    }
 
     FRAME_ALLOCATOR
         .lock()
         .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(NKSPACE_END).floor());
     
     //Yan_ice: 给outer kernel的allocator指定进行alloc的空间（okernel以后剩余的outer kernel space)。
-    OUTER_FRAME_ALLOCATOR
-        .lock()
+    // OUTER_FRAME_ALLOCATOR
+    //     .lock()
+    //     .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
+
+    unsafe{
+        let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
+        *all = Mutex::new(FrameAllocatorImpl::new());
+        (*all).lock()
         .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
 
+    }
+    
 }
 
 //Yan_ice 给outer kernel加俩函数,用outer kernel的frame allocator，
 //然后就暴露他俩咯
-pub fn outer_frame_alloc() -> Option<FrameTracker> {
-    OUTER_FRAME_ALLOCATOR
-        .lock()
-        .alloc()
-        .map(|ppn| FrameTracker::new(ppn))
-}
-pub fn outer_frame_alloc_raw() -> Option<PhysPageNum> {
-    OUTER_FRAME_ALLOCATOR
-        .lock()
-        .alloc()
+pub fn outer_frame_alloc() -> Option<PhysPageNum> {
+    let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
+    unsafe{
+        (*all).lock().alloc()
+    }
+    
 }
 pub fn outer_frame_dealloc(ppn: PhysPageNum) {
-    OUTER_FRAME_ALLOCATOR
-        .lock()
-        .dealloc(ppn);
+    let all = outer_allocator as *mut Mutex<FrameAllocatorImpl>;
+    unsafe{
+        (*all).lock().dealloc(ppn);
+    }
 }
 
 
 
-pub fn frame_alloc() -> Option<FrameTracker> {
+pub fn frame_alloc() -> Option<PhysPageNum> {
     FRAME_ALLOCATOR
         .lock()
         .alloc()
-        .map(|ppn| FrameTracker::new(ppn))
 }
 
 pub fn frame_add_ref(ppn: PhysPageNum) {
     FRAME_ALLOCATOR
         .lock()
         .add_ref(ppn)
-}
-
-pub fn frame_alloc_raw() -> Option<PhysPageNum> {
-    FRAME_ALLOCATOR
-        .lock()
-        .alloc()
 }
 
 pub fn frame_dealloc(ppn: PhysPageNum) {
@@ -214,7 +210,7 @@ pub fn print_free_pages(){
     FRAME_ALLOCATOR.lock().print_free();
 }
 pub fn outer_print_free_pages(){
-    OUTER_FRAME_ALLOCATOR.lock().print_free();
+    //OUTER_FRAME_ALLOCATOR.lock().print_free();
 }
 // #[allow(unused)]
 // pub fn frame_allocator_test() {

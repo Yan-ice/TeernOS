@@ -3,6 +3,8 @@ mod trap;
 mod debug_util;
 
 use crate::{outer_kernel_init, nk::trap::ProxyContext};
+use alloc::slice::{from_raw_parts, from_raw_parts_mut};
+
 pub use trap::{TrapContext as TrapContext, 
     //nk_trap_return, 
     user_trap_return, PROXYCONTEXT};
@@ -155,7 +157,38 @@ pub fn nk_main(){
         fn nk_kernel_stack_top();
         fn eokernelstack();
         fn __exit_gate();
+        fn snkheap();
+        fn enkheap();
+        fn sokheap();
+        fn eokheap();
     }
+
+    println!("copying heap");
+    unsafe{
+        let total_size = enkheap as usize - snkheap as usize;
+        let unit_size = 1024;
+        let from_addr = snkheap as usize;
+        let to_addr = sokheap as usize;
+
+        for part in 0..(total_size/unit_size){
+            let a1 = from_addr+unit_size*part;
+            let a2 = to_addr+unit_size*part;
+            let mut src_data = from_raw_parts(a1 as *const u8, unit_size);
+            let mut dst_data = from_raw_parts_mut(a2 as *mut u8, unit_size);
+            dst_data.copy_from_slice(src_data);
+        }  
+
+        //for testing
+        for part in 0..1000{
+            let a1 = from_addr+unit_size*part;
+            let a2 = to_addr+unit_size*part;
+            let mut src_data = from_raw_parts(a1 as *const u8, unit_size);
+            let mut dst_data = from_raw_parts(a2 as *const u8, unit_size);
+            assert_eq!(src_data[0],dst_data[0]);
+        }
+    }
+
+
 
     println!("Nesked kernel init success");
 

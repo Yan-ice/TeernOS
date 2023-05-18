@@ -16,7 +16,6 @@ pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRa
 pub use frame_allocator::{
     FrameTracker, 
     outer_frame_alloc,
-    outer_frame_alloc_raw, 
     outer_frame_dealloc,
     add_free, 
     print_free_pages, 
@@ -27,7 +26,7 @@ pub use frame_allocator::{
 
 //nk内部的就不暴露啦
 use frame_allocator::{
-    frame_alloc_raw
+    frame_alloc
 };
 
 pub use page_table::{
@@ -211,7 +210,7 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
         let target_ppn;
         match map_type{
             MapType::Framed => {
-                if let Some(ppn) = outer_frame_alloc_raw(){
+                if let Some(ppn) = outer_frame_alloc(){
                     target_ppn = ppn;
                 }else{
                     outer_print_free_pages();
@@ -219,7 +218,7 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
                 }
             }
             MapType::FramedInNK => {
-                if let Some(ppn) = frame_alloc_raw(){
+                if let Some(ppn) = frame_alloc(){
                     target_ppn = ppn;
                 }else{
                     print_free_pages();
@@ -275,7 +274,7 @@ pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Optio
                     );
                 }
 
-                let ppn = frame_alloc_raw().unwrap();
+                let ppn = frame_alloc().unwrap();
                 pt.remap_cow(vpn, ppn, former_ppn);
                 return Some(ppn);
 

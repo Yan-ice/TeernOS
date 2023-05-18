@@ -24,7 +24,7 @@ const VIRTIO0: usize = 0x10001000;
 pub struct VirtIOBlock(Mutex<VirtIOBlk<'static>>);
 
 lazy_static! {
-    static ref QUEUE_FRAMES: Mutex<Vec<FrameTracker>> = Mutex::new(Vec::new());
+    static ref QUEUE_FRAMES: Mutex<Vec<PhysPageNum>> = Mutex::new(Vec::new());
 }
 
 impl BlockDevice for VirtIOBlock {
@@ -66,10 +66,9 @@ impl VirtIOBlock {
 pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
     let mut ppn_base = PhysPageNum(0);
     for i in 0..pages {
-        let frame = frame_alloc().unwrap();
-        if i == 0 { ppn_base = frame.ppn; }
-        assert_eq!(frame.ppn.0, ppn_base.0 + i);
-        QUEUE_FRAMES.lock().push(frame);
+        let frame_ppn = frame_alloc().unwrap();
+        if i == 0 { ppn_base = frame_ppn; }
+        QUEUE_FRAMES.lock().push(ppn_base);
     }
     ppn_base.into()
 }

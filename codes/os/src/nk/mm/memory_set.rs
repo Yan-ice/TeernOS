@@ -1,7 +1,7 @@
 
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr, MapType, MapPermission};          
-use super::{FrameTracker, frame_add_ref, enquire_refcount, print_free_pages, frame_alloc_raw, outer_frame_alloc_raw};
+use super::{FrameTracker, frame_add_ref, enquire_refcount, print_free_pages};
 use super::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
@@ -13,6 +13,9 @@ use lazy_static::*;
 use spin::Mutex;
 use crate::config::*;
 use super::vma::*;
+
+use super::frame_allocator::{frame_alloc,outer_frame_alloc};
+
 use crate::monitor::*;
 use crate::task::AuxHeader;
 
@@ -356,21 +359,21 @@ impl MemorySet {
             MapPermission::R,
         ), None);
 
-        println!("mapping nkheap memory (readonly)");
-        memory_set.push(MapArea::new(
-            (snkheap as usize).into(),
-            (enkheap as usize).into(),
-            MapType::Identical,
-            MapPermission::R| MapPermission::W,
-        ), None);
-
-        // println!("mapping okheap memory");
+        // println!("mapping nkheap memory (readonly)");
         // memory_set.push(MapArea::new(
         //     (snkheap as usize).into(),
         //     (enkheap as usize).into(),
-        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
-        //     MapPermission::R | MapPermission::W,
+        //     MapType::Identical,
+        //     MapPermission::R| MapPermission::W,
         // ), None);
+
+        println!("mapping okheap memory");
+        memory_set.push(MapArea::new(
+            (snkheap as usize).into(),
+            (enkheap as usize).into(),
+            MapType::Specified(PhysAddr{0: sokheap as usize}),
+            MapPermission::R | MapPermission::W,
+        ), None);
 
         println!("mapping outer kernel space");
         memory_set.push(MapArea::new(
@@ -676,7 +679,7 @@ impl MemorySet {
             );
             return 0
         }
-        let ppn = frame_alloc_raw().unwrap();
+        let ppn = frame_alloc().unwrap();
         self.remap_cow(vpn, ppn, former_ppn);
         for area in self.areas.iter_mut() {
             let head_vpn = area.vpn_range.get_start();
@@ -809,7 +812,7 @@ impl ChunkArea {
                 ppn = pa.floor();
             }
             MapType::Framed => {
-                if let Some(alppn) = frame_alloc_raw(){
+                if let Some(alppn) = outer_frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
                 }
@@ -818,7 +821,7 @@ impl ChunkArea {
                 }
             }
             MapType::FramedInNK =>{
-                if let Some(alppn) = outer_frame_alloc_raw(){
+                if let Some(alppn) = frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
                 }
@@ -899,7 +902,7 @@ impl MapArea {
                 ppn = pa.floor();
             }
             MapType::Framed => {
-                if let Some(alppn) = frame_alloc_raw(){
+                if let Some(alppn) = outer_frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
                 }
@@ -908,7 +911,7 @@ impl MapArea {
                 }
             }
             MapType::FramedInNK =>{
-                if let Some(alppn) = outer_frame_alloc_raw(){
+                if let Some(alppn) = frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
                 }
