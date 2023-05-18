@@ -7,7 +7,7 @@ use lazy_static::*;
 use super::{fetch_task, TaskStatus};
 use super::__switch;
 use crate::timer::get_time_us;
-use crate::nk::TrapContext;
+use crate::nk::{TrapContext, nkapi_activate};
 use crate::task::manager::add_task;
 use crate::gdb_print;
 use crate::monitor::*;
@@ -71,6 +71,7 @@ impl Processor {
     pub fn run(&self) {
         loop{
             // True: Not first time to fetch a task 
+            // 暂时没改
             if let Some(current_task) = take_current_task(){
                 gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
@@ -81,7 +82,7 @@ impl Processor {
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
                     let mut task_inner = task.acquire_inner_lock();
-                    task_inner.memory_set.activate();// change satp
+                    // task_inner.memory_set.activate();// change satp
                     let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
                     task_inner.task_status = TaskStatus::Running;
                     drop(task_inner);
@@ -127,19 +128,21 @@ impl Processor {
                     let mut task_inner = task.acquire_inner_lock();
                     let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
                     task_inner.task_status = TaskStatus::Running;
+                    let id = task_inner.memory_set.id();
+                    drop(task_inner);
                     self.inner.borrow_mut().current = Some(task);
-
+                    nkapi_activate(id, idle_task_cx_ptr2, next_task_cx_ptr2)
                     // 加上gate
                     ///////////////////////////////////////////////
-                    task_inner.memory_set.activate();// change satp
+                    // let Some(temp) = self.inner.borrow().current;
+                    // task.acquire_inner_lock().memory_set.activate(idle_task_cx_ptr2, next_task_cx_ptr2);// change satp
                     // release
-                    drop(task_inner);
-                    unsafe {
-                        __switch(
-                            idle_task_cx_ptr2,
-                            next_task_cx_ptr2,
-                        );
-                    }
+                    // unsafe {
+                    //     __switch(
+                    //         idle_task_cx_ptr2,
+                    //         next_task_cx_ptr2,
+                    //     );
+                    // }
                     //////////////////////////////////////////////////
                     // println!("switch finish");
                 }

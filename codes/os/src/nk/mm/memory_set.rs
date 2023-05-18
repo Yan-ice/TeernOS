@@ -688,7 +688,10 @@ impl MemorySet {
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
+            println!("{:?}", satp::read());
+            println!("{}", satp);
             satp::write(satp);
+            println!("{:?}", satp::read());
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }

@@ -73,9 +73,9 @@ lazy_static! {
 }
 
 pub fn outer_kernel_init(){
-    KERNEL_SPACE.lock().activate();
+    // KERNEL_SPACE.lock().activate();
 
-    println!("UltraOS: outer kernel init.");
+    println!("UltraOS: outer kernel init:");
     timer::set_next_trigger();
     println!("UltraOS: interrupt initialized");
     fs::init_rootfs();

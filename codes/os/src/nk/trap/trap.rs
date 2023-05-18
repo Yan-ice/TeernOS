@@ -238,6 +238,8 @@ pub fn user_trap_return() -> ! {
     perform_signal_handler();
     
     //return到user space时，切换为user trap。
+
+    println!("user trap return");
     unsafe {
         stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     }

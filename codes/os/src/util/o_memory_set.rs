@@ -515,8 +515,8 @@ impl MemorySet {
     }
 
     ///修改satp，切换到该页表
-    pub fn activate(&self) {
-        nkapi_activate(self.id);
+    pub fn activate(&self, start: *const usize, end: *const usize) {
+        nkapi_activate(self.id, start, end);
     }
 
     pub fn translate(&self, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum> {

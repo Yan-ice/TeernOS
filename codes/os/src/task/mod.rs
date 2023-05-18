@@ -13,7 +13,7 @@ use crate::config::PAGE_SIZE;
 use crate::gdb_print;
 use crate::monitor::*;
 //use easy_fs::DiskInodeType;
-use switch::__switch;
+pub use switch::__switch;
 pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus, FdTable};
 pub use info::*;
 pub use resource::*;
@@ -156,7 +156,7 @@ pub fn add_initproc_into_fs() {
         OpenFlags::RDONLY,
         DiskInodeType::File
     ){
-        println!("Already have init proc in FS");
+        println!("Already have user shell in FS");
         //return;
         inode.delete();
     }
@@ -205,7 +205,7 @@ pub fn add_initproc_into_fs() {
         // println!("User_shell OK");
     }
     else{
-        panic!("user_shell create fail!");
+        // panic!("user_shell create fail!");
     }
     println!("Write apps(initproc & user_shell) to disk from mem");
 

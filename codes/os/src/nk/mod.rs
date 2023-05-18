@@ -92,22 +92,20 @@ extern "C" {
 
 // syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
 pub fn nk_entry_gate(){
-
-    println!("enter nk");
-
+    println!("1");
     // 交换页表
     KERNEL_SPACE.lock().activate();
-
+    // println!("2");
+    // // 禁用中断
+    // unsafe {
+    //     llvm_asm!("csrci sstatus, 2");
+    // }
+    // println!("3");
     // 先恢复寄存器，再换栈
     unsafe {
         nk_entry(&(PROXYCONTEXT.lock().nk_register) as *const usize);
     }
-
-    // 禁用中断
-    unsafe {
-        llvm_asm!("csrci sstatus, 2");
-    }
-
+    println!("enter nk");
 }
 
 extern "C" {
@@ -162,8 +160,9 @@ pub fn nk_main(){
         println!("{}", 1);
         let mut proxycontext = PROXYCONTEXT.lock();
         proxycontext.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        println!("nk satp is {}", proxycontext.nk_satp);
+        println!("ok satp is {}", proxycontext.outer_satp);
         drop(proxycontext);
-
         nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
         println!("{}", 2);
     }
