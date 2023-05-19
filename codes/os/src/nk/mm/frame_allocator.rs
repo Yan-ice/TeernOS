@@ -153,9 +153,11 @@ pub fn init_frame_allocator() {
 
 
 pub fn frame_alloc() -> Option<PhysPageNum> {
-    FRAME_ALLOCATOR
+    let pn = FRAME_ALLOCATOR
         .lock()
-        .alloc()
+        .alloc();
+    println!("nk alloc: {:?}", pn.unwrap());
+    pn
 }
 
 pub fn frame_add_ref(ppn: PhysPageNum) {

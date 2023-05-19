@@ -56,7 +56,6 @@ pub fn allocator_init(){
         fn outer_allocator();
         fn eokernel();
     }
-    println!("allocator eokernel: {:x}", eokernel as usize);
     let allocator = outer_allocator as usize as *mut StackFrameAllocator;
     unsafe{
         //init allocator
