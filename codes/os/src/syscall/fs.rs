@@ -3,7 +3,7 @@ use core::mem::{size_of};
 use crate::lang_items::Bytes;
 use crate::timer::get_timeval;
 use crate::{fs::{Dirent, FdSet, File, FileClass, FileDescripter, IoVec, IoVecs, Kstat, MNT_TABLE, NewStat, TTY, NullZero}, gdb_print, gdb_println, 
-        nk::{UserBuffer, translated_raw, translated_ref, translated_refmut, translated_str, print_free_pages},
+        util::mm_util::{UserBuffer, translated_raw, translated_ref, translated_refmut, translated_str},
         monitor::*, 
         task::{
         FdTable,

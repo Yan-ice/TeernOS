@@ -2,12 +2,12 @@ mod mm;
 mod trap;
 mod debug_util;
 
-use crate::{outer_kernel_init, nk::trap::ProxyContext};
+use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT}, syscall::syscall};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
+use crate::config::NK_TRAMPOLINE;
 
 pub use trap::{TrapContext as TrapContext, 
-    //nk_trap_return, 
-    user_trap_return, PROXYCONTEXT};
+    user_trap_return, ProxyContext};
 
 pub use debug_util::*;
 
@@ -15,7 +15,6 @@ pub use mm::{VirtPageNum as VirtPageNum,
             VirtAddr as VirtAddr, 
             PhysPageNum as PhysPageNum,
             PhysAddr as PhysAddr, 
-            UserBuffer as UserBuffer, 
             KERNEL_SPACE as KERNEL_SPACE, 
             OUTER_KERNEL_SPACE as OUTER_KERNEL_SPACE,
             MapPermission as MapPermission,
@@ -31,31 +30,19 @@ pub use mm::{VirtPageNum as VirtPageNum,
             StepByOne as StepByOne,
             VPNRange as VPNRange,
 
-            //以下是读取内存数据的系列接口。
-            translated_refmut as translated_refmut,
-            translated_ref as translated_ref,
-            translated_refcopy as translated_refcopy,
-            translated_raw as translated_raw,
-            translated_str as translated_str,
-
-            //以下是memcopy的系列接口。
-            copy_array as copy_array,
-            copy_object as copy_object,
-            //或许可以实现strcpy?
-
-            nkapi_pt_init as nkapi_pt_init,
-            nkapi_alloc as nkapi_alloc,
+            //nkapi_pt_init as nkapi_pt_init,
+            //nkapi_alloc as nkapi_alloc,
             nkapi_dealloc as nkapi_dealloc,
             nkapi_activate as nkapi_activate,
             nkapi_copyTo as nkapi_copyTo,
 
             //io_map as io_map
             //io_unmap as io_unmap
-            nkapi_mmap as nkapi_mmap,
-            nkapi_unmap as nkapi_unmap,
-            nkapi_set_permission as nkapi_set_permission,
-            nkapi_translate as nkapi_translate,
-            nkapi_translate_va as nkapi_translate_va,
+            //nkapi_mmap as nkapi_mmap,
+            //nkapi_unmap as nkapi_unmap,
+            //nkapi_set_permission as nkapi_set_permission,
+            //nkapi_translate as nkapi_translate,
+            //nkapi_translate_va as nkapi_translate_va,
 
             //以下接口暂时未知。
             add_free as add_free, 
@@ -64,6 +51,91 @@ pub use mm::{VirtPageNum as VirtPageNum,
             //DANGER
             nkapi_vun_getpt as nkapi_vun_getpt
 };
+
+extern "C"{
+    pub fn entry_gate2();
+}
+
+pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option<PhysPageNum>{
+    println!("NKAPI: nkapi_trans occurs");
+    unsafe{
+        let target_func: *const usize = mm::nkapi_translate as *const usize;
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_entry2();
+    }
+    panic!("unreachable");
+}
+pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
+    unsafe{
+       println!("NKAPI: nkapi_trans_va occurs");
+       println!("params expected: {:?} {:?}", pt_handle, va);
+       let target_func: usize = mm::nkapi_translate_va as usize;
+       llvm_asm!("mv x28, $0" :: "r"(NK_TRAMPOLINE as usize));
+       llvm_asm!("mv x29, $0" :: "r"(target_func));
+       // llvm_asm!("jalr x1, x29, 0");
+
+       let test: usize;
+       llvm_asm!("mv $0, x12" : "=r"(test));
+       println!("pt_handle: {:x} x12: {:x}",pt_handle, test);
+       panic!("stop@");
+       llvm_asm!("j nk_entry2");
+   }
+   panic!("unreachable");
+}
+
+pub fn nkapi_alloc(pt_handle:usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
+     println!("NKAPI: nkapi_alloc occurs");
+     unsafe{
+        let target_func: *const usize = mm::nkapi_alloc as *const usize;
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_entry2();
+
+        print!("Warn: more step needed when returning.");
+        let ret_val: usize;
+        llvm_asm!("mv $0, x10" : "=r"(ret_val));
+        return PhysPageNum::from(ret_val);
+    }
+    
+}
+pub fn nkapi_pt_init(pt_handle: usize){
+    //mm::nkapi_pt_init(pt_handle);
+    unsafe{
+        let target_func: *const usize = mm::nkapi_pt_init as *const usize;
+        
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_entry2();
+    }
+}
+
+pub fn nkapi_mmap(pt_handle: usize, vpn:VirtPageNum, ppn: PhysPageNum, perm:MapPermission){
+    unsafe{
+        let target_func: *const usize = mm::nkapi_mmap as *const usize;
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_exit2();
+    }
+}
+pub fn nkapi_unmap(pt_handle: usize, vpn:VirtPageNum){
+    unsafe{
+        let target_func: *const usize = mm::nkapi_unmap as *const usize;
+        
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_entry2();
+    }
+}
+
+pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){
+    unsafe{
+        let target_func: *const usize = mm::nkapi_set_permission as *const usize;
+        llvm_asm!("addi x28, $0, 0" :: "r"(NK_TRAMPOLINE as usize));
+        llvm_asm!("mv x29, $0" :: "r"(target_func));
+        nk_entry2();
+    }
+}
 
 pub fn id() -> usize {
     let cpu_id;
@@ -84,56 +156,71 @@ fn clear_bss() {
 }
 
 global_asm!(include_str!("nk_gate.S"));
+global_asm!(include_str!("nk_gate_copy.S"));
 
 extern "C" {
     fn nk_entry(
         proxy_address: *const usize,
     );
+    pub fn nk_entry2();
 }
 
 // syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
-pub fn nk_entry_gate(){
-    // 交换页表
-    KERNEL_SPACE.lock().activate();
-    // println!("2");
-    // // 禁用中断
-    // unsafe {
-    //     llvm_asm!("csrci sstatus, 2");
-    // }
-    // println!("3");
-    // 先恢复寄存器，再换栈
-    unsafe {
-        nk_entry(&(PROXYCONTEXT.lock().nk_register) as *const usize);
-    }
-    println!("enter nk");
-}
+// pub fn nk_entry_gate(function_address: usize){
+//     // 交换页表
+//     //KERNEL_SPACE.lock().activate();
+//     // println!("2");
+//     // // 禁用中断
+//     // unsafe {
+//     //     llvm_asm!("csrci sstatus, 2");
+//     // }
+//     // println!("3");
+//     // 先恢复寄存器，再换栈
+//     // unsafe {
+//     //     nk_entry(&(PROXYCONTEXT().lock().nk_register) as *const usize);
+//     // }
+
+//     unsafe {
+
+//         llvm_asm!("addi x28, $0, 0" :: "r"(PROXYCONTEXT().get_mut() as *const ProxyContext as *const usize));
+//         nk_entry2();
+//     }
+
+//     println!("enter nk");
+// }
 
 extern "C" {
     pub fn nk_exit(
         proxy_address: *const usize,
         function_address: usize
     );
+    pub fn nk_exit2();
 }
 
-fn nk_exit_gate(proxycontext: *const usize, function_address: usize){
+// fn nk_exit_gate(PROXYCONTEXT(): *const usize, function_address: usize){
 
-    println!("exit nk");
+//     println!("exit nk");
 
-    //if to outer kernel:
-    //开启中断
-    unsafe {
-        llvm_asm!("csrsi sstatus, 2");
-    }
+//     // //if to outer kernel:
+//     // //开启中断
+//     // unsafe {
+//     //     llvm_asm!("csrsi sstatus, 2");
+//     // }
 
-    //先保存寄存器，再换栈，再设置好ra，再换页表
-    unsafe {
-        nk_exit(proxycontext, function_address);
-    }
-               
-    //TODO: 进程页表/内核页表
-    //if to user: 暂时未写
-    // trap return (so here ignore)
-}
+//     // //先保存寄存器，再换栈，再设置好ra，再换页表
+//     // unsafe {
+//     //     nk_exit(PROXYCONTEXT(), function_address);
+//     // }
+
+//     unsafe {
+//         llvm_asm!("addi x28, $0, 0" :: "r"(PROXYCONTEXT()));
+//         nk_exit2();
+//     }
+
+//     //TODO: 进程页表/内核页表
+//     //if to user: 暂时未写
+//     // trap return (so here ignore)
+// }
 
 #[no_mangle]
 pub fn nk_main(){
@@ -142,10 +229,16 @@ pub fn nk_main(){
         loop{}
     }
     clear_bss();
-
+    
     mm::init();
     mm::remap_test();
+    println!("rmap test success.");
     trap::init();
+    println!("trap init success.");
+    unsafe{
+        PROXYCONTEXT().nk_satp = KERNEL_SPACE.lock().token();
+        PROXYCONTEXT().outer_satp = OUTER_KERNEL_SPACE.lock().token();
+    }
 
     //trap::enable_timer_interrupt();
 
@@ -175,31 +268,28 @@ pub fn nk_main(){
         }  
     }
 
-
-
+    use crate::nk::mm::memory_set::kernel_pt;
     println!("Nesked kernel init success");
+    unsafe{
+        println!("proxy addr: {:x} == {:?}]",PROXYCONTEXT() as *const ProxyContext as usize, kernel_pt().translate_va(VirtAddr::from(NK_TRAMPOLINE as usize)));
+
+        println!("nk_satp get: {:x}, {:?}", NK_TRAMPOLINE, (*(NK_TRAMPOLINE as *const ProxyContext)).nk_satp);
+    }
+    
+    debug_context_info();
 
     unsafe{
-        let mut proxycontext = PROXYCONTEXT.lock();
-        proxycontext.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
-        
-        drop(proxycontext);
-
-        debug_context_info();
-        debug_register_info();
-
-        nk_exit_gate(&(PROXYCONTEXT.lock().nk_register) as *const usize, outer_kernel_init as usize);
+        extern "C"{
+            fn nk_exit2();
+        }
+        let mut proxy = PROXYCONTEXT();
+        proxy.outer_register[1] = outer_kernel_init as usize; //let ra be outer kernel init
+        proxy.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        llvm_asm!("mv x28, $0" :: "r"(proxy as *const ProxyContext as *const usize));
+        println!("Exiting.");
+        nk_exit2();
         panic!("not reachable");
     }
-
-    // //手动构造user的trap context上下文，然后回到user space
-    // let mut trap_context_address = &TrapContext::app_init_context(
-    //     outer_kernel_init as usize, //返回到outer kernel init
-    //     eokernelstack as usize, //outer kernel 栈
-    //     KERNEL_SPACE.lock().token(), //nested kernel的页表
-    //     nk_kernel_stack_top as usize //nested kernel的栈
-    // ) as *const TrapContext;
-    
 
 }
 

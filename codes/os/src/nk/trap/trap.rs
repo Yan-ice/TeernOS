@@ -9,11 +9,9 @@ use riscv::register::{
     stval,
     stvec, hpmcounter21::read
 };
-use crate::config::NK_TRAMPOLINE;
 use crate::{nk::{
     VirtAddr,
-    nk_exit_gate,
-}};
+}, config::NK_TRAMPOLINE};
 use crate::syscall::{syscall, SYSCALLPARAMETER};
 use crate::task::{
     exit_current_and_run_next,
@@ -26,7 +24,7 @@ use crate::task::{
 };
 
 pub use super::context::ProxyContext;
-use crate::PROXYCONTEXT;
+use super::PROXYCONTEXT;
 use crate::timer::set_next_trigger;
 use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
 use crate::gdb_print;
@@ -47,7 +45,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
 
             println!("pte va {:x}", va.0);
             // The boundary decision
-            if va > TRAMPOLINE.into() {
+            if va > usize::MAX.into() {
                 panic!("VirtAddr out of range!");
             }
             //println!("check_lazy 1");
@@ -75,6 +73,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
         }
 
 pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
+    
     //TODO: entry gate
     //trap到outer kernel时，切换为kernel trap。
     match scause.cause() {
@@ -104,8 +103,18 @@ pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
             p.parameter[5] = cx.x[14];
             p.parameter[6] = cx.x[15];
 
-            nk_exit_gate(&(SYSCALLPARAMETER.lock().parameter) as *const usize, syscall as usize);
-
+            unsafe{
+                extern "C"{
+                    fn nk_exit2();
+                }
+                println!("handling outer kernel's trap");
+                let mut proxy = PROXYCONTEXT();
+                proxy.outer_register[1] = syscall as usize;
+                llvm_asm!("addi x28, $0, 0" :: "r"(proxy as *const ProxyContext as *const usize));
+                drop(proxy);
+                nk_exit2();
+            }
+            
             // let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
 
             // cx is changed during sys_exec, so we have to call it again
@@ -205,8 +214,9 @@ pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
 
 #[no_mangle]
 pub fn user_trap_handler() -> ! {
+    println!("handling user trap");
     unsafe {
-        stvec::write(NK_TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     }
     let scause: scause::Scause = scause::read();
     let stval = stval::read();

@@ -1,9 +1,7 @@
 use alloc::vec::Vec;
 use alloc::vec;
-use crate::nk::{
-    translated_raw
-};
-use crate::util::{
+use crate::util::mm_util::{
+    translated_raw,
     translated_array_copy
 };
 

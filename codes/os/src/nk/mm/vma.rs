@@ -1,9 +1,10 @@
-use super::{VirtAddr, UserBuffer, translated_raw};
+use super::{VirtAddr};
 use crate::config::PAGE_SIZE;
 use crate::fs::{File, FileClass};
 use crate::task::FdTable;
 use alloc::vec::Vec;
 
+use crate::util::mm_util::{UserBuffer, translated_raw};
 bitflags! {
     pub struct MmapProts: usize {
         const PROT_NONE = 0;

@@ -322,8 +322,7 @@ impl VFile{
         }
         let mut current_vfile = self.clone();
         for i in 0 .. len {
-            // DEBUG
-            // print!("\n");
+
             if path[i] == "" || path[i] == "."{
                 continue;
             }

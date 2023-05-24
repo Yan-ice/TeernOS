@@ -11,7 +11,6 @@ __entry_gate:
     # 4. jr跳转
     csrrw sp, sscratch, sp
     
-    
     # now sp->*TrapContext in user space, sscratch->user stack
     # save other general purpose registers
     sd x1, 1*8(sp)

@@ -113,13 +113,13 @@ pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     // KERNEL_SPACE.lock().activate();
 
+    println!("UltraOS: outer kernel init.");
     extern "C"{
         fn snkheap();
     }
 
     debug_register_info();
 
-    println!("UltraOS: outer kernel init:");
     allocator_init();
     println!("UltraOS: static struct initialized");
 

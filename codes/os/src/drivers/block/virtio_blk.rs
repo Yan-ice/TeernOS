@@ -104,7 +104,7 @@ pub extern "C" fn virtio_phys_to_virt(paddr: PhysAddr) -> VirtAddr {
 
 #[no_mangle]
 pub extern "C" fn virtio_virt_to_phys(vaddr: VirtAddr) -> PhysAddr {
-    if let Some(pa) = nkapi_translate_va(0, vaddr){
+    if let Some(pa) = nkapi_translate_va(2, vaddr){
         // for p in RECORD.lock().clone().into_iter(){
         //     if p.va == vaddr{
         //         return pa.clone();

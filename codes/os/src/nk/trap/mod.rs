@@ -17,6 +17,7 @@ pub use context::{TrapContext, ProxyContext};
 use trap::user_trap_handler;
 pub use trap::user_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
+use crate::{syscall::syscall, config::{TRAMPOLINE, NK_TRAMPOLINE}};
 
 
 // 无用
@@ -54,8 +55,12 @@ fn trap_in_nk() -> !{
 }
 
 pub fn init(){
+    
     unsafe {
+        //stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
         stvec::write(user_trap_handler as usize, TrapMode::Direct);
+
+        PROXYCONTEXT().delegate = syscall as usize;
     }
 
     //由于暂时nk的trap还没做好，所以先放nk trampoline吧
@@ -100,16 +105,18 @@ extern "C"{
     fn nk_kernel_stack_top();
     fn eokernelstack();
     fn __exit_gate();
+    fn sproxy();
 }
 
-lazy_static! {
-    pub static ref PROXYCONTEXT: Mutex<ProxyContext> = Mutex::new(ProxyContext{
-        nk_register: [0; 32],
-        outer_register: [0; 32], 
-        nk_satp: KERNEL_SPACE.lock().token(),
-        outer_satp: OUTER_KERNEL_SPACE.lock().token(),
-    });
-}
+pub fn PROXYCONTEXT() -> &'static mut ProxyContext{
+    unsafe{ 
+        println!("find proxy");
+        &mut *(NK_TRAMPOLINE as usize 
+        as *mut usize 
+        as *mut ProxyContext) 
+    }
+} 
+
 
 
 // #[no_mangle]

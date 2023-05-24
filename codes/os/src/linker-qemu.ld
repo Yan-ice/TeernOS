@@ -51,6 +51,10 @@ SECTIONS
     . = ALIGN(4K);
     ebss = .;
 
+    sproxy = .;
+    . = .+4K;
+    eproxy = .;
+    
     snkheap = .;
     . = . + 1024*4K;
     enkheap = .;

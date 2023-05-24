@@ -1,6 +1,6 @@
 
 use riscv::{register::{satp}, addr::PhysAddr};
-use crate::nk::{ProxyContext,PROXYCONTEXT};
+use crate::nk::{PROXYCONTEXT};
 use core::slice::{from_raw_parts};
 
 pub fn debug_register_info(){
@@ -16,15 +16,18 @@ pub fn debug_register_info(){
 }
 
 pub fn debug_context_info(){
-    println!("============[debug]=============");
-    println!("[debug] nk proxy context info:");
-    println!("SATP: {}",PROXYCONTEXT.lock().nk_satp);
-    println!("sp: {:x}",PROXYCONTEXT.lock().nk_register[2]);
-
-    println!("[debug] ok proxy context info:");
-    println!("SATP: {}",PROXYCONTEXT.lock().outer_satp);
-    println!("sp: {:x}",PROXYCONTEXT.lock().outer_register[2]);
-    println!("================================");
+    unsafe{
+        println!("============[debug]=============");
+        println!("[debug] nk proxy context info:");
+        println!("SATP: {}",PROXYCONTEXT().nk_satp);
+        println!("sp: {:x}",PROXYCONTEXT().nk_register[2]);
+    
+        println!("[debug] ok proxy context info:");
+        println!("SATP: {}",PROXYCONTEXT().outer_satp);
+        println!("sp: {:x}",PROXYCONTEXT().outer_register[2]);
+        println!("================================");
+    }
+    
 }
 
 pub fn debug_print_raw_data(addr: usize, len: usize){

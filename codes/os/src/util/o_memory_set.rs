@@ -1,11 +1,11 @@
 
-use crate::nk::{PageTable, PageTableEntry, 
+use crate::nk::{
     nkapi_pt_init, nkapi_alloc, nkapi_dealloc, nkapi_activate, 
-    nkapi_mmap, nkapi_copyTo, nkapi_translate, nkapi_set_permission};
+    nkapi_copyTo, nkapi_translate, nkapi_set_permission};
 
 use crate::nk::{nkapi_vun_getpt};
 
-use crate::nk::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr, MapType, MapPermission, PTEFlags};          
+use crate::nk::{VirtPageNum, VirtAddr, PhysPageNum, MapType, MapPermission, PTEFlags};          
 use crate::nk::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;

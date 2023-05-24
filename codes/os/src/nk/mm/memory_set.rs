@@ -12,6 +12,8 @@ use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
 use crate::config::*;
+use crate::nk::PROXYCONTEXT;
+use crate::nk::trap::ProxyContext;
 use super::vma::*;
 
 use super::frame_allocator::{frame_alloc};
@@ -28,9 +30,11 @@ extern "C" {
     fn edata();
     fn sbss_with_stack();
     fn ebss();
-    fn ekernel();
+    fn sproxy();
+    fn eproxy();
     fn snkheap();
     fn enkheap();
+    fn ekernel();
     fn sokheap();
     fn strampoline();
     fn ssignaltrampoline();
@@ -59,7 +63,7 @@ lazy_static! {
 
     pub static ref KERNEL_TOKEN: Arc<KernelToken> = Arc::new(
         KernelToken{
-            token:KERNEL_SPACE.lock().token()
+            token: KERNEL_SPACE.lock().token()
         }
     );
 }
@@ -211,12 +215,16 @@ impl MemorySet {
             PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
-        //Yan_ice:额外为nested kernel trap加一个跳板
-        self.page_table.map(
+        //Yan_ice:额外为proxy context加一个跳板
+        unsafe{
+            self.page_table.map(
+            
             VirtAddr::from(NK_TRAMPOLINE).into(),
-            PhysAddr::from(snktrampoline as usize).into(),
-            PTEFlags::R | PTEFlags::X,
+            PhysAddr::from(sproxy as *const ProxyContext as usize).into(),
+            PTEFlags::R | PTEFlags::W,
         );
+        }
+        
     }
 
     /// Mention that trampoline is not collected by areas.
@@ -276,6 +284,15 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
+        println!("mapping proxy section");
+        memory_set.push(MapArea::new(
+            (sproxy as usize).into(),
+            (eproxy as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W, 
+            //temporiliy cannot be readonly
+        ), None);
+
         println!("mapping nk heap memory");
         memory_set.push(MapArea::new(
             (snkheap as usize).into(),
@@ -317,7 +334,7 @@ impl MemorySet {
     pub fn new_outer_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
-        println!("mapping nested kernel");
+        println!("mapping outer kernel");
 
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
@@ -353,6 +370,15 @@ impl MemorySet {
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W, 
+            //temporiliy cannot be readonly
+        ), None);
+
+        println!("mapping proxy section");
+        memory_set.push(MapArea::new(
+            (sproxy as usize).into(),
+            (eproxy as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W, 
             //temporiliy cannot be readonly

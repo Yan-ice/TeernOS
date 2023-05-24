@@ -78,6 +78,7 @@ impl FrameAllocator for StackFrameAllocator {
         }
     }
     fn alloc(&mut self) -> Option<PhysPageNum> {
+        
         if let Some(ppn) = self.recycled.pop() {
             // println!{"alloced recycled ppn: {:X}", ppn}
             self.refcounter.insert(ppn, 1);

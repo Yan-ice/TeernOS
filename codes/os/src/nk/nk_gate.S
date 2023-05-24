@@ -51,7 +51,7 @@ nk_exit:
 
 
 .globl nk_entry
-    # 入参 x10 PROXYCONTEXT地址
+    # 入参 x10 PROXYCONTEXT()地址
     # 结构
     # #####################################
     # 高地址

@@ -74,7 +74,7 @@ use crate::sbi::shutdown;
 use crate::task::current_trap_cx;
 use spin::Mutex;
 
-use crate::nk::nk_entry_gate;
+//use crate::nk::nk_entry_gate;
 
 //use crate::fs::Dirent;
 
@@ -266,8 +266,9 @@ pub fn syscall(){
     // nk_entry_gate(proxy_address);
     let mut cx = current_trap_cx();
     cx.x[10] = ans as usize; // 把syscall的返回值存入user process context
-    drop(p); 
-    nk_entry_gate();
+    drop(p);
+    //TODO: delegate
+    //nk_entry_gate();
 }
 
 

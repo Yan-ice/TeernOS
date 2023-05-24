@@ -1,7 +1,7 @@
 use super::File;
 use alloc::sync::{Arc, Weak};
 use spin::Mutex;
-use crate::nk::{
+use crate::util::mm_util::{
     UserBuffer,
 };
 use crate::task::suspend_current_and_run_next;

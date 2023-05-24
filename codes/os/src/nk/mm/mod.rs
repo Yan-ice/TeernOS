@@ -12,6 +12,8 @@ use spin::Mutex;
 use alloc::vec::Vec;
 use riscv::register::satp;
 
+use crate::nk::PROXYCONTEXT;
+use crate::nk::trap::ProxyContext;
 use crate::outer_frame_alloc;
 
 pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRange};
@@ -33,15 +35,6 @@ use frame_allocator::{
 pub use page_table::{
     PageTable,
     PageTableEntry,
-    translated_raw,
-    translated_str,
-    translated_ref,
-    translated_refmut,
-    translated_refcopy,
-    copy_object,
-    copy_array,
-    UserBuffer,
-    UserBufferIterator,
     PTEFlags
 };
 
@@ -97,9 +90,13 @@ pub fn init() {
 
     frame_allocator::init_frame_allocator();  // 物理页帧分配器
     // KERNEL_SPACE是个lazy启动的，启动时将pagetable等数据写好
- 
+
+    
     KERNEL_SPACE.lock().activate();  // 切换页表
     // KERNEL_SPACE.lock().print_pagetable();
+    // unsafe{
+    //     PROXYCONTEXT().nk_satp = KERNEL_SPACE.lock().token();
+    // }
 
     let mut reg:usize = 0;
     unsafe{
@@ -110,6 +107,7 @@ pub fn init() {
 }
 
 pub fn init_othercore(){
+
     KERNEL_SPACE.lock().activate();
 }
 
@@ -170,9 +168,12 @@ pub fn nkapi_pt_init(pt_handle: usize){
 
     println!("[debug] Mapping Nk trampoline.");
 
-    pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
-            PhysAddr::from(snktrampoline as usize).into(),
-            PTEFlags::R | PTEFlags::X);
+    unsafe{
+        pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
+        PhysAddr::from(PROXYCONTEXT() as *const ProxyContext as usize).into(),
+        PTEFlags::R | PTEFlags::X);
+    }
+    
 
     pt.print_pagetable();
 
@@ -296,9 +297,11 @@ pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Optio
 }
 
 pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
+    println!("nkapi translating va.");
+    println!("params get: {:?} {:?}", pt_handle, va);
     if let Some(pt) = pt_get(pt_handle){
         let pa = pt.translate_va(va);
-        
+        println!("va trans: {:?} -> {:?}",va,pa);
         return pa;
     }
     println!("nk_translate_va: cannot find pagetable!");
@@ -333,23 +336,27 @@ pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8],
 
 use self::memory_set::outerkernel_pt;
 
-use super::nk_entry_gate;
-use crate::task::__switch;
+//use crate::task::__switch;
 pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) {
     if let Some(page_table) = pt_get(pt_handle) {
-        // let satp = page_table.token();
-        nk_entry_gate();
-        // unsafe {
-        //     satp::write(satp);
-        //     llvm_asm!("sfence.vma" :::: "volatile");
-        // }
-        println!("in nk before context switch");
-        unsafe {
-            __switch(
-                start,
-                end,
-            );
+        // // let satp = page_table.token();
+        // nk_entry_gate();
+        // // unsafe {
+        // //     satp::write(satp);
+        // //     llvm_asm!("sfence.vma" :::: "volatile");
+        // // }
+
+        println!("outer kernel's table switch.");
+        unsafe{
+            (&mut PROXYCONTEXT()).outer_satp = page_table.token();
         }
+        
+        // unsafe {
+        //     __switch(
+        //         start,
+        //         end,
+        //     );
+        // }
         return;
     }
     println!("nk_activate: cannot find pagetable!");

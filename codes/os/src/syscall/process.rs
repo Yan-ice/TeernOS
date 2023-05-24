@@ -1,7 +1,7 @@
 use crate::lang_items::Bytes;
 use crate::task::*;
 use crate::timer::*;
-use crate::nk::{
+use crate::util::mm_util::{
     UserBuffer,
     translated_str,
     translated_refmut,

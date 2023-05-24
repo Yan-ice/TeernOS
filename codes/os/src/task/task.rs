@@ -8,11 +8,11 @@ use crate::{nk::{
     //PageTable,
     VirtAddr,
     VirtPageNum,
-    translated_refmut,
     MmapArea,
     MapPermission,
     // PTEFlags,
-}, syscall::FD_LIMIT, task::RLIMIT_NOFILE};
+}, util::mm_util::translated_refmut, 
+syscall::FD_LIMIT, task::RLIMIT_NOFILE};
 use crate::nk::{TrapContext, nkapi_translate};
 use crate::config::*;
 use crate::gdb_println;

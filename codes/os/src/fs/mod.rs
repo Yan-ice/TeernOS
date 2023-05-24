@@ -6,7 +6,7 @@ pub mod finfo;
 mod iovec;
 mod dev_fs;
 
-use crate::nk::UserBuffer;
+use crate::util::mm_util::UserBuffer;
 use alloc::sync::Arc; 
 
 #[derive(Clone)]

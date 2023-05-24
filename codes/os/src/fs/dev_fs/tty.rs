@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use alloc::sync::Arc;
 use super::{ioctl::Termios};
 use crate::fs::File;
-use crate::nk::{UserBuffer,copy_object};
+use crate::util::mm_util::{UserBuffer,copy_object};
 use super::ioctl::*;
 
 lazy_static! {

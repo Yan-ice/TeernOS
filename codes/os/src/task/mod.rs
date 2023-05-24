@@ -8,8 +8,7 @@ mod info;
 mod resource;
 
 use crate::fs::{open, OpenFlags, DiskInodeType, File};
-use crate::nk::{UserBuffer, add_free};
-use crate::config::PAGE_SIZE;
+use crate::util::mm_util::{UserBuffer};
 use crate::gdb_print;
 use crate::monitor::*;
 //use easy_fs::DiskInodeType;
@@ -20,7 +19,6 @@ pub use resource::*;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use manager::fetch_task;
-use lazy_static::*;
 use crate::utils::log2;
 pub use context::TaskContext;
 
@@ -227,6 +225,7 @@ pub fn add_initproc() {
     unsafe{
         println!("ready to read initproc");
         let initproc = crate::INITPROC();
+        println!("ready to clone initproc");
         let proc = initproc.clone();
         println!("ready to add task");
         add_task(proc);
