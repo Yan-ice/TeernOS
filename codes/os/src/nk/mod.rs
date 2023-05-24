@@ -68,8 +68,10 @@ pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option
 }
 pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     unsafe{
+       debug_all_registers();
+       debug_stack_content();
        println!("NKAPI: nkapi_trans_va occurs");
-       println!("params expected: {:?} {:?}", pt_handle, va);
+       println!("params expected: {:x} {:x}", pt_handle, &va as *const VirtAddr as usize);
        let target_func: usize = mm::nkapi_translate_va as usize;
        llvm_asm!("mv x28, $0" :: "r"(NK_TRAMPOLINE as usize));
        llvm_asm!("mv x29, $0" :: "r"(target_func));
@@ -78,6 +80,7 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
        let test: usize;
        llvm_asm!("mv $0, x12" : "=r"(test));
        println!("pt_handle: {:x} x12: {:x}",pt_handle, test);
+       
        panic!("stop@");
        llvm_asm!("j nk_entry2");
    }
