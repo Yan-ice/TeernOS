@@ -36,7 +36,7 @@ global_asm!(include_str!("trap_signal.S"));
 pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-                println!("{:?}", scause.cause());
+                println!("cause: {:?}", scause.cause());
                 is_load = true;
             } else {
                 is_load = false;

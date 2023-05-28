@@ -2,6 +2,7 @@ mod heap_allocator;
 mod address;
 mod frame_allocator;
 mod page_table;
+mod nkapi;
 pub(crate) mod memory_set;
 mod vma;
 
@@ -14,7 +15,9 @@ use riscv::register::satp;
 
 use crate::nk::PROXYCONTEXT;
 use crate::nk::trap::ProxyContext;
-use crate::outer_frame_alloc;
+use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
+
+pub use nkapi::API_ENABLE as NKAPI_ENABLE;
 
 pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRange};
 pub use frame_allocator::{
@@ -39,7 +42,7 @@ pub use page_table::{
 };
 
 pub use vma::{MmapArea, MmapSpace};
-pub use memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE,KERNEL_MMAP_AREA, KERNEL_TOKEN, kernel_token};
+pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_MMAP_AREA, KERNEL_TOKEN, kernel_token};
 pub use memory_set::remap_test;
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
@@ -55,6 +58,7 @@ extern "C" {
     fn sbss_with_stack();
     fn ebss();
     fn ekernel();
+    fn sproxy();
     fn strampoline();
     fn ssignaltrampoline();
     fn snktrampoline();
@@ -63,10 +67,47 @@ extern "C" {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
     Identical,
-    Specified(PhysAddr),
+    Specified(PhysPageNum),
     Framed,
     FramedInNK
 }
+impl From<MapType> for usize {
+    fn from(v: MapType) -> Self {
+        match v {
+            Identical =>{
+                usize::MAX-1
+            }
+            Framed =>{
+                usize::MAX-2
+            }
+            FramedInNK =>{
+                usize::MAX-3
+            }
+            Specified =>{
+                if let MapType::Specified(ph) = v {
+                    ph.0
+                }else{
+                    0
+                }
+            }
+        }
+    }
+}
+impl From<usize> for MapType{
+    fn from(v: usize) -> Self {
+        if v == usize::MAX-1 {
+            MapType::Identical
+        }else if v == usize::MAX-2 {
+            MapType::Framed
+        }else if v == usize::MAX-3 {
+            MapType::FramedInNK
+        }else{
+            MapType::Specified(PhysPageNum::from(v))
+        }
+    }
+}
+
+
 
 bitflags! {
     pub struct MapPermission: u8 {
@@ -76,6 +117,18 @@ bitflags! {
         const U = 1 << 4;
     }
     
+}
+
+impl From<MapPermission> for usize{
+    fn from(v: MapPermission) -> Self{
+        v.bits().into()
+    }
+}
+
+impl From<usize> for MapPermission{
+    fn from(v: usize) -> Self{
+        MapPermission { bits: v as u8}
+    }
 }
 
 impl MapPermission{
@@ -93,17 +146,10 @@ pub fn init() {
 
     
     KERNEL_SPACE.lock().activate();  // 切换页表
-    // KERNEL_SPACE.lock().print_pagetable();
+    //KERNEL_SPACE.lock().print_pagetable();
     // unsafe{
     //     PROXYCONTEXT().nk_satp = KERNEL_SPACE.lock().token();
     // }
-
-    let mut reg:usize = 0;
-    unsafe{
-        llvm_asm!("mv $0,sp" : "=r"(reg));
-    }
-    println!("latter sp: {:x}",reg);
-
 }
 
 pub fn init_othercore(){
@@ -120,9 +166,9 @@ lazy_static! {
 //get the Pagetable from its handle(id)
 pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
     //TODO: bogus descriptor?
-    if pt_handle == 0{
-        return Some(outerkernel_pt());
-    }
+    // if pt_handle == 0{
+    //     return Some(outerkernel_pt());
+    // }
 
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
@@ -137,10 +183,6 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
 
 pub fn nkapi_pt_init(pt_handle: usize){
     
-    if pt_handle == 0{
-        println!("WARN: cannot init pagetable with handle_id 0 !");
-        return;
-    }
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
             //pagetable with this handle already exist
@@ -158,30 +200,24 @@ pub fn nkapi_pt_init(pt_handle: usize){
         PhysAddr::from(ssignaltrampoline as usize).into(),
         PTEFlags::R | PTEFlags::X | PTEFlags::U,
     );
-
-    println!("[debug] Mapping trampoline.");
-
     // mapping trampoline
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
         PTEFlags::R | PTEFlags::X);
 
-    println!("[debug] Mapping Nk trampoline.");
-
     unsafe{
         pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
-        PhysAddr::from(PROXYCONTEXT() as *const ProxyContext as usize).into(),
-        PTEFlags::R | PTEFlags::X);
+        PhysAddr::from(sproxy as *const ProxyContext as usize).into(),
+        PTEFlags::R | PTEFlags::W);
     }
-    
 
-    pt.print_pagetable();
+    if pt_handle != 0{
+        println!("[debug] Mapping kernel_shared space.");
+        pt.map_kernel_shared();
+    }
 
-    println!("[debug] Mapping kernel_shared space.");
-    pt.map_kernel_shared();
-
-    println!("Creating Pagetable success.");
     PAGE_TABLE_LIST.lock().push(pt);
+    println!("Creating Pagetable success.");
 }
 
 // pub fn nkapi_pt_copy(pt_handle: usize, parent_handle: usize){
@@ -209,8 +245,8 @@ pub fn pt_destroy(pt_handle: usize){
 }
 
 pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission) -> PhysPageNum{
+    
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
-
     if let Some(mut target_pt) = pt_get(pt_handle){
         // get target ppn
         let target_ppn;
@@ -236,22 +272,24 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
                 target_ppn = PhysPageNum::from(vpn.0);
             }
             MapType::Specified(ppn) => {
-                target_ppn = ppn.floor();
+                target_ppn = ppn;
             }
         }
 
         //clean the page frame
-        let bytes_array = target_ppn.get_bytes_array();
-        for i in bytes_array {
-            *i = 0;
+        if map_type == MapType::Framed {
+            let bytes_array = target_ppn.get_bytes_array();
+            for i in bytes_array {
+                *i = 0;
+            }
         }
-
+        
         // modify pagetable entry
         target_pt.map(vpn, target_ppn, pte_flags);
 
         return target_ppn
     }
-    println!("nk_alloc: cannot find pagetable!");
+    println!("nkapi_alloc: cannot find pagetable!");
     return PhysPageNum{0: vpn.0};
 
 }
@@ -266,6 +304,7 @@ pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
 
 // while translating COW with write==True, it would start alloc and copy.
 pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
+
     if let Some(mut pt) = pt_get(pt_handle){
         let pte = pt.translate(vpn).unwrap();
         if pte.is_valid() {
@@ -297,47 +336,39 @@ pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Optio
 }
 
 pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
-    println!("nkapi translating va.");
-    println!("params get: {:?} {:?}", pt_handle, va);
+
     if let Some(pt) = pt_get(pt_handle){
         let pa = pt.translate_va(va);
-        println!("va trans: {:?} -> {:?}",va,pa);
         return pa;
     }
-    println!("nk_translate_va: cannot find pagetable!");
-    None
+    panic!("nk_translate_va: cannot find pagetable!");
 }
 
 
-pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8], offset:usize) {
-    let mut start: usize = 0;
-    let mut page_offset: usize = offset;
-    let len = data.len();
-    if let Some(pt) = pt_get(pt_handle){
-        loop { 
-            let src = &data[start..len.min(start + crate::config::PAGE_SIZE - page_offset)];
+pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data_ptr: usize, offset:usize) {
+    println!("nkapi_copy: copying");
+    unsafe{
+        let data = &*(data_ptr as *const usize as *mut [u8; crate::config::PAGE_SIZE]);
+
+        let mut start: usize = 0;
+        let mut page_offset: usize = offset;
+        let len = crate::config::PAGE_SIZE;
+
+        if let Some(pt) = pt_get(pt_handle){
+            let src = &data[0..(len - page_offset)];
             let dst = &mut pt.translate(current_vpn)
                 .unwrap().ppn()
                 .get_bytes_array()[page_offset..(page_offset+src.len())];
             dst.copy_from_slice(src);
-    
-            start += crate::config::PAGE_SIZE - page_offset;
-            
-            page_offset = 0;
-            if start >= len {
-                break;
-            }
-            current_vpn.step();
+            return;
         }
-        return;
+        println!("nk_copyTo: cannot find pagetable!");
     }
-    println!("nk_copyTo: cannot find pagetable!");
+
 }
 
-use self::memory_set::outerkernel_pt;
-
 //use crate::task::__switch;
-pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) {
+pub fn nkapi_activate(pt_handle: usize) {
     if let Some(page_table) = pt_get(pt_handle) {
         // // let satp = page_table.token();
         // nk_entry_gate();
@@ -363,28 +394,29 @@ pub fn nkapi_activate(pt_handle: usize, start: *const usize, end: *const usize) 
 }
 
 
-//will be replace by nkapi_alloc
-pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
-    if let Some(mut pt) = pt_get(pt_handle) {
-        pt.map(vpn, ppn, perm.flags());
-        return;
-    }
-    println!("nk_mmap: cannot find pagetable!");
-}
+// //will be replace by nkapi_alloc
+// pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
+//     println!("mmaping {:?} {:?} for pt {} !", vpn, ppn, pt_handle);
+//     if let Some(mut pt) = pt_get(pt_handle) {
+//         pt.map(vpn, ppn, perm.flags());
+//         return;
+//     }
+//     println!("nk_mmap: cannot find pagetable!");
+// }
 
-//will be replaced by nkapi_dealloc
-pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
-    if let Some(mut pt) = pt_get(pt_handle){
-        pt.unmap(vpn);
-        return;
-    }
-    println!("nk_unmap: cannot find pagetable!");
-}
+// //will be replaced by nkapi_dealloc
+// pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
+//     if let Some(mut pt) = pt_get(pt_handle){
+//         pt.unmap(vpn);
+//         return;
+//     }
+//     println!("nk_unmap: cannot find pagetable!");
+// }
 
 // this function is temporaily used. it is vulunerable!
 pub fn nkapi_vun_getpt(pt_handle: usize) -> PageTable{
     if let Some(pt) = pt_get(pt_handle) {
         return pt;
     }
-    panic!("Pagetable handle not exist.");
+    panic!("nk_vun_getpt: Pagetable handle not exist.");
 }

@@ -5,13 +5,14 @@ use crate::nk::{
 
 use crate::nk::{nkapi_vun_getpt};
 
-use crate::nk::{VirtPageNum, VirtAddr, PhysPageNum, MapType, MapPermission, PTEFlags};          
+use crate::nk::{VirtAddr, PhysAddr, PhysPageNum, VirtPageNum, MapType, MapPermission, PTEFlags};          
 use crate::nk::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
 use alloc::vec::Vec;
 use crate::config::*;
 use crate::task::AuxHeader;
+
 
 extern "C" {
     fn stext();
@@ -22,15 +23,20 @@ extern "C" {
     fn edata();
     fn sbss_with_stack();
     fn ebss();
+    fn sproxy();
+    fn eproxy();
+    fn snkheap();
+    fn enkheap();
     fn ekernel();
+    fn sokheap();
     fn strampoline();
     fn ssignaltrampoline();
     fn snktrampoline();
 }
 
 
+
 pub struct MemorySet {
-    level: usize,  // 有用么，我找不到其他有用的操作
     id: usize,   // 这个也找不到
     //page_table: PageTable,
     areas: Vec<MapArea>,  // 常规的Maparea
@@ -46,11 +52,10 @@ impl MemorySet {
     pub fn clone_areas(&self) -> Vec<MapArea> {
         self.areas.clone()
     }
-    pub fn new_bare(level: usize, id: usize) -> Self {
-        println!("new {}", id);
+    pub fn new_bare(id: usize) -> Self {
         nkapi_pt_init(id);
+        println!("[debug] new pgtb");
         Self {
-            level,
             id,
             //page_table: PageTable::new(id),
             areas: Vec::new(),
@@ -154,10 +159,142 @@ impl MemorySet {
     }
 
     /// Mention that trampoline is not collected by areas.
-    // fn map_trampoline(&mut self) {
-        
+    fn map_trampoline(&mut self) {
+        nkapi_alloc(self.id, 
+            VirtAddr::from(TRAMPOLINE).into(), 
+            MapType::Specified(PhysAddr::from(strampoline as usize).into()),
+            MapPermission::R | MapPermission::X,
+        );
 
+        nkapi_alloc(self.id, 
+            VirtAddr::from(NK_TRAMPOLINE).into(), 
+            MapType::Specified(PhysAddr::from(sproxy as usize).into()),
+            MapPermission::R | MapPermission::W,
+        );
+
+        
+    }
+
+    /// Mention that trampoline is not collected by areas.
+    /// Different from trampoline: this dosen't need to be mapped in kernel(executed in user)
+    fn map_signal_trampoline(&mut self) {
+        nkapi_alloc(self.id, 
+            VirtAddr::from(SIGNAL_TRAMPOLINE).into(), 
+            MapType::Specified(PhysAddr::from(ssignaltrampoline  as usize).into()),
+            MapPermission::R | MapPermission::X | MapPermission::U
+        );
+    }
+
+    // fn map_kernel_shared(&mut self){
+    //     self.page_table.map_kernel_shared();
     // }
+
+    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
+        // println!{"2"}
+        map_area.map(self.id);
+        if let Some(data) = data {
+            map_area.copy_data(self.id, data, 0);
+        }
+        self.areas.push(map_area);
+    }
+    
+    pub fn new_outer_kernel() -> Self {
+        let mut memory_set = Self::new_bare(0);
+
+        println!("mapping outer kernel");
+
+        // map trampoline
+        // memory_set.map_trampoline();  //映射trampoline
+        // map kernel sections
+        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+        println!("mapping .text section");
+        memory_set.push(MapArea::new(
+            (stext as usize).into(),
+            (etext as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::X,
+        ), None);
+        println!("mapping .rodata section");
+        memory_set.push(MapArea::new(
+            (srodata as usize).into(),
+            (erodata as usize).into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+        println!("mapping .data section");
+        memory_set.push(MapArea::new(
+            (sdata as usize).into(),
+            (edata as usize).into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+
+        println!("mapping .bss section");
+        memory_set.push(MapArea::new(
+            (sbss_with_stack as usize).into(),
+            (ebss as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W, 
+            //temporiliy cannot be readonly
+        ), None);
+
+        println!("mapping proxy section");
+        memory_set.push(MapArea::new(
+            (sproxy as usize).into(),
+            (eproxy as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W, 
+            //temporiliy cannot be readonly
+        ), None);
+
+        println!("mapping nk heap memory");
+        memory_set.push(MapArea::new(
+            (snkheap as usize).into(),
+            (enkheap as usize).into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ), None);
+
+        // println!("mapping okheap memory");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
+
+        println!("mapping nk frame memory (readonly)");
+        memory_set.push(MapArea::new(
+            (ekernel as usize).into(),
+            NKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+
+        println!("mapping outer kernel space");
+        memory_set.push(MapArea::new(
+            (NKSPACE_END).into(),
+            OKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ), None);
+
+        println!("mapping memory-mapped registers");
+        for pair in MMIO {  // 这里是config硬编码的管脚地址
+            memory_set.push(MapArea::new(
+                (*pair).0.into(),
+                ((*pair).0 + (*pair).1).into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ), None);
+        }
+        memory_set
+
+    }
 
     // /// Mention that trampoline is not collected by areas.
     // /// Different from trampoline: this dosen't need to be mapped in kernel(executed in user)
@@ -177,8 +314,8 @@ impl MemorySet {
     /// 倒数第二个是trap context的entry point
     pub fn from_elf(elf_data: &[u8], pid: usize) -> (Self, usize, usize, usize, Vec<AuxHeader>) {
         let mut auxv:Vec<AuxHeader> = Vec::new();
-        let mut memory_set = Self::new_bare(2,pid);
-
+        let mut memory_set = Self::new_bare(pid);
+        println!("[debug] elf[0]");
         // map program headers of elf, with U flag
         let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
         let elf_header = elf.header;
@@ -210,6 +347,8 @@ impl MemorySet {
 
         // denotes if .comment should be mapped
         let mut comment_flag = true;
+
+        println!("[debug] elf[1]");
 
         for ph in elf.program_iter(){
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
@@ -252,7 +391,7 @@ impl MemorySet {
                 }
             }
         }
-
+        println!("[debug] elf[2]");
         // Get ph_head addr for auxv
         let ph_head_addr = head_va + elf.header.pt2.ph_offset() as usize;
         auxv.push(AuxHeader{aux_type: AT_PHDR, value: ph_head_addr as usize});
@@ -272,6 +411,7 @@ impl MemorySet {
         //     MapPermission::R | MapPermission::W | MapPermission::U,
         // ), None);
 
+        println!("[debug] elf[3]");
         // maparea2: TrapContext
         memory_set.push_mmap(MapArea::new(
             TRAP_CONTEXT.into(),
@@ -293,6 +433,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W | MapPermission::U,
         ), None);
 
+        println!("[debug] elf[4]");
         // map signal user stack with U flags
         // maparea4: signal_user_stack
         let mut signal_stack_top: usize = USER_SIGNAL_STACK;
@@ -356,7 +497,7 @@ impl MemorySet {
 
     pub fn from_copy_on_write(user_space: &mut MemorySet, split_addr: usize, pid: usize) -> MemorySet {
         // create a new memory_set
-        let mut memory_set = Self::new_bare(2,pid);
+        let mut memory_set = Self::new_bare(pid);
         // This part is not for Copy on Write.
         // Including:   Trampoline
         //              Trap_Context
@@ -515,8 +656,8 @@ impl MemorySet {
     }
 
     ///修改satp，切换到该页表
-    pub fn activate(&self, start: *const usize, end: *const usize) {
-        nkapi_activate(self.id, start, end);
+    pub fn activate(&self) {
+        nkapi_activate(self.id);
     }
 
     pub fn translate(&self, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum> {
@@ -641,6 +782,7 @@ impl MapArea {
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
         // println!{"map one!!!"}
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
+        
         self.data_frames.insert(vpn, ppn);
     }
 
@@ -667,6 +809,23 @@ impl MapArea {
         let mut start: usize = 0;
         let mut page_offset: usize = offset;
         let mut current_vpn = self.vpn_range.get_start();
-        nkapi_copyTo(pt_handle, current_vpn, data, offset);
+        
+        let len = data.len();
+        let mut data_buf: &mut [u8;4096] = &mut [0; 4096];
+        loop { 
+            let src: &[u8] = &data[start..len.min(start + PAGE_SIZE - page_offset)];
+            data_buf.copy_from_slice(src);
+
+            start += PAGE_SIZE - page_offset;
+            
+            nkapi_copyTo(pt_handle, current_vpn, data_buf, offset);
+
+            page_offset = 0;
+            if start >= len {
+                break;
+            }
+            current_vpn.step();
+        }
+        
     }
 }

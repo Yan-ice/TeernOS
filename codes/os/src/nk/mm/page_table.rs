@@ -1,10 +1,10 @@
-use super::memory_set::outerkernel_pt;
+
 use super::{
     frame_alloc,
     PhysPageNum,
     VirtPageNum,
     VirtAddr,
-    PhysAddr,
+    PhysAddr, nkapi_vun_getpt,
 };
 use crate::config::*;
 use bitflags::*;
@@ -229,7 +229,7 @@ impl PageTable {
                     let va = ((((i<<9)+j)<<9)+k)<<12 ;
                     let pa = pte.ppn().0 << 12 ;
                     let flags = pte.flags();
-                    println!("va:0x{:X}  pa:0x{:X} flags:{:?}",va,pa,flags);
+                    println!("va:0x{:x}  pa:0x{:x} flags:{:?}",va,pa,flags);
                 }
             }
         }
@@ -256,8 +256,12 @@ impl PageTable {
         *pte = PageTableEntry::empty();
     }
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.find_pte(vpn)
-            .map(|pte| {pte.clone()})
+        let p = self.find_pte(vpn)
+            .map(|pte| {pte.clone()});
+        if p.is_none() {
+            println!("WARN: cannot translate {:?}", vpn);
+        }
+        p
     }
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
         if let Some(pte) = self.find_pte(va.clone().floor()) {
@@ -266,6 +270,7 @@ impl PageTable {
                 return Some(pa);
             }
         }
+        println!("WARN: cannot translate {:?}", va);
         None
         
     }
@@ -281,7 +286,7 @@ impl PageTable {
 
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self){
-        let kernel_pagetable = outerkernel_pt();
+        let kernel_pagetable = nkapi_vun_getpt(0);
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);

@@ -57,9 +57,9 @@ lazy_static! {
     ));
 
     //为outer kernel准备专门的页表。
-    pub static ref OUTER_KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
-        MemorySet::new_outer_kernel()
-    ));
+    // pub static ref OUTER_KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
+    //     MemorySet::new_outer_kernel()
+    // ));
 
     pub static ref KERNEL_TOKEN: Arc<KernelToken> = Arc::new(
         KernelToken{
@@ -78,9 +78,9 @@ lazy_static! {
 pub fn kernel_pt() -> PageTable {
     KERNEL_SPACE.lock().page_table
 }
-pub fn outerkernel_pt() -> PageTable {
-    OUTER_KERNEL_SPACE.lock().page_table
-}
+// pub fn outerkernel_pt() -> PageTable {
+//     OUTER_KERNEL_SPACE.lock().page_table
+// }
 
 pub fn kernel_token() -> usize {
     KERNEL_SPACE.lock().token()
@@ -427,82 +427,6 @@ impl MemorySet {
         }
         memory_set
 
-        // let mut memory_set = Self::new_bare(0);
-        // println!("mapping outer kernel");
-        // // map trampoline
-        // memory_set.map_trampoline();  //映射trampoline
-        // // map kernel sections
-
-        // memory_set.push(MapArea::new(
-        //     (stext as usize).into(),
-        //     (etext as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::X | MapPermission::W,
-        // ), None);
-        // println!("mapping .rodata section (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (srodata as usize).into(),
-        //     (erodata as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-        // println!("mapping .data section (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (sdata as usize).into(),
-        //     (edata as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-        // println!("mapping .bss section (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (sbss_with_stack as usize).into(),
-        //     (ebss as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-        // println!("mapping nk frame memory (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (ekernel as usize).into(),
-        //     NKSPACE_END.into(),
-        //     MapType::Identical,
-        //     MapPermission::R,
-        // ), None);
-
-        // // println!("mapping nkheap memory (readonly)");
-        // // memory_set.push(MapArea::new(
-        // //     (snkheap as usize).into(),
-        // //     (enkheap as usize).into(),
-        // //     MapType::Identical,
-        // //     MapPermission::R| MapPermission::W,
-        // // ), None);
-
-        // println!("mapping okheap memory");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-
-        // println!("mapping outer kernel space");
-        // memory_set.push(MapArea::new(
-        //     (NKSPACE_END).into(),
-        //     OKSPACE_END.into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-
-        // println!("mapping memory-mapped registers (readonly) ");
-        // for pair in MMIO {  // 这里是config硬编码的管脚地址
-        //     memory_set.push(MapArea::new(
-        //         (*pair).0.into(),
-        //         ((*pair).0 + (*pair).1).into(),
-        //         MapType::Identical,
-        //         MapPermission::R | MapPermission::W
-        //     ), None);
-        // }
-        // println!("finish outer kernel address space");
-        // memory_set
     }
 
     /// Include sections in elf and trampoline and TrapContext and user stack,
@@ -829,10 +753,8 @@ impl MemorySet {
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
-            println!("{:?}", satp::read());
-            println!("{}", satp);
             satp::write(satp);
-            println!("{:?}", satp::read());
+            println!("satp updated: {:?}", satp::read());
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }
@@ -918,7 +840,7 @@ impl ChunkArea {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Specified(pa) => {
-                ppn = pa.floor();
+                ppn = pa;
             }
             MapType::Framed => {
                 if let Some(alppn) = outer_frame_alloc(){
@@ -1008,7 +930,7 @@ impl MapArea {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Specified(pa) => {
-                ppn = pa.floor();
+                ppn = pa;
             }
             MapType::Framed => {
                 if let Some(alppn) = outer_frame_alloc(){

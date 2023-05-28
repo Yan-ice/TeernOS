@@ -157,7 +157,6 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
     let pn = FRAME_ALLOCATOR
         .lock()
         .alloc();
-    println!("nk alloc: {:?}", pn.unwrap());
     pn
 }
 

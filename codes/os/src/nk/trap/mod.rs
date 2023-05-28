@@ -16,7 +16,7 @@ use riscv::register::{
 pub use context::{TrapContext, ProxyContext};
 use trap::user_trap_handler;
 pub use trap::user_trap_return;
-pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE, OUTER_KERNEL_SPACE};
+pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE};
 use crate::{syscall::syscall, config::{TRAMPOLINE, NK_TRAMPOLINE}};
 
 
@@ -110,7 +110,6 @@ extern "C"{
 
 pub fn PROXYCONTEXT() -> &'static mut ProxyContext{
     unsafe{ 
-        println!("find proxy");
         &mut *(NK_TRAMPOLINE as usize 
         as *mut usize 
         as *mut ProxyContext) 

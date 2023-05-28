@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 use lazy_static::*;
 use spin::Mutex;
+use crate::{OUTER_KERNEL_SPACE, PID_ALLOCATOR};
 use crate::nk::{KERNEL_SPACE, MapPermission, VirtAddr};
 use crate::config::{
     PAGE_SIZE,
@@ -8,7 +9,7 @@ use crate::config::{
     KERNEL_STACK_SIZE,
 };
 
-struct PidAllocator {
+pub struct PidAllocator {
     current: usize,
     recycled: Vec<usize>,
 }
@@ -16,7 +17,7 @@ struct PidAllocator {
 impl PidAllocator {
     pub fn new() -> Self {
         PidAllocator {
-            current: 0,
+            current: 1,
             recycled: Vec::new(),
         }
     }
@@ -38,21 +39,17 @@ impl PidAllocator {
     }
 }
 
-lazy_static! {
-    static ref PID_ALLOCATOR : Mutex<PidAllocator> = Mutex::new(PidAllocator::new());
-}
-
 pub struct PidHandle(pub usize);
 
 impl Drop for PidHandle {
     fn drop(&mut self) {
         //println!("drop pid {}", self.0);
-        PID_ALLOCATOR.lock().dealloc(self.0);
+        PID_ALLOCATOR().lock().dealloc(self.0);
     }
 }
 
 pub fn pid_alloc() -> PidHandle {
-    PID_ALLOCATOR.lock().alloc()
+    PID_ALLOCATOR().lock().alloc()
 }
 
 /// Return (bottom, top) of a kernel stack in kernel space.
@@ -70,8 +67,7 @@ impl KernelStack {
     pub fn new(pid_handle: &PidHandle) -> Self {
         let pid = pid_handle.0;
         let (kernel_stack_bottom, kernel_stack_top) = kernel_stack_position(pid);
-        KERNEL_SPACE
-            .lock()
+        OUTER_KERNEL_SPACE().lock()
             .insert_framed_area(
                 kernel_stack_bottom.into(),
                 kernel_stack_top.into(),

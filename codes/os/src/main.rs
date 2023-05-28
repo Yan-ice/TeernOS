@@ -67,9 +67,9 @@ pub fn allocator_init(){
 //Yan_ice 给outer kernel加俩函数,用outer kernel的frame allocator，
 //然后就暴露他俩咯
 pub fn outer_frame_alloc() -> Option<PhysPageNum> {
-    let vadr = OuterAllocator().alloc();
-    println!("Outer kernel alloc: {:?}", vadr.unwrap());
-    vadr
+    let padr = OuterAllocator().alloc();
+    println!("Outer kernel alloc: {:?}", padr.unwrap());
+    padr
     
 }
 pub fn outer_frame_dealloc(ppn: PhysPageNum) {
@@ -111,15 +111,13 @@ lazy_static! {
 
 pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
-    // KERNEL_SPACE.lock().activate();
-
     println!("UltraOS: outer kernel init.");
+    
+    nkapi_gatetest_entry();
     extern "C"{
         fn snkheap();
     }
-
-    debug_register_info();
-
+    
     allocator_init();
     println!("UltraOS: static struct initialized");
 

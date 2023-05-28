@@ -269,16 +269,20 @@ impl TaskControlBlock {
 
     //PCB生成
     pub fn new(elf_data: &[u8]) -> Self {
+        
         // alloc a pid and a kernel stack in kernel space
         let pid_handle = pid_alloc();
         let tgid = pid_handle.0;
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
-
+        println!("start generate PCB [0]");
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
+        println!("start generate PCB [0-1]");
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
+
+        println!("start generate PCB [1]");
 
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
@@ -340,6 +344,7 @@ impl TaskControlBlock {
         //file_limit.set_cur(FD_LIMIT as i64);
         task_control_block.acquire_inner_lock().init_rlimits();
 
+        println!("start generate PCB [2]");
         // prepare TrapContext in user space
         let trap_cx = task_control_block.acquire_inner_lock().get_trap_cx();
         *trap_cx = TrapContext::app_init_context(
@@ -350,6 +355,7 @@ impl TaskControlBlock {
             //trap_handler as usize,
                 //Yan_ice: trap_handler
         );
+        println!("start generate PCB [3]");
         task_control_block
     }
 

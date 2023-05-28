@@ -3,7 +3,7 @@ mod switch;
 mod task;
 mod manager;
 mod processor;
-mod pid;
+pub(crate) mod pid;
 mod info;
 mod resource;
 
@@ -223,7 +223,6 @@ pub fn add_initproc_into_fs() {
 pub fn add_initproc() {
     add_initproc_into_fs();
     unsafe{
-        println!("ready to read initproc");
         let initproc = crate::INITPROC();
         println!("ready to clone initproc");
         let proc = initproc.clone();

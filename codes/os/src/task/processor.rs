@@ -131,7 +131,7 @@ impl Processor {
                     let id = task_inner.memory_set.id();
                     drop(task_inner);
                     self.inner.borrow_mut().current = Some(task);
-                    nkapi_activate(id, idle_task_cx_ptr2, next_task_cx_ptr2)
+                    nkapi_activate(id)
                     // 加上gate
                     ///////////////////////////////////////////////
                     // let Some(temp) = self.inner.borrow().current;
