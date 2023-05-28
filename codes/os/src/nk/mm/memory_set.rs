@@ -78,9 +78,6 @@ lazy_static! {
 pub fn kernel_pt() -> PageTable {
     KERNEL_SPACE.lock().page_table
 }
-// pub fn outerkernel_pt() -> PageTable {
-//     OUTER_KERNEL_SPACE.lock().page_table
-// }
 
 pub fn kernel_token() -> usize {
     KERNEL_SPACE.lock().token()
@@ -327,106 +324,6 @@ impl MemorySet {
             ), None);
         }
         memory_set
-    }
-
-
-    // 这里肯定不对，现在有个问题，outer kernel和 nested kernel的地址空间已经重合了
-    pub fn new_outer_kernel() -> Self {
-        let mut memory_set = Self::new_bare(0);
-
-        println!("mapping outer kernel");
-
-        // map trampoline
-        memory_set.map_trampoline();  //映射trampoline
-        // map kernel sections
-        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
-        println!("mapping .text section");
-        memory_set.push(MapArea::new(
-            (stext as usize).into(),
-            (etext as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::X,
-        ), None);
-        println!("mapping .rodata section");
-        memory_set.push(MapArea::new(
-            (srodata as usize).into(),
-            (erodata as usize).into(),
-            MapType::Identical,
-            MapPermission::R,
-        ), None);
-        println!("mapping .data section");
-        memory_set.push(MapArea::new(
-            (sdata as usize).into(),
-            (edata as usize).into(),
-            MapType::Identical,
-            MapPermission::R,
-        ), None);
-
-        println!("mapping .bss section");
-        memory_set.push(MapArea::new(
-            (sbss_with_stack as usize).into(),
-            (ebss as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W, 
-            //temporiliy cannot be readonly
-        ), None);
-
-        println!("mapping proxy section");
-        memory_set.push(MapArea::new(
-            (sproxy as usize).into(),
-            (eproxy as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W, 
-            //temporiliy cannot be readonly
-        ), None);
-
-        println!("mapping nk heap memory");
-        memory_set.push(MapArea::new(
-            (snkheap as usize).into(),
-            (enkheap as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ), None);
-
-        // println!("mapping okheap memory");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-
-        println!("mapping nk frame memory (readonly)");
-        memory_set.push(MapArea::new(
-            (ekernel as usize).into(),
-            NKSPACE_END.into(),
-            MapType::Identical,
-            MapPermission::R,
-        ), None);
-
-        println!("mapping outer kernel space");
-        memory_set.push(MapArea::new(
-            (NKSPACE_END).into(),
-            OKSPACE_END.into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ), None);
-
-        println!("mapping memory-mapped registers");
-        for pair in MMIO {  // 这里是config硬编码的管脚地址
-            memory_set.push(MapArea::new(
-                (*pair).0.into(),
-                ((*pair).0 + (*pair).1).into(),
-                MapType::Identical,
-                MapPermission::R | MapPermission::W,
-            ), None);
-        }
-        memory_set
-
     }
 
     /// Include sections in elf and trampoline and TrapContext and user stack,

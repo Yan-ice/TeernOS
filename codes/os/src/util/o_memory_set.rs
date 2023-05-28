@@ -54,7 +54,6 @@ impl MemorySet {
     }
     pub fn new_bare(id: usize) -> Self {
         nkapi_pt_init(id);
-        println!("[debug] new pgtb");
         Self {
             id,
             //page_table: PageTable::new(id),
@@ -315,7 +314,6 @@ impl MemorySet {
     pub fn from_elf(elf_data: &[u8], pid: usize) -> (Self, usize, usize, usize, Vec<AuxHeader>) {
         let mut auxv:Vec<AuxHeader> = Vec::new();
         let mut memory_set = Self::new_bare(pid);
-        println!("[debug] elf[0]");
         // map program headers of elf, with U flag
         let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
         let elf_header = elf.header;
@@ -811,8 +809,9 @@ impl MapArea {
         let mut current_vpn = self.vpn_range.get_start();
         
         let len = data.len();
-        let mut data_buf: &mut [u8;4096] = &mut [0; 4096];
+        let mut data_buf: &mut [u8;PAGE_SIZE] = &mut [0; PAGE_SIZE];
         loop { 
+            println!("[debug] copying elf files part {:?}", current_vpn);
             let src: &[u8] = &data[start..len.min(start + PAGE_SIZE - page_offset)];
             data_buf.copy_from_slice(src);
 

@@ -8,9 +8,9 @@ macro_rules! entry_gate {
             if !crate::nk::mm::NKAPI_ENABLE {
                 return $tar();
             }
-            llvm_asm!("addi sp, sp, -8*5");
+            llvm_asm!("addi sp, sp, -8*6");
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
-            llvm_asm!("j nk_entry2");
+            llvm_asm!("jal nk_entry2");
         }
     };
     ($tar:expr,$t1:expr) => {
@@ -18,7 +18,7 @@ macro_rules! entry_gate {
             if !crate::nk::mm::NKAPI_ENABLE {
                 return $tar($t1);
             }
-            llvm_asm!("addi sp, sp, -8*5");
+            llvm_asm!("addi sp, sp, -8*6");
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
             llvm_asm!("sd $0, 8(sp)" :: "r"(usize::from($t1)));
             llvm_asm!("jal x1, nk_entry2");

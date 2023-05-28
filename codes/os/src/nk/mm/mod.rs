@@ -194,7 +194,6 @@ pub fn nkapi_pt_init(pt_handle: usize){
     let mut pt = PageTable::new(pt_handle);
     println!("Creating PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
-    println!("[debug] Mapping trampoline.");
     //Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
         PhysAddr::from(ssignaltrampoline as usize).into(),
@@ -345,20 +344,18 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
 }
 
 
-pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data_ptr: usize, offset:usize) {
-    println!("nkapi_copy: copying");
+pub fn nkapi_copyTo(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
+
     unsafe{
-        let data = &*(data_ptr as *const usize as *mut [u8; crate::config::PAGE_SIZE]);
-
-        let mut start: usize = 0;
-        let mut page_offset: usize = offset;
-        let len = crate::config::PAGE_SIZE;
-
         if let Some(pt) = pt_get(pt_handle){
-            let src = &data[0..(len - page_offset)];
-            let dst = &mut pt.translate(current_vpn)
-                .unwrap().ppn()
-                .get_bytes_array()[page_offset..(page_offset+src.len())];
+
+            let data = &*(data_ptr as *const usize as *mut [u8; PAGE_SIZE]);
+
+            let mut ppn = &mut pt.translate(vpn).unwrap().ppn();
+            println!("nkapi_copy: copying 4096 datas to {:?} {:?}",vpn, ppn);
+
+            let src = &data[0..(PAGE_SIZE - offset)];
+            let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);
             return;
         }
