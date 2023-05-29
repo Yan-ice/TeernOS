@@ -2,7 +2,7 @@
 
 QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
 TARGET := riscv64imac-unknown-none-elf
-MODE := release
+MODE := debug
 KERNEL_ELF := target/$(TARGET)/$(MODE)/UltraOS
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
@@ -84,7 +84,7 @@ fsimg-format:
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build --release --features "board_$(BOARD)"
+	@cargo build --features "board_$(BOARD)"
 	@rm src/linker.ld
 
 clean:
@@ -118,9 +118,9 @@ monitor:
 
 gdb:
 	@qemu-system-riscv64 -machine virt -nographic -bios $(BOOTLOADER) -device loader,\
-	file=target/riscv64imac-unknown-none-elf/release/UltraOS,addr=0x80200000 -drive \
+	file=$(KERNEL_ELF),addr=0x80200000 -drive \
 	file=$(U_FAT32),if=none,format=raw,id=x0 \
-	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -smp threads=2 -S -s
+	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -S -s
 
 runsimple:
 	@qemu-system-riscv64 \
