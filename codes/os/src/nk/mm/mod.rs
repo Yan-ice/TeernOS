@@ -74,21 +74,17 @@ pub enum MapType {
 impl From<MapType> for usize {
     fn from(v: MapType) -> Self {
         match v {
-            Identical =>{
-                usize::MAX-1
+            MapType::Identical =>{
+                return usize::MAX-1;
             }
-            Framed =>{
-                usize::MAX-2
+            MapType::Framed =>{
+                return usize::MAX-2;
             }
-            FramedInNK =>{
-                usize::MAX-3
+            MapType::FramedInNK =>{
+                return usize::MAX-3;
             }
-            Specified =>{
-                if let MapType::Specified(ph) = v {
-                    ph.0
-                }else{
-                    0
-                }
+            MapType::Specified(ppn) =>{
+                return ppn.0;
             }
         }
     }
@@ -244,9 +240,8 @@ pub fn pt_destroy(pt_handle: usize){
     // TODO
 }
 
-pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, mut map_type: MapType, perm: MapPermission) -> PhysPageNum{
-    //println!("MapType: {:x} {:?} {:?}", usize::from(map_type), MapType::from(usize::from(map_type)), map_type);
-    map_type = MapType::from(usize::from(map_type));
+pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
+    let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     if let Some(mut target_pt) = pt_get(pt_handle){
         // get target ppn
@@ -288,6 +283,9 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, mut map_type: MapType, pe
         // modify pagetable entry
         target_pt.map(vpn, target_ppn, pte_flags);
 
+        //if vpn.0 == 0 {
+        //println!("0--> maptype: {:?} {:?} ",map_type, target_ppn);
+        //}
         return target_ppn
     }
     println!("nkapi_alloc: cannot find pagetable!");

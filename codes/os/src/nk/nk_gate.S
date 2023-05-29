@@ -50,6 +50,8 @@ nk_exit:
 
 
 .globl nk_entry
+.globl nkgate_breakpoint
+
     # 入参 x10 nkapi handler
     # 入参 x11~x15 params
     # 结构
@@ -98,7 +100,7 @@ nk_entry:
     ld x14, 4*8(sp)
     ld x15, 5*8(sp)
     addi sp, sp, 6*8
-
+nkgate_breakpoint:
     # save the outer sp, after taking params out
     sd sp, 34*8(x28)
 

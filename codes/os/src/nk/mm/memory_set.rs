@@ -821,7 +821,7 @@ impl MapArea {
     // Alloc and map one page
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         // println!{"map one!!!"}
-        let mut ppn: PhysPageNum = PhysPageNum(vpn.0);
+        let mut ppn: PhysPageNum;
         match self.map_type {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);

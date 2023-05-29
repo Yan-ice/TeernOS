@@ -2,7 +2,7 @@
 
 QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
 TARGET := riscv64imac-unknown-none-elf
-MODE := debug
+MODE ?= release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/UltraOS
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
@@ -15,6 +15,9 @@ else
 endif
 
 
+ifeq ($(MODE), release)
+	FLAG := --release
+endif
 
 SDCARD := /dev/sdb
 APPS := ../user/src/bin/*
@@ -84,8 +87,8 @@ fsimg-format:
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build --features "board_$(BOARD)"
-	@rm src/linker.ld
+	@cargo build $(FLAG) --features "board_$(BOARD)"
+	@rm src/linker.ld 
 
 clean:
 	@cargo clean
@@ -114,16 +117,16 @@ endif
 
 
 monitor:
-	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/debug/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/release/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
 gdb:
-	@qemu-system-riscv64 -machine virt -nographic -bios $(BOOTLOADER) -device loader,\
+	@$(QEMU_SYSTEM) -machine virt -nographic -bios $(BOOTLOADER) -device loader,\
 	file=$(KERNEL_ELF),addr=0x80200000 -drive \
 	file=$(U_FAT32),if=none,format=raw,id=x0 \
 	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -S -s
 
 runsimple:
-	@qemu-system-riscv64 \
+	@$(QEMU_SYSTEM) \
 		-machine virt \
 		-nographic \
 		-bios $(BOOTLOADER) \

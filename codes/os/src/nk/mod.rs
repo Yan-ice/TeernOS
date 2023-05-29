@@ -89,7 +89,7 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
 }
 
 pub fn nkapi_alloc(pt_handle:usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
-    entry_gate!(mm::nkapi_alloc,pt_handle,vpn, map_type, perm);
+    entry_gate!(mm::nkapi_alloc,pt_handle,vpn, usize::from(map_type), perm);
     return_value!(PhysPageNum);
 }
 

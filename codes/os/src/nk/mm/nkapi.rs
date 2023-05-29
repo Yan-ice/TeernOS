@@ -54,6 +54,7 @@ macro_rules! entry_gate {
             if !crate::nk::mm::NKAPI_ENABLE {
                 return $tar($t1,$t2,$t3,$t4);
             }
+            println!("cast: {:?} -> {:x}",$t3, usize::from($t3));
             llvm_asm!("addi sp, sp, -8*6");
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
             llvm_asm!("sd $0, 8(sp)" :: "r"(usize::from($t1)));
