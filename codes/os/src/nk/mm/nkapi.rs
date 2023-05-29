@@ -10,7 +10,7 @@ macro_rules! entry_gate {
             }
             llvm_asm!("addi sp, sp, -8*6");
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
-            llvm_asm!("jal nk_entry2");
+            llvm_asm!("jal nk_entry");
         }
     };
     ($tar:expr,$t1:expr) => {
@@ -21,7 +21,7 @@ macro_rules! entry_gate {
             llvm_asm!("addi sp, sp, -8*6");
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
             llvm_asm!("sd $0, 8(sp)" :: "r"(usize::from($t1)));
-            llvm_asm!("jal x1, nk_entry2");
+            llvm_asm!("jal x1, nk_entry");
         }
     };
     ($tar:expr,$t1:expr,$t2:expr) => {
@@ -33,7 +33,7 @@ macro_rules! entry_gate {
             llvm_asm!("sd $0, 0(sp)" :: "r"($tar as usize));
             llvm_asm!("sd $0, 8(sp)" :: "r"(usize::from($t1)));
             llvm_asm!("sd $0, 16(sp)" :: "r"(usize::from($t2)));
-            llvm_asm!("jal x1, nk_entry2");
+            llvm_asm!("jal x1, nk_entry");
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr) => {
@@ -46,7 +46,7 @@ macro_rules! entry_gate {
             llvm_asm!("sd $0, 8(sp)" :: "r"(usize::from($t1)));
             llvm_asm!("sd $0, 16(sp)" :: "r"(usize::from($t2)));
             llvm_asm!("sd $0, 24(sp)" :: "r"(usize::from($t3)));
-            llvm_asm!("jal x1, nk_entry2");
+            llvm_asm!("jal x1, nk_entry");
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$t4:expr) => {
@@ -60,7 +60,7 @@ macro_rules! entry_gate {
             llvm_asm!("sd $0, 16(sp)" :: "r"(usize::from($t2)));
             llvm_asm!("sd $0, 24(sp)" :: "r"(usize::from($t3)));
             llvm_asm!("sd $0, 32(sp)" :: "r"(usize::from($t4)));
-            llvm_asm!("jal x1, nk_entry2");
+            llvm_asm!("jal x1, nk_entry");
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$t4:expr,$t5:expr) => {
@@ -75,7 +75,7 @@ macro_rules! entry_gate {
             llvm_asm!("sd $0, 24(sp)" :: "r"(usize::from($t3)));
             llvm_asm!("sd $0, 32(sp)" :: "r"(usize::from($t4)));
             llvm_asm!("sd $0, 40(sp)" :: "r"(usize::from($t5)));
-            llvm_asm!("jal x1, nk_entry2");
+            llvm_asm!("jal x1, nk_entry");
         }
     };
 }
@@ -118,10 +118,10 @@ macro_rules! return_some {
             let is_none: usize;
             let retval: usize;
             llvm_asm!("mv $0, x10" : "=r"(is_none));
+            llvm_asm!("mv $0, x11" : "=r"(retval));
             if is_none == 0{
                 return None;
             }
-            llvm_asm!("mv $0, x11" : "=r"(retval));
             let cast: $type = <$type>::from(retval);
             return Some(cast);
         }

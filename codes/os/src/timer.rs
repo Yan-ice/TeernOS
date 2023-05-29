@@ -9,14 +9,7 @@ pub const USEC_PER_SEC: usize = 1000_000;
 pub const NSEC_PER_SEC: usize = 1000_000_000;
 
 pub fn get_time() -> usize {
-    let mut time:usize = 0;
-    unsafe{
-        asm!(
-            "rdtime a0",
-            inout("a0") time
-        );
-    }
-    time
+    return crate::nk::nkapi_time();
 }
 
 pub fn get_timeval() -> TimeVal {

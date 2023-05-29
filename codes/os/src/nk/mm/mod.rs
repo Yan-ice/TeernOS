@@ -66,8 +66,8 @@ extern "C" {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
-    Identical,
     Specified(PhysPageNum),
+    Identical,
     Framed,
     FramedInNK
 }
@@ -185,6 +185,7 @@ pub fn nkapi_pt_init(pt_handle: usize){
     
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
+            println!("Pagetable [{}] already exists.",pt_handle);
             //pagetable with this handle already exist
             return;
         }
@@ -243,8 +244,9 @@ pub fn pt_destroy(pt_handle: usize){
     // TODO
 }
 
-pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission) -> PhysPageNum{
-    
+pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, mut map_type: MapType, perm: MapPermission) -> PhysPageNum{
+    //println!("MapType: {:x} {:?} {:?}", usize::from(map_type), MapType::from(usize::from(map_type)), map_type);
+    map_type = MapType::from(usize::from(map_type));
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     if let Some(mut target_pt) = pt_get(pt_handle){
         // get target ppn

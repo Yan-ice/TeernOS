@@ -105,14 +105,14 @@ pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
 
             unsafe{
                 extern "C"{
-                    fn nk_exit2();
+                    fn nk_exit();
                 }
                 println!("handling outer kernel's trap");
                 let mut proxy = PROXYCONTEXT();
                 proxy.outer_register[1] = syscall as usize;
                 llvm_asm!("addi x28, $0, 0" :: "r"(proxy as *const ProxyContext as *const usize));
                 drop(proxy);
-                nk_exit2();
+                nk_exit();
             }
             
             // let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);

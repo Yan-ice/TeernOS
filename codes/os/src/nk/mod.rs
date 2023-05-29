@@ -1,10 +1,10 @@
 mod mm;   
 mod trap;
 mod debug_util;
+pub mod tests;
 
-use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT}, syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
+use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, tests::{mem_access_timecost}}, syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
-use lazy_static::lazy_static;
 use crate::config::NK_TRAMPOLINE;
 
 use crate::{debug_stack_info, debug_context_info, entry_gate};
@@ -60,29 +60,23 @@ pub use mm::{VirtPageNum as VirtPageNum,
 
 
 global_asm!(include_str!("nk_gate.S"));
-global_asm!(include_str!("nk_gate_copy.S"));
 global_asm!(include_str!("context.S"));
 
-extern "C"{
-    pub fn entry_gate2();
-}
-
-pub fn nkapi_gatetest_entry(){
-    if let Some(adr) = nkapi_gatetest(0x666, MapPermission::R, PhysAddr::from(0x555), 0x123) {
-        println!("test finished with return value: {:?}", adr);
+fn get_time() -> usize {
+    let mut time:usize = 0;
+    unsafe{
+        asm!(
+            "rdtime a0",
+            inout("a0") time
+        );
     }
+    time
 }
 
-pub fn nkapi_gatetest(pt_handle: usize, va: MapPermission, pa: PhysAddr, oth: usize) -> Option<PhysAddr>{
-    entry_gate!(nkapi_gatetest_impl,pt_handle,va,pa,oth);
-    return_some!(PhysAddr);
+pub fn nkapi_time() -> usize{
+    entry_gate!(get_time);
+    return_value!(usize);
 }
-
-pub fn nkapi_gatetest_impl(pt_handle: usize, va: MapPermission, pa: PhysAddr, oth: usize) -> Option<PhysAddr>{
-    println!("callee received: {:x} {:?} {:?} {:x}", pt_handle, va, pa, oth);
-    return Some(PhysAddr::from(0x999))
-}
-
 
 pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option<PhysPageNum>{
     entry_gate!(mm::nkapi_translate,pt_handle,vpn,write);
@@ -119,14 +113,6 @@ pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8; 
     return_void!();
 }
 
-// pub fn nkapi_mmap(pt_handle: usize, vpn:VirtPageNum, ppn: PhysPageNum, perm:MapPermission){
-//     entry_gate!(mm::nkapi_mmap,pt_handle, vpn, ppn, perm.bits());
-//     return_void!();
-// }
-// pub fn nkapi_unmap(pt_handle: usize, vpn:VirtPageNum){
-//     entry_gate!(mm::nkapi_unmap,pt_handle, vpn);
-//     return_void!();
-// }
 
 pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){
     entry_gate!(mm::nkapi_set_permission,pt_handle, vpn, flags);
@@ -152,68 +138,9 @@ fn clear_bss() {
     });
 }
 extern "C" {
-    fn nk_entry(
-        proxy_address: *const usize,
-    );
-    pub fn nk_entry2();
+    pub fn nk_entry();
+    pub fn nk_exit();
 }
-
-// syscall结束后直接执行这个，没有参数，因为syscall是被nk_exit_gate调用出去的，调用时就已经设置好了ra，然后执行exit_gate的东西
-// pub fn nk_entry_gate(function_address: usize){
-//     // 交换页表
-//     //KERNEL_SPACE.lock().activate();
-//     // println!("2");
-//     // // 禁用中断
-//     // unsafe {
-//     //     llvm_asm!("csrci sstatus, 2");
-//     // }
-//     // println!("3");
-//     // 先恢复寄存器，再换栈
-//     // unsafe {
-//     //     nk_entry(&(PROXYCONTEXT().lock().nk_register) as *const usize);
-//     // }
-
-//     unsafe {
-
-//         llvm_asm!("addi x28, $0, 0" :: "r"(PROXYCONTEXT().get_mut() as *const ProxyContext as *const usize));
-//         nk_entry2();
-//     }
-
-//     println!("enter nk");
-// }
-
-extern "C" {
-    pub fn nk_exit(
-        proxy_address: *const usize,
-        function_address: usize
-    );
-    pub fn nk_exit2();
-}
-
-// fn nk_exit_gate(PROXYCONTEXT(): *const usize, function_address: usize){
-
-//     println!("exit nk");
-
-//     // //if to outer kernel:
-//     // //开启中断
-//     // unsafe {
-//     //     llvm_asm!("csrsi sstatus, 2");
-//     // }
-
-//     // //先保存寄存器，再换栈，再设置好ra，再换页表
-//     // unsafe {
-//     //     nk_exit(PROXYCONTEXT(), function_address);
-//     // }
-
-//     unsafe {
-//         llvm_asm!("addi x28, $0, 0" :: "r"(PROXYCONTEXT()));
-//         nk_exit2();
-//     }
-
-//     //TODO: 进程页表/内核页表
-//     //if to user: 暂时未写
-//     // trap return (so here ignore)
-// }
 
 #[no_mangle]
 pub fn nk_main(){
@@ -238,11 +165,8 @@ pub fn nk_main(){
 
     unsafe{
         let mut proxy = PROXYCONTEXT();
-        println!("Nesked kernel [0]");
         proxy.nk_satp = KERNEL_SPACE.lock().token();
-        println!("Nesked kernel [1]");
         proxy.outer_satp = crate::nk::nkapi_vun_getpt(0).token();
-        println!("Nesked kernel [2]");
         proxy.outer_register[1] = outer_kernel_init as usize; //let ra be outer kernel init
         proxy.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
     }
@@ -276,15 +200,11 @@ pub fn nk_main(){
     }
 
     println!("Nesked kernel init success");
+    mem_access_timecost();
 
-    
     unsafe{
         crate::nk::mm::NKAPI_ENABLE = true;
-        extern "C"{
-            fn nk_exit2();
-        }
-        println!("exit ready");
-        nk_exit2();
+        nk_exit();
         panic!("not reachable");
     }
 

@@ -8,7 +8,6 @@
     .section .text.trampoline
     .globl __alltraps
     .globl __restore
-    .globl entry_gate2
     .align 2
 __alltraps:
     sd sp,(zero)

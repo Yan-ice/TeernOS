@@ -6,11 +6,10 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-use crate::config::*;
+use crate::{config::*, nk::tests::{nkapi_gatetest, mem_access_timecost}};
 use lazy_static::lazy_static;
 use sbi::sbi_send_ipi;
 use spin::*;
-use timer::get_timeval;
 use nk::*;
 use alloc::sync::Arc;
 pub use statics::*;
@@ -31,11 +30,10 @@ mod fs;
 mod util;
 mod syscall;
 mod statics;
-
 mod drivers;
-#[macro_use]
 mod monitor;
 mod task;
+#[macro_use]
 mod timer;
 
 global_asm!(include_str!("entry.asm"));
@@ -113,7 +111,10 @@ pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     println!("UltraOS: outer kernel init.");
     
-    nkapi_gatetest_entry();
+    nkapi_gatetest();
+
+    mem_access_timecost();
+    
     extern "C"{
         fn snkheap();
     }
