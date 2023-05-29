@@ -346,8 +346,6 @@ impl MemorySet {
         // denotes if .comment should be mapped
         let mut comment_flag = true;
 
-        println!("[debug] elf[1]");
-
         for ph in elf.program_iter(){
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
                 let start_va: VirtAddr = (ph.virtual_addr() as usize).into();
@@ -389,7 +387,7 @@ impl MemorySet {
                 }
             }
         }
-        println!("[debug] elf[2]");
+
         // Get ph_head addr for auxv
         let ph_head_addr = head_va + elf.header.pt2.ph_offset() as usize;
         auxv.push(AuxHeader{aux_type: AT_PHDR, value: ph_head_addr as usize});
@@ -409,7 +407,6 @@ impl MemorySet {
         //     MapPermission::R | MapPermission::W | MapPermission::U,
         // ), None);
 
-        println!("[debug] elf[3]");
         // maparea2: TrapContext
         memory_set.push_mmap(MapArea::new(
             TRAP_CONTEXT.into(),
@@ -431,7 +428,6 @@ impl MemorySet {
             MapPermission::R | MapPermission::W | MapPermission::U,
         ), None);
 
-        println!("[debug] elf[4]");
         // map signal user stack with U flags
         // maparea4: signal_user_stack
         let mut signal_stack_top: usize = USER_SIGNAL_STACK;
@@ -811,9 +807,9 @@ impl MapArea {
         let len = data.len();
         let mut data_buf: &mut [u8;PAGE_SIZE] = &mut [0; PAGE_SIZE];
         loop { 
-            println!("[debug] copying elf files part {:?}", current_vpn);
             let src: &[u8] = &data[start..len.min(start + PAGE_SIZE - page_offset)];
-            data_buf.copy_from_slice(src);
+            
+            data_buf[0..src.len()].copy_from_slice(src);
 
             start += PAGE_SIZE - page_offset;
             

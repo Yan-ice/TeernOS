@@ -352,11 +352,13 @@ pub fn nkapi_copyTo(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:
             let data = &*(data_ptr as *const usize as *mut [u8; PAGE_SIZE]);
 
             let mut ppn = &mut pt.translate(vpn).unwrap().ppn();
-            println!("nkapi_copy: copying 4096 datas to {:?} {:?}",vpn, ppn);
+            println!("nkapi_copy: copying {} datas to VPN{:?}",PAGE_SIZE - offset,vpn);
 
             let src = &data[0..(PAGE_SIZE - offset)];
             let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);
+            println!("nkapi_copy: copy success.");
+
             return;
         }
         println!("nk_copyTo: cannot find pagetable!");
