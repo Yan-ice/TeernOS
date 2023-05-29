@@ -2,17 +2,17 @@ use crate::{nk::{nkapi_alloc, nkapi_pt_init, nkapi_dealloc, VirtAddr, MapPermiss
 
 
 pub fn mem_access_timecost(){
-    nkapi_pt_init(9999);
+    nkapi_pt_init(999);
     begin_test!("mem_access_time",
     {
         unsafe{
             println!("enable status: {}",crate::nk::mm::NKAPI_ENABLE);
-            for i in 0..10240{
-                nkapi_alloc(9999, VirtAddr::from(0x100000000).into(), 
+            for i in 0..102400{
+                nkapi_alloc(999, VirtAddr::from(0x100000000).into(), 
                 crate::nk::MapType::Identical, MapPermission::R | MapPermission::W);
-                nkapi_dealloc(9999, VirtAddr::from(0x100000000).into());
+                nkapi_dealloc(999, VirtAddr::from(0x100000000).into());
             }
-            println!("operated 10240 times memory access.");
+            println!("operated 102400 times memory access.");
         }
     }
     );

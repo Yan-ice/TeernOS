@@ -10,6 +10,7 @@
     .globl __restore
     .align 2
 __alltraps:
+    # trap context
     sd sp,(zero)
     # sd x1, 1*8(t0)
     csrrw sp, sscratch, sp # 第一次进入这段汇编之前，是先进入了下面的restore汇编

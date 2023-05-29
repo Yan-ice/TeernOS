@@ -73,6 +73,7 @@ impl Processor {
             // True: Not first time to fetch a task 
             // 暂时没改
             if let Some(current_task) = take_current_task(){
+                println!(" fetch");
                 gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
                 //println!("get lock");
@@ -81,6 +82,7 @@ impl Processor {
                 // True: switch
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
+                    println!("if fetch");
                     let mut task_inner = task.acquire_inner_lock();
                     // task_inner.memory_set.activate();// change satp
                     let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
@@ -107,6 +109,7 @@ impl Processor {
                     }
                 }
                 else{
+                    println!("else fetch");
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {

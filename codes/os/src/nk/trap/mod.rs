@@ -57,8 +57,8 @@ fn trap_in_nk() -> !{
 pub fn init(){
     
     unsafe {
-        //stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
-        stvec::write(user_trap_handler as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+        //stvec::write(user_trap_handler as usize, TrapMode::Direct);
 
         PROXYCONTEXT().delegate = syscall as usize;
     }
