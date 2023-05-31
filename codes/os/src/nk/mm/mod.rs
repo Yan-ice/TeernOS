@@ -66,10 +66,10 @@ extern "C" {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MapType {
-    Specified(PhysPageNum),
     Identical,
     Framed,
-    FramedInNK
+    FramedInNK,
+    Specified(PhysPageNum)
 }
 impl From<MapType> for usize {
     fn from(v: MapType) -> Self {
@@ -352,12 +352,12 @@ pub fn nkapi_copyTo(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:
             let data = &*(data_ptr as *const usize as *mut [u8; PAGE_SIZE]);
 
             let mut ppn = &mut pt.translate(vpn).unwrap().ppn();
-            println!("nkapi_copy: copying {} datas to VPN{:?}",PAGE_SIZE - offset,vpn);
+            //println!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset,vpn);
 
             let src = &data[0..(PAGE_SIZE - offset)];
             let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);
-            println!("nkapi_copy: copy success.");
+            //println!("nkapi_copy: copy success.");
 
             return;
         }

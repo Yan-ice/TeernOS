@@ -774,6 +774,10 @@ impl MapArea {
 
     // Alloc and map one page
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
+        let mut mpt: MapType = self.map_type;
+        if self.map_type == MapType::Identical{
+            mpt = MapType::Specified(vpn.0.into())
+        }
         // println!{"map one!!!"}
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
         

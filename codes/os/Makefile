@@ -119,7 +119,7 @@ endif
 monitor:
 	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/release/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
-gdb:
+gdb: build
 	@$(QEMU_SYSTEM) -machine virt -nographic -bios $(BOOTLOADER) -device loader,\
 	file=$(KERNEL_ELF),addr=0x80200000 -drive \
 	file=$(U_FAT32),if=none,format=raw,id=x0 \
