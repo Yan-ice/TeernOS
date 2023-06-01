@@ -72,7 +72,7 @@ impl Processor {
         loop{
             // True: Not first time to fetch a task 
             // 暂时没改
-            if let Some(current_task) = take_current_task(){
+            if let Some(current_task) = take_current_task(){  //主动切换任务
                 println!(" fetch");
                 gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
@@ -109,7 +109,7 @@ impl Processor {
                     }
                 }
                 else{
-                    println!("else fetch");
+                    println!("else fetch");  //想主动切换但是没有可换的
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
@@ -122,8 +122,8 @@ impl Processor {
             // False: First time to fetch a task
             } else {
                 // Keep fetching
-                println!("first fetch");
-                gdb_print!(PROCESSOR_ENABLE,"[run:no current task]");
+                println!("first fetch");  
+ 
                 if let Some(task) = fetch_task() {
                     println!("ready to context switch");
                     // acquire
@@ -134,20 +134,17 @@ impl Processor {
                     let id = task_inner.memory_set.id();
                     drop(task_inner);
                     self.inner.borrow_mut().current = Some(task);
-                    nkapi_activate(id)
-                    // 加上gate
-                    ///////////////////////////////////////////////
-                    // let Some(temp) = self.inner.borrow().current;
-                    // task.acquire_inner_lock().memory_set.activate(idle_task_cx_ptr2, next_task_cx_ptr2);// change satp
-                    // release
-                    // unsafe {
-                    //     __switch(
-                    //         idle_task_cx_ptr2,
-                    //         next_task_cx_ptr2,
-                    //     );
-                    // }
-                    //////////////////////////////////////////////////
-                    // println!("switch finish");
+                    // nkapi_activate(id);
+
+                    println!("the first is {:?}", idle_task_cx_ptr2);
+                    println!("the second is {:?}", next_task_cx_ptr2);
+                    unsafe {
+                        __switch(
+                            idle_task_cx_ptr2, // 这个值是taskcontext的指针，都是用汇编改的，相当于栈顶，以后所有的schedule都是调这个，两个栈切来切去
+                            next_task_cx_ptr2,  //第一次切换，值是默认的，从此以后都用不到了，第一次初始化的位置是随机的，应该是在堆上，因为无所谓，以后都用不到了，以后都是用上面的idle，这个在内核栈上
+                        );
+                    }
+
                 }
             }
         }
@@ -232,8 +229,7 @@ pub fn schedule(switched_task_cx_ptr2: *const usize) {
     let idle_task_cx_ptr2 = crate::PROCESSOR_LIST()[core_id].get_idle_task_cx_ptr2();
     unsafe {
         __switch(
-            switched_task_cx_ptr2, // ？ 你这里没有写反？其他的__switch都是当前idle，下一个是要交换的task_cx_ptr
-                                                        // 唯独你这里特殊
+            switched_task_cx_ptr2, 
             idle_task_cx_ptr2,
         );
     }
