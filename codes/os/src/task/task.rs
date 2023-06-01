@@ -276,7 +276,7 @@ impl TaskControlBlock {
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
 
-        // memory_set with elf program headers/trampoline/trap context/user stack
+        // memory_set /user stack top /use heap bottom/ elf entry point
         let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
 
         let trap_cx_ppn = memory_set

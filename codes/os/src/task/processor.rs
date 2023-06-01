@@ -134,7 +134,7 @@ impl Processor {
                     let id = task_inner.memory_set.id();
                     drop(task_inner);
                     self.inner.borrow_mut().current = Some(task);
-                    // nkapi_activate(id);
+                    nkapi_activate(id); 
 
                     println!("the first is {:?}", idle_task_cx_ptr2);
                     println!("the second is {:?}", next_task_cx_ptr2);

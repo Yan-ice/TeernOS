@@ -7,7 +7,7 @@ pub fn mem_access_timecost(){
     {
         unsafe{
             println!("enable status: {}",crate::nk::mm::NKAPI_ENABLE);
-            for i in 0..102400{
+            for i in 0..1024{
                 nkapi_alloc(999, VirtAddr::from(0x100000000).into(), 
                 crate::nk::MapType::Identical, MapPermission::R | MapPermission::W);
                 nkapi_dealloc(999, VirtAddr::from(0x100000000).into());

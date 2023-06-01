@@ -6,6 +6,18 @@ pub mod nkapi;
 pub mod memory_set;
 mod vma;
 
+use riscv::register::{
+    mtvec::TrapMode,
+    scause::{
+        self,
+        Trap,
+        Exception,
+        Interrupt,
+    },
+    stval,
+    stvec,
+};
+
 use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
@@ -93,7 +105,8 @@ impl From<MapType> for usize {
 }
 impl From<usize> for MapType{
     fn from(v: usize) -> Self {
-        if v == usize::MAX-1 {
+        unsafe{
+             if v == usize::MAX-1 {
             MapType::Identical
         }else if v == usize::MAX-2 {
             MapType::Framed
@@ -101,6 +114,7 @@ impl From<usize> for MapType{
             MapType::FramedInNK
         }else{
             MapType::Specified(PhysPageNum::from(v))
+        }
         }
     }
 }
@@ -177,6 +191,29 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
 }
 
 
+fn nkapi_traphandle(ctx: &TrapContext){
+    let scause: scause::Scause = scause::read();
+    let stval = stval::read();
+    match scause.cause() {
+        Trap::Exception(Exception::InstructionFault) |
+        Trap::Exception(Exception::InstructionPageFault) |        
+        Trap::Exception(Exception::IllegalInstruction) |
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            handle_outer_trap(scause, stval as usize)
+        }
+        Trap::Exception(Exception::LoadFault) |
+        Trap::Exception(Exception::StoreFault) |
+        Trap::Exception(Exception::StorePageFault) |
+        Trap::Exception(Exception::LoadPageFault) => {
+            handle_nk_trap(scause, stval as usize);
+        }
+        _ => {
+            panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
+        }
+    }
+
+    
+}
 //the function below would expose to outer kernel
 fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
     println!("Entering nkapi_test.");
@@ -370,16 +407,17 @@ fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usi
 }
 
 //use crate::task::__switch;
-fn nkapi_activate(pt_handle: usize) {
+pub fn nkapi_activate(pt_handle: usize) {
     if let Some(page_table) = pt_get(pt_handle) {
-        // // let satp = page_table.token();
+        let satp = page_table.token();
         // nk_entry_gate();
-        // // unsafe {
-        // //     satp::write(satp);
-        // //     llvm_asm!("sfence.vma" :::: "volatile");
-        // // }
+        unsafe {
+            satp::write(satp);
+            llvm_asm!("sfence.vma" :::: "volatile");
+        }
 
-        println!("outer kernel's table switch.");
+        // println!("outer kernel's table switch.");
+        // println!("need to change satp to {:x}", page_table.token());
         unsafe{
             (&mut PROXYCONTEXT()).outer_satp = page_table.token();
         }

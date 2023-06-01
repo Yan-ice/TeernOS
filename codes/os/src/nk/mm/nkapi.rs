@@ -1,6 +1,7 @@
 use crate::{config::NK_TRAMPOLINE};
 
-use super::{nkapi_pt_init, nkapi_alloc, nkapi_translate_va, nkapi_dealloc, nkapi_activate, nkapi_assert_eq_and_echo, nkapi_copy_to, nkapi_translate, nkapi_set_permission};
+use super::{nkapi_pt_init, nkapi_alloc, nkapi_translate_va, nkapi_dealloc, 
+    nkapi_activate, nkapi_assert_eq_and_echo, nkapi_copy_to, nkapi_translate, nkapi_set_permission, nkapi_traphandle};
 pub static mut API_ENABLE: bool = false;
 
 ///////////////////////////////////
@@ -8,6 +9,7 @@ pub static mut API_ENABLE: bool = false;
 /// the value below is NK call number.
 /// 
 
+pub const NKTRAP_HANDLE: usize = 0;
 pub const NKAPI_TEST: usize = 1;
 pub const NKAPI_PT_INIT: usize = 2;
 pub const NKAPI_ALLOC: usize = 3;
@@ -24,7 +26,8 @@ pub const NKAPI_TIME: usize = 9;
 
 pub fn init_vec(){
     let proxy = PROXYCONTEXT();
-
+    
+    proxy.nkapi_vec[NKTRAP_HANDLE] = nkapi_traphandle as usize;
     proxy.nkapi_vec[NKAPI_TEST] = nkapi_assert_eq_and_echo as usize;
     proxy.nkapi_vec[NKAPI_PT_INIT] = nkapi_pt_init as usize;
     proxy.nkapi_vec[NKAPI_ALLOC] = nkapi_alloc as usize;
