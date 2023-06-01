@@ -2,8 +2,8 @@ mod heap_allocator;
 mod address;
 mod frame_allocator;
 mod page_table;
-mod nkapi;
-pub(crate) mod memory_set;
+pub mod nkapi;
+pub mod memory_set;
 mod vma;
 
 use alloc::sync::Arc;
@@ -13,11 +13,13 @@ use spin::Mutex;
 use alloc::vec::Vec;
 use riscv::register::satp;
 
-use crate::nk::PROXYCONTEXT;
-use crate::nk::trap::ProxyContext;
+use crate::nk::nkapi::ProxyContext;
 use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
 
-pub use nkapi::API_ENABLE as NKAPI_ENABLE;
+pub use nkapi::{
+    API_ENABLE as NKAPI_ENABLE,
+    PROXYCONTEXT as PROXYCONTEXT
+};
 
 pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRange};
 pub use frame_allocator::{
@@ -176,8 +178,13 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
 
 
 //the function below would expose to outer kernel
+fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
+    println!("Entering nkapi_test.");
+    assert_eq!(t1.0, t2.0, "asserting in nkapi_assert.");
+    return Some(t1.0);
+}
 
-pub fn nkapi_pt_init(pt_handle: usize){
+fn nkapi_pt_init(pt_handle: usize){
     
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
@@ -228,7 +235,7 @@ pub fn nkapi_pt_init(pt_handle: usize){
 
 // }
 
-pub fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
+fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     // find target pagetable
     if let Some(mut target_pt) = pt_get(pt_handle){
         target_pt.set_pte_flags(vpn, flags);
@@ -236,11 +243,11 @@ pub fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     }
     println!("nk_set_perm: cannot find pagetable!");
 }
-pub fn pt_destroy(pt_handle: usize){
+fn pt_destroy(pt_handle: usize){
     // TODO
 }
 
-pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
+fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
     let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     if let Some(mut target_pt) = pt_get(pt_handle){
@@ -283,9 +290,6 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: 
         // modify pagetable entry
         target_pt.map(vpn, target_ppn, pte_flags);
 
-        //if vpn.0 == 0 {
-        //println!("0--> maptype: {:?} {:?} ",map_type, target_ppn);
-        //}
         return target_ppn
     }
     println!("nkapi_alloc: cannot find pagetable!");
@@ -293,7 +297,7 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: 
 
 }
 
-pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
+fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
     if let Some(mut pt) = pt_get(pt_handle){
         pt.unmap(vpn);
         return;
@@ -302,14 +306,14 @@ pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
 }
 
 // while translating COW with write==True, it would start alloc and copy.
-pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
+fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
 
     if let Some(mut pt) = pt_get(pt_handle){
         let pte = pt.translate(vpn).unwrap();
         if pte.is_valid() {
             let former_ppn = pte.ppn();
 
-            if pte.is_cow(){
+            if pte.is_cow() & write{
 
                 //the code copy from memoryset::cow_alloc
                 if enquire_refcount(former_ppn) == 1 {
@@ -334,8 +338,7 @@ pub fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Optio
     None
 }
 
-pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
-
+fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     if let Some(pt) = pt_get(pt_handle){
         let pa = pt.translate_va(va);
         return pa;
@@ -344,7 +347,7 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
 }
 
 
-pub fn nkapi_copyTo(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
+fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
 
     unsafe{
         if let Some(pt) = pt_get(pt_handle){
@@ -367,7 +370,7 @@ pub fn nkapi_copyTo(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:
 }
 
 //use crate::task::__switch;
-pub fn nkapi_activate(pt_handle: usize) {
+fn nkapi_activate(pt_handle: usize) {
     if let Some(page_table) = pt_get(pt_handle) {
         // // let satp = page_table.token();
         // nk_entry_gate();

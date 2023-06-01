@@ -42,13 +42,3 @@ impl TrapContext {
 
 }
 
-
-#[repr(C)]
-#[derive(Debug, Clone)]
-pub struct ProxyContext{
-    pub nk_register: [usize; 32], //nk的寄存器
-    pub outer_register: [usize; 32], //outer kernel的寄存器 注意初始化的时候把栈指针设置好
-    pub nk_satp: usize, // nk的satp
-    pub outer_satp: usize, // outer的satp
-    pub delegate: usize
-}

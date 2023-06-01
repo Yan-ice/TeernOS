@@ -23,7 +23,7 @@ use crate::task::{
     perform_signal_handler,
 };
 
-pub use super::context::ProxyContext;
+pub use crate::nk::nkapi::ProxyContext;
 use super::PROXYCONTEXT;
 use crate::timer::set_next_trigger;
 use crate::config::{TRAP_CONTEXT, TRAMPOLINE};

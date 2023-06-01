@@ -12,8 +12,7 @@ use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
 use crate::config::*;
-use crate::nk::PROXYCONTEXT;
-use crate::nk::trap::ProxyContext;
+use crate::nk::nkapi::ProxyContext;
 use super::vma::*;
 
 use super::frame_allocator::{frame_alloc};
