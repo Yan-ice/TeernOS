@@ -7,8 +7,68 @@
     ld x\n, \o*8+\n*8(x28)
 .endm
 
-.globl nk_exit
 
+.globl nk_bypass
+
+nk_bypass:
+    # let x28 to be ProxyContext (NK_TRAMPOLINE)
+    li x28, 0
+    li x30, 0x1000
+    sub x28, x28, x30
+
+    # extract the params for handler function call
+    ld x10, 0*8(sp)
+    ld x11, 1*8(sp)
+    ld x12, 2*8(sp)
+    ld x13, 3*8(sp)
+    ld x14, 4*8(sp)
+    ld x15, 5*8(sp)
+    addi sp, sp, 6*8
+
+    # store all nk registers, 包括栈指针
+    .set n, 1
+    .rept 27
+        SAVE_REGISTER2 %n 0
+        .set n, n+1
+    .endr
+
+    # the handler in nkcall vec:  ProxyContext addr + 66*8 + nk_call_num*8
+    add x29, x28, x10
+    ld x30, 66*8(x29)
+
+    mv x10, x11
+    mv x11, x12
+    mv x12, x13
+    mv x13, x14
+    mv x14, x15
+
+    # handler function call
+    jalr x1, x30, 0
+
+    # let x28 to be ProxyContext (NK_TRAMPOLINE)
+    li x28, 0
+    li x30, 0x1000
+    sub x28, x28, x30
+    
+    # keep the retval
+    mv x29, x10
+    mv x30, x11
+
+    # load all nk registers, 包括栈指针
+    .set n, 1
+    .rept 27
+        LOAD_REGISTER2 %n 0
+        .set n, n+1
+    .endr
+    
+    # restore the retval
+    mv x10, x29
+    mv x11, x30
+
+    jr x1
+
+    
+.globl nk_exit
     # 结构 
     # #####################################
     # 高地址
@@ -50,7 +110,7 @@ nk_exit:
 
 
 .globl nk_entry
-.globl nkgate_breakpoint
+
 
     # 入参 x10 nkapi handler
     # 入参 x11~x15 params
@@ -100,14 +160,17 @@ nk_entry:
     ld x14, 4*8(sp)
     ld x15, 5*8(sp)
     addi sp, sp, 6*8
-nkgate_breakpoint:
+
     # save the outer sp, after taking params out
     sd sp, 34*8(x28)
 
     # load nk sp back
     ld sp, 2*8(x28)
 
-    mv x29, x10
+    # the handler in nkcall vec:  ProxyContext addr + 66*8 + nk_call_num*8
+    add x29, x28, x10
+    ld x29, 66*8(x29)
+
     mv x10, x11
     mv x11, x12
     mv x12, x13

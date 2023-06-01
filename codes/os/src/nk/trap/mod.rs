@@ -13,7 +13,8 @@ use riscv::register::{
     stval,
     stvec
 };
-pub use context::{TrapContext, ProxyContext};
+pub use context::{TrapContext};
+use super::nkapi::ProxyContext;
 use trap::user_trap_handler;
 pub use trap::user_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE};

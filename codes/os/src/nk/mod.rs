@@ -3,16 +3,16 @@ mod trap;
 mod debug_util;
 pub mod tests;
 
-use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, tests::{mem_access_timecost}}, syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
+use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, tests::{mem_access_timecost, nkapi_gatetest}}, 
+syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
-use crate::config::NK_TRAMPOLINE;
 
 use crate::{debug_stack_info, debug_context_info, entry_gate};
 
 pub use trap::{TrapContext as TrapContext, 
-    user_trap_return, ProxyContext};
+    user_trap_return};
 
-
+use mm::nkapi;
 
 #[macro_use]
 
@@ -35,20 +35,6 @@ pub use mm::{VirtPageNum as VirtPageNum,
             FrameAllocator as FrameAllocator,
             StepByOne as StepByOne,
             VPNRange as VPNRange,
-
-            //nkapi_pt_init as nkapi_pt_init,
-            //nkapi_alloc as nkapi_alloc,
-            //nkapi_dealloc as nkapi_dealloc,
-            //nkapi_activate as nkapi_activate,
-            //nkapi_copyTo as nkapi_copyTo,
-
-            //io_map as io_map
-            //io_unmap as io_unmap
-            //nkapi_mmap as nkapi_mmap,
-            //nkapi_unmap as nkapi_unmap,
-            //nkapi_set_permission as nkapi_set_permission,
-            //nkapi_translate as nkapi_translate,
-            //nkapi_translate_va as nkapi_translate_va,
 
             //以下接口暂时未知。
             add_free as add_free, 
@@ -74,48 +60,53 @@ fn get_time() -> usize {
 }
 
 pub fn nkapi_time() -> usize{
-    entry_gate!(get_time);
+    entry_gate!(nkapi::NKAPI_TIME);
     return_value!(usize);
 }
 
 pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option<PhysPageNum>{
-    entry_gate!(mm::nkapi_translate,pt_handle,vpn,write);
+    entry_gate!(nkapi::NKAPI_TRANSLATE,pt_handle,vpn,write);
     return_some!(PhysPageNum);
 }
 
 pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
-    entry_gate!(mm::nkapi_translate_va,pt_handle,va);
+    // if let Some(ppn) = nkapi_translate(pt_handle,va.clone().floor(),false) {
+    //     let pa: PhysAddr = PhysAddr{0: ppn.0*crate::config::PAGE_SIZE + va.page_offset()};
+    //     return Some(pa);
+    // }
+    // None
+    entry_gate!(nkapi::NKAPI_TRANSLATE_VA,pt_handle,va);
     return_some!(PhysAddr);
 }
 
 pub fn nkapi_alloc(pt_handle:usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
-    entry_gate!(mm::nkapi_alloc,pt_handle,vpn, usize::from(map_type), perm);
+    entry_gate!(nkapi::NKAPI_ALLOC, pt_handle, vpn, usize::from(map_type), perm);
     return_value!(PhysPageNum);
 }
 
 pub fn nkapi_pt_init(pt_handle: usize){
-    entry_gate!(mm::nkapi_pt_init,pt_handle);
+    entry_gate!(nkapi::NKAPI_PT_INIT,pt_handle);
     return_void!();
 }
 
 pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
-    entry_gate!(mm::nkapi_dealloc,pt_handle, vpn);
+    entry_gate!(nkapi::NKAPI_DEALLOC, pt_handle, vpn);
     return_void!();
 }
 
 pub fn nkapi_activate(pt_handle: usize){
-    entry_gate!(mm::nkapi_activate,pt_handle);
+    entry_gate!(nkapi::NKAPI_ACTIVATE, pt_handle);
     return_void!();
 }
 
 pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8; crate::config::PAGE_SIZE], offset:usize){
-    entry_gate!(mm::nkapi_copyTo,pt_handle, current_vpn, data as *const [u8] as *const usize as usize, offset);
+    entry_gate!(nkapi::NKAPI_COPY_TO,pt_handle, current_vpn, data as *const [u8] as *const usize as usize, offset);
     return_void!();
 }
 
 
 pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){
-    entry_gate!(mm::nkapi_set_permission,pt_handle, vpn, flags);
+    entry_gate!(nkapi::NKAPI_SET_PERM, pt_handle, vpn, flags);
     return_void!();
 }
 
@@ -154,14 +145,17 @@ pub fn nk_main(){
     mm::remap_test();
     println!("rmap test success.");
     
+    nkapi::init_vec();
+    println!("nkapi call init success.");
     trap::init();
     println!("trap init success.");
 
     //init page for outer kernel.
-    mm::nkapi_pt_init(0);
-
+    nkapi_pt_init(0);
     OUTER_KERNEL_SPACE().lock();
     println!("outer kernel pagetable init success.");
+
+    nkapi_gatetest();
 
     unsafe{
         let mut proxy = PROXYCONTEXT();

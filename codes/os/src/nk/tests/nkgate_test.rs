@@ -1,24 +1,48 @@
-use riscv::paging::MapToError;
-
-use crate::{entry_gate, return_some, nk::{PhysAddr, MapType}, begin_test};
+use crate::{entry_gate, return_some, nk::{PhysAddr, nkapi, VirtAddr, nkapi_pt_init, nkapi_alloc, MapPermission, nkapi_dealloc, nkapi_translate_va}, begin_test};
 
 
 const valA: usize = 66666;
-const valB: usize = 55555;
-const valC: usize = 23333;
 
 pub fn nkapi_gatetest(){
     begin_test!("nkapi gate test",
     {
-        if let Some(adr) = my_example(valA, valB.into(), MapType::Specified(valC.into())) {
-            //assert_eq!(adr.0, valC, "testing return value.");
-            println!("nkapi_gatetest passed.");
+        if let Some(adr) = my_example(valA.into(), valA.into()) {
+            assert_eq!(adr, valA, "testing return value.");
+            println!("nkapi: basic test passed.");
         }
+
+        let test_pt = 2333;
+        nkapi_pt_init(test_pt);
+
+        nkapi_alloc(test_pt, 0x100000.into(), crate::nk::MapType::Identical, MapPermission::R);
+        if let Some(pa) = nkapi_translate_va(test_pt, 0x100000336.into()) {
+            assert_eq!(pa.0, 0x100000336, "testing identical alloc.");
+            println!("nkapi: identical alloc test passed.");
+        }else{
+            panic!("nkapi: identical alloc test failed with None.")
+        }
+        
+        nkapi_dealloc(test_pt, 0x100000.into());
+        if let Some(pa) = nkapi_translate_va(test_pt, 0x100000336.into()) {
+            panic!("nkapi: identical dealloc test failed.")
+        }else{
+            println!("nkapi: dealloc test passed.");
+        }
+
+        nkapi_alloc(test_pt, 0x100000.into(), crate::nk::MapType::Specified(0x200000.into()), MapPermission::R);
+        if let Some(pa) = nkapi_translate_va(test_pt, 0x100000336.into()) {
+            assert_eq!(pa.0, 0x200000336, "testing identical alloc.");
+            println!("nkapi: specified alloc test passed.");
+        }else{
+            panic!("nkapi: specified alloc test failed with None.")
+        }
+        nkapi_dealloc(test_pt, 0x100000.into());
+
     }
     );
 }
 
-pub fn my_example(pt_handle: usize, t1: PhysAddr, t2: MapType) -> Option<PhysAddr>{
+pub fn my_example(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
     // unsafe{
     //     llvm_asm!("addi sp, sp, -6*8");
     //     llvm_asm!("sd x10, 8(sp)");
@@ -30,13 +54,6 @@ pub fn my_example(pt_handle: usize, t1: PhysAddr, t2: MapType) -> Option<PhysAdd
     //     println!("map_type_test: {:?} {:?} {:?}",pt_handle, t1, t2);
     //     llvm_asm!("jal nk_entry");
     // }
-    entry_gate!(nkapi_example_imp,pt_handle, t1, usize::from(t2));
-    return_some!(PhysAddr);
-}
-
-fn nkapi_example_imp(pt_handle: usize, t1: PhysAddr, t2: usize) -> Option<PhysAddr>{
-    assert_eq!(pt_handle, valA, "testing parameter with type usize.");
-    assert_eq!(t1.0, valB, "testing parameter with type PhysAddr.");
-    assert_eq!(MapType::from(t2), MapType::Specified(valC.into()), "testing parameter with type MapType.");
-    return Some(PhysAddr::from(valC))
+    entry_gate!(nkapi::NKAPI_TEST, t1, t2);
+    return_some!(usize);
 }
