@@ -10,7 +10,7 @@ use riscv::register::{
     stvec, hpmcounter21::read
 };
 use crate::{TrapContext, nk::{
-    VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate
+    VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate, nkapi_alloc, MapPermission
 }, config::NK_TRAMPOLINE};
 use crate::syscall::{syscall, SYSCALLPARAMETER};
 use crate::task::{
@@ -87,14 +87,28 @@ pub fn user_trap_return() -> ! {
     if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
         println!("TRAP_CONTEXT is mapped to {:?}", pa);
         unsafe{
-            println!("temporarily change sepc to test.");
-            nkapi_activate(0);
             let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
-            v.sepc = testing_sepc_ret as usize;
+
+            // println!("temporarily change sepc to test.");
+            //nkapi_activate(0);
+            //v.sepc = testing_sepc_ret as usize;
+
+            println!("sp: {:x}, sepc: {:x}, sstatus: {:x}", v.x[2], v.sepc, v.sstatus.bits());
+
+            nkapi_alloc(1, VirtAddr::from(v.x[2]).into(), crate::nk::MapType::Framed, MapPermission::W | MapPermission::R );
+            if let Some(sp_pa) = nkapi_translate_va(1, v.x[2].into()){
+                println!("stack is mapped to {:?}", pa);
+            }else{
+                println!("WARN: stack is not mapped!");
+                
+            }
+        
         }
     }else{
         println!("WARN: TRAP_CONTEXT is not mapped!");
     }
+
+
 
     let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
     if trap_cx.get_sp() == 0{
@@ -115,7 +129,7 @@ pub fn user_trap_return() -> ! {
     unsafe {
         //llvm_asm!("fence.i" :::: "volatile");
         // WARNING: here, we make a2 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
-        llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(user_satp), "{a2}"(__signal_trampoline as usize) :: "volatile");
+        llvm_asm!("jalr x1, $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(user_satp), "{a2}"(__signal_trampoline as usize) :: "volatile");
     }
     panic!("Unreachable in back_to_user!");
 }

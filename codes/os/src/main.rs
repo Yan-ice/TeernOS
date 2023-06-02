@@ -8,6 +8,7 @@
 
 use crate::{config::*, nk::tests::{nkapi_gatetest, mem_access_timecost}};
 use lazy_static::lazy_static;
+use riscv::register::sie;
 use sbi::sbi_send_ipi;
 use spin::*;
 use nk::*;
@@ -125,6 +126,9 @@ pub fn outer_kernel_init(){
     println!("UltraOS: interrupt initialized");
     fs::init_rootfs();
     println!("UltraOS: fs initialized");
+    
+    //unsafe { sie::set_stimer(); }
+
     task::add_initproc();
     println!("UltraOS: task initialized");
 

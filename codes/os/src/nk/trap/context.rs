@@ -1,4 +1,6 @@
 use riscv::register::sstatus::{Sstatus, self, SPP};
+use crate::config::TRAMPOLINE;
+
 use super::{user_trap_handler
     //,nk_trap_handler
 };
@@ -28,14 +30,19 @@ impl TrapContext {
 ) -> Self {
         let mut sstatus = sstatus::read();
         // set CPU privilege to User after trapping back
-        sstatus.set_spp(SPP::User);
+        // println!("TrapContext init with sepc: {:x}",entry);
+        
+        //Yan_ice: If it is supervisor mode, it can use sret successfully.
+        //sstatus.set_spp(SPP::User);
+        sstatus.set_spp(SPP::Supervisor);
+
         let mut cx = Self {
             x: [0; 32],
             sstatus,
             sepc: entry,
             kernel_satp,
             kernel_sp,
-            trap_handler: user_trap_handler as usize
+            trap_handler: TRAMPOLINE as usize
         };
         cx.set_sp(sp);
         cx

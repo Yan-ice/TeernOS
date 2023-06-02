@@ -212,8 +212,6 @@ pub fn nk_main(){
         proxy.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
     }
 
-    //trap::enable_timer_interrupt();
-
     extern "C"{
         fn nk_kernel_stack_top();
         fn eokernelstack();
@@ -242,7 +240,7 @@ pub fn nk_main(){
 
     println!("Nesked kernel init success");
     space();
-    
+
     mem_access_timecost();
 
     unsafe{

@@ -61,44 +61,36 @@ __alltraps:
 
 __restore:
 
-    ld a1, 33*8(a0)   
-    csrw sepc, a1
-    ld t0, 32*8(a0)
-    csrw sstatus, t0
-    jr a1
-    sret
-
-    # a0: *TrapContext in user space(Constant); a1: user space token
-    # switch to user space
-    # csrw satp, a1
-    # sfence.vma
-    
-    # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
-    # sfence.vma zero, zero
-    # csrw sscratch, a0 # 把a0的值写入sscratch，对于每次在trap return中执行这里的时候
+    csrw sscratch, a0 # 把a0的值写入sscratch，对于每次在trap return中执行这里的时候
                       # a0的值都是TRAP_CONTEXT，这个地方也是trap context存在的位置
-    # addi sp, a0, 0         # 把a0的值写入sp
+
+    # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
+    # sfence.vma
+    # sfence.vma zero, zero
+
+
+    # Yan_ice: temporarily not modify sp.
+    sd sp, 2*8(a0)
+
+    mv sp, a0         # 把a0的值写入sp
     # now sp points to TrapContext in user space, start restoring based on it
+
     # restore sstatus/sepc
-    # ld t0, 32*8(sp)   # 按照存储规则去加载trap context中的值
-
-    ld t1, 33*8(a0)   
-    # .half 0x3452
-    # .half 0x34f2
-    # csrw sstatus, t0  # 继续恢复上面的值
-
+    ld t0, 32*8(sp)   # 按照存储规则去加载trap context中的值
+    ld t1, 33*8(sp)   
+    csrw sstatus, t0  # 继续恢复上面的值
     csrw sepc, t1
-
-    jr t1
+    
     # restore general purpose registers except x0/sp/tp
-    # ld x1, 1*8(sp)
-    # ld x3, 3*8(sp)
-    # .set n, 5
-    # .rept 27
-    #    LOAD_GP %n
-    #     .set n, n+1
-    # .endr
+    ld x1, 1*8(sp)
+    ld x3, 3*8(sp)
+    .set n, 5
+    .rept 27
+       LOAD_GP %n
+        .set n, n+1
+    .endr
     # back to user stack
 
-    # ld sp, 2*8(sp) # 当时进来的时候，这里就是进入时的用户栈栈顶，复原栈指针
+    ld sp, 2*8(sp) # restore sp at last.
+
     sret # 跳转到sepc的位置继续执行
