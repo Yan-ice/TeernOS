@@ -66,7 +66,6 @@ pub fn allocator_init(){
 //然后就暴露他俩咯
 pub fn outer_frame_alloc() -> Option<PhysPageNum> {
     let padr = OuterAllocator().alloc();
-    println!("Outer kernel alloc: {:?}", padr.unwrap());
     padr
     
 }

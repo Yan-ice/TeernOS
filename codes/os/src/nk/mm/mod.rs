@@ -5,6 +5,7 @@ mod page_table;
 pub mod nkapi;
 pub mod memory_set;
 mod vma;
+mod trap_handle;
 
 use riscv::register::{
     mtvec::TrapMode,
@@ -44,6 +45,8 @@ pub use frame_allocator::{
     enquire_refcount
 };
 
+
+
 //nk内部的就不暴露啦
 use frame_allocator::{
     frame_alloc
@@ -62,6 +65,10 @@ pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
 
 use crate::config::*;
+
+use trap_handle::{handle_outer_trap, handle_nk_trap};
+
+use super::TrapContext;
 extern "C" {
     fn stext();
     fn etext();
@@ -378,6 +385,7 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     if let Some(pt) = pt_get(pt_handle){
         let pa = pt.translate_va(va);
+        //println!("VA->PA: {:?} {:?}", va, pa);
         return pa;
     }
     panic!("nk_translate_va: cannot find pagetable!");
@@ -411,13 +419,13 @@ pub fn nkapi_activate(pt_handle: usize) {
     if let Some(page_table) = pt_get(pt_handle) {
         let satp = page_table.token();
         // nk_entry_gate();
-        unsafe {
-            satp::write(satp);
-            llvm_asm!("sfence.vma" :::: "volatile");
-        }
+        // unsafe {
+        //     satp::write(satp);
+        //     llvm_asm!("sfence.vma" :::: "volatile");
+        // }
 
         // println!("outer kernel's table switch.");
-        // println!("need to change satp to {:x}", page_table.token());
+        println!("nkapi: pagetable [{}] activated.", pt_handle);
         unsafe{
             (&mut PROXYCONTEXT()).outer_satp = page_table.token();
         }

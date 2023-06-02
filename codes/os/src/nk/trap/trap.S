@@ -60,25 +60,36 @@ __alltraps:
     jr t1
 
 __restore:
+
+    ld a1, 33*8(a0)   
+    csrw sepc, a1
+    ld t0, 32*8(a0)
+    csrw sstatus, t0
+    jr a1
+    sret
+
     # a0: *TrapContext in user space(Constant); a1: user space token
     # switch to user space
     # csrw satp, a1
     # sfence.vma
-
-
+    
     # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
     # sfence.vma zero, zero
     # csrw sscratch, a0 # 把a0的值写入sscratch，对于每次在trap return中执行这里的时候
                       # a0的值都是TRAP_CONTEXT，这个地方也是trap context存在的位置
-    mv sp, a0         # 把a0的值写入sp
+    # addi sp, a0, 0         # 把a0的值写入sp
     # now sp points to TrapContext in user space, start restoring based on it
     # restore sstatus/sepc
     # ld t0, 32*8(sp)   # 按照存储规则去加载trap context中的值
-    ld t1, 33*8(sp)   
+
+    ld t1, 33*8(a0)   
     # .half 0x3452
     # .half 0x34f2
     # csrw sstatus, t0  # 继续恢复上面的值
+
     csrw sepc, t1
+
+    jr t1
     # restore general purpose registers except x0/sp/tp
     # ld x1, 1*8(sp)
     # ld x3, 3*8(sp)

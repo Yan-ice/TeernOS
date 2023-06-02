@@ -109,7 +109,7 @@ pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8; 
 }
 
 pub fn nkapi_traphandler(ctx: &TrapContext){
-    entry_gate!(nkapi::NKTRAP_HANDLE, ctx as const *usize as usize);
+    entry_gate!(nkapi::NKTRAP_HANDLE, ctx as *const TrapContext as *const usize as usize);
     return_void!();
 }
 
@@ -141,6 +141,44 @@ extern "C" {
     pub fn nk_exit();
 }
 
+fn space(){
+
+    extern "C" {
+        fn stext();
+        fn etext();
+        fn srodata();
+        fn erodata();
+        fn sdata();
+        fn edata();
+        fn sbss_with_stack();
+        fn ebss();
+        fn sproxy();
+        fn eproxy();
+        fn snkheap();
+        fn enkheap();
+        fn ekernel();
+        fn sokernel();
+        fn outer_allocator();
+        fn outer_static();
+        fn sokheap();
+        fn eokheap();
+        fn sokernelstack();
+        fn eokernelstack();
+        fn eokernel();
+        fn strampoline();
+        fn ssignaltrampoline();
+        fn snktrampoline();
+    }
+    println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+    println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+    println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+    println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+    println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+    println!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
+    println!("okheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+    println!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
+    println!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
+}
 #[no_mangle]
 pub fn nk_main(){
     let core = id();
@@ -162,6 +200,7 @@ pub fn nk_main(){
     nkapi_pt_init(0);
     OUTER_KERNEL_SPACE().lock();
     println!("outer kernel pagetable init success.");
+
 
     nkapi_gatetest();
 
@@ -202,6 +241,8 @@ pub fn nk_main(){
     }
 
     println!("Nesked kernel init success");
+    space();
+    
     mem_access_timecost();
 
     unsafe{

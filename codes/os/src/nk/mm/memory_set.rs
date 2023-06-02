@@ -246,11 +246,6 @@ impl MemorySet {
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
         println!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
