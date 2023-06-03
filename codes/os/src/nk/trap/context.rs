@@ -42,7 +42,7 @@ impl TrapContext {
             sepc: entry,
             kernel_satp,
             kernel_sp,
-            trap_handler: TRAMPOLINE as usize
+            trap_handler: user_trap_handler as usize
         };
         cx.set_sp(sp);
         cx
