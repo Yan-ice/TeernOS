@@ -12,7 +12,7 @@ use riscv::{register::{
 use crate::{TrapContext, nk::{
     VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate, nkapi_alloc, MapPermission, nkapi_set_permission
 }, config::NK_TRAMPOLINE};
-use crate::syscall::{syscall, SYSCALLPARAMETER};
+use crate::syscall::{syscall};
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,
@@ -25,10 +25,8 @@ use crate::task::{
 
 pub use crate::nk::nkapi::ProxyContext;
 use super::PROXYCONTEXT;
-use crate::timer::set_next_trigger;
+
 use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
-use crate::gdb_print;
-use crate::monitor::*;
 
 global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
@@ -46,7 +44,27 @@ pub fn user_trap_handler() -> ! {
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) =>{
-            
+            // println!{"pinUserEnvCall"}
+            // jump to next instruction anyway
+            let mut cx = current_trap_cx();
+            cx.sepc += 4;
+
+            //G_SATP.lock().set_syscall(cx.x[17]);
+            let syscall_id = cx.x[17];
+            if syscall_id > 62 && syscall_id != 113 {
+                unsafe {
+                    //llvm_asm!("sfence.vma zero, zero" :::: "volatile");
+                }
+            }
+            //get system call return value
+            let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
+            // cx is changed during sys_exec, so we have to call it again
+            //if syscall_id != 64 && syscall_id != 63{
+            //    println!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
+            //} 
+            cx = current_trap_cx();
+            cx.x[10] = result as usize;
+            // println!{"cx written..."}
         }
         // Trap::Exception(Exception::InstructionFault) |
         // Trap::Exception(Exception::InstructionPageFault) |        
@@ -69,6 +87,7 @@ pub fn user_trap_handler() -> ! {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
         }
     }
+
     user_trap_return();
 }
 
@@ -82,47 +101,26 @@ pub fn user_trap_return() -> ! {
     
     //return到user space时，切换为user trap。
 
-    println!("user trap return");
-
     // unsafe {
     //     stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     // }
     let trap_cx_ptr = TRAP_CONTEXT;
-    let user_satp = 0;
+    // if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
+    //     println!("TRAP_CONTEXT is mapped to {:?}", pa);
+    //     unsafe{
+    //         let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
+    //         println!("trap context: {:?}",v);
+    //         println!("trap context sp: {:x}",v.x[2]);
+            
+    //     }
+    // }else{
+    //     println!("WARN: TRAP_CONTEXT is not mapped!");
+    // }
 
-    
-    if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
-        println!("TRAP_CONTEXT is mapped to {:?}", pa);
-        unsafe{
-            let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
-
-            // println!("temporarily change sepc to test.");
-            //nkapi_activate(0);
-            v.sepc = test_in_usr as usize;
-            //let mut sstatus = v.sstatus.bits();
-            //sstatus.set_bit(0,true);
-
-            v.sstatus.set_spie(true);
-
-            //println!("sie reg: {:x}", sie.bits());
-            println!("sstatus: uie {} upie {} sie {} spie {}", v.sstatus.uie(), v.sstatus.upie(), v.sstatus.sie(), v.sstatus.spie());
-            nkapi_alloc(1, VirtAddr::from(v.x[2]).into(), crate::nk::MapType::Framed, MapPermission::W | MapPermission::R );
-            if let Some(sp_pa) = nkapi_translate_va(1, v.x[2].into()){
-                println!("stack is mapped to {:?}", pa);
-            }else{
-                println!("WARN: stack is not mapped!");
-                
-            }
-        
-        }
-    }else{
-        println!("WARN: TRAP_CONTEXT is not mapped!");
-    }
-
-    let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
-    if trap_cx.get_sp() == 0{
-        println!("[trap_ret] sp = 0");
-    }
+    // let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
+    // if trap_cx.get_sp() == 0{
+    //     println!("[trap_ret] sp = 0");
+    // }
     extern "C" {
         fn __alltraps();
         fn __restore();
@@ -131,30 +129,11 @@ pub fn user_trap_return() -> ! {
 
     //TODO: exit gate
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
-    
-    println!("ready to jump");
-
+   
     unsafe {
         //llvm_asm!("fence.i" :::: "volatile");
-        // WARNING: here, we make a2 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
-        llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(user_satp), "{a2}"(__signal_trampoline as usize) :: "volatile");
+        // WARNING: here, we make a1 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
+        llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(__signal_trampoline as usize) :: "volatile");
     }
     panic!("Unreachable in back_to_user!");
-}
-
-fn test_in_usr(){
-    println!("Test code in user.");
-
-
-    unsafe{
-        let mut satp: usize = 0;
-        llvm_asm!("csrr $0,satp" : "=r"(satp));
-        println!("current satp: {:x}", satp);
-        for i in 0..100{
-            nkapi_set_permission(1, 0.into(), (MapPermission::R | 
-                MapPermission::W | MapPermission::X | MapPermission::U).bits().into());
-            let aa = *(i as *const usize);
-            println!("val in {:x}: {:x}", i, aa);
-        }
-    }
 }

@@ -13,7 +13,7 @@ use crate::{nk::{
     // PTEFlags,
 }, util::mm_util::translated_refmut, 
 syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext, nkapi_translate};
+use crate::nk::{TrapContext, nkapi_translate, nkapi_set_permission};
 use crate::config::*;
 use crate::gdb_println;
 use crate::monitor::*;
@@ -154,6 +154,21 @@ impl TaskControlBlockInner {
 }
 
 
+pub fn test_in_usr(){
+    println!("Test code in user.");
+
+    unsafe{
+        let mut satp: usize = 0;
+        llvm_asm!("csrr $0,satp" : "=r"(satp));
+        println!("current satp: {:x}", satp);
+        for i in 0..100{
+            nkapi_set_permission(1, 0.into(), (MapPermission::R | 
+                MapPermission::W | MapPermission::X | MapPermission::U).bits().into());
+            let aa = *(i as *const usize);
+            println!("val in {:x}: {:x}", i, aa);
+        }
+    }
+}
 
 impl TaskControlBlock {
     pub fn acquire_inner_lock(&self) -> MutexGuard<TaskControlBlockInner> {
@@ -275,9 +290,11 @@ impl TaskControlBlock {
         let tgid = pid_handle.0;
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
-
+        println!("kernel_stack_top: {:x}",kernel_stack_top);
         // memory_set /user stack top /use heap bottom/ elf entry point
-        let (memory_set, user_sp, user_heap, entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
+        let (memory_set, user_sp, user_heap, mut entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
+
+        // entry_point = test_in_usr as usize; // Yan_ice: temporarily modify it to test
 
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
@@ -297,10 +314,7 @@ impl TaskControlBlock {
                 trapcx_backup: TrapContext::app_init_context(
                     entry_point,
                     user_sp,
-                    KERNEL_SPACE.lock().token(),
                     kernel_stack_top,
-                    //trap_handler as usize,
-                    //Yan_ice: trap_handler
                 ),
                 trap_cx_ppn,
                 base_size: user_sp,
@@ -347,7 +361,6 @@ impl TaskControlBlock {
         *trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
-            KERNEL_SPACE.lock().token(),
             kernel_stack_top,
             //trap_handler as usize,
                 //Yan_ice: trap_handler
@@ -516,7 +529,6 @@ impl TaskControlBlock {
         let mut trap_cx = TrapContext::app_init_context(
             entry_point,
             user_sp,
-            KERNEL_SPACE.lock().token(),
             self.kernel_stack.get_top(),
             //trap_handler as usize,
             //Yan_ice: trap_handler
@@ -643,21 +655,25 @@ impl TaskControlBlock {
         //println!("get the lock successfully");
         if va >= mmap_start && va < mmap_end {
         // if false { // disable lazy mmap
-            //println!("lazy mmap");
+            println!("lazy mmap");
             self.lazy_mmap(va.0, is_load)
         } else if va.0 >= heap_base && va.0 <= heap_pt {
+            println!("lazy heap");
             self.acquire_inner_lock().lazy_alloc_heap(vpn);
             0
         } else if va.0 >= stack_bottom && va.0 <= stack_top {
-            //println!{"lazy_stack_page: {:?}", va}
+            println!{"lazy_stack_page: {:?}", va}
             self.acquire_inner_lock().lazy_alloc_stack(vpn);
             0
         } else {
             //Yan_ice: manage CoW
             // get the PageTableEntry that faults
+            println!("lazy others");
             if let Some(ppn) = self.acquire_inner_lock().enquire_vpn(vpn,true) {
+                println!("lazy_others - find ppn {:?}",ppn);
                 0
             }else{
+
                 -1
             }
         }
@@ -720,6 +736,7 @@ impl TaskControlBlock {
         inner.mmap_area.remove(start, len)
     }
 
+    //Yan_ice: TODO: remove KERNEL_SPACE and KERNEL_MMAP_AREA
 
     // create mmap in kernel space, used for elf file only
     pub fn kmmap(&self, start: usize, len: usize, prot: usize, flags: usize, fd: isize, off: usize) -> usize {

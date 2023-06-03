@@ -157,6 +157,14 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
     let pn = FRAME_ALLOCATOR
         .lock()
         .alloc();
+    
+    if let Some(ppn) = pn{
+        let bytes_array = ppn.get_bytes_array();
+        for i in bytes_array {
+            *i = 0;
+        }
+    }
+
     pn
 }
 

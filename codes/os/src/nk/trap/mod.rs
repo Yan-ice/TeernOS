@@ -20,41 +20,6 @@ pub use trap::user_trap_return;
 pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE};
 use crate::{syscall::syscall, config::{TRAMPOLINE, NK_TRAMPOLINE}};
 
-
-// 无用
-fn trap_in_nk() -> !{
-    unsafe{
-        
-        let scause = scause::read();
-        match scause.cause() {
-            Trap::Exception(Exception::UserEnvCall) => {
-                panic!("ERROR: syscall exception occured in Nested Kernel!");
-            }
-            Trap::Exception(Exception::InstructionFault) |
-            Trap::Exception(Exception::InstructionPageFault) => {
-                panic!("ERROR: pagefault exception occured in Nested Kernel!");
-            }
-            Trap::Exception(Exception::LoadFault) |
-            Trap::Exception(Exception::StoreFault) |
-            Trap::Exception(Exception::StorePageFault) |
-            Trap::Exception(Exception::LoadPageFault) => {
-                panic!("ERROR: load/store exception occured in Nested Kernel!");
-            }
-            Trap::Exception(Exception::IllegalInstruction) => {
-                panic!("ERROR: illegal instruction in Nested Kernel!");
-            }
-            Trap::Interrupt(Interrupt::SupervisorTimer) => {
-                panic!("ERROR: timer interrupt occured in Nested Kernel!");
-            }
-            _ => {
-                panic!("Unsupported trap {:?}!", scause.cause());
-            }
-        }
-
-    }
-    
-}
-
 pub fn init(){
     
     unsafe {
@@ -93,14 +58,6 @@ impl GlobalSatp{
     }
 }
 
-use lazy_static::lazy_static;
-use alloc::sync::Arc;
-use spin::Mutex;
-
-// 这个也没有用，实际上和trap相关的信息也只需要在trap模块中被访问，存一个全局的信息没有什么必要
-lazy_static! {
-    pub static ref G_SATP: Arc<Mutex<GlobalSatp>> = Arc::new(Mutex::new(GlobalSatp{satp:0, syscall:0}));
-}
 
 extern "C"{
     fn nk_kernel_stack_top();

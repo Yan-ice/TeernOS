@@ -1,7 +1,7 @@
 
 use crate::nk::{
     nkapi_pt_init, nkapi_alloc, nkapi_dealloc, nkapi_activate, 
-    nkapi_copyTo, nkapi_translate, nkapi_set_permission};
+    nkapi_copyTo, nkapi_translate, nkapi_set_permission, nkapi_print_pt};
 
 use crate::nk::{nkapi_vun_getpt};
 
@@ -357,12 +357,15 @@ impl MemorySet {
                 } 
 
                 //println!("[elf] ph={:?}", ph.to_string());
-                //println!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X}", ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset);
                 let mut map_perm = MapPermission::U;
                 let ph_flags = ph.flags();
                 if ph_flags.is_read() { map_perm |= MapPermission::R; }
                 if ph_flags.is_write() { map_perm |= MapPermission::W; }
                 if ph_flags.is_execute() { map_perm |= MapPermission::X; }
+
+                println!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
+                        ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset, map_perm);
+                
                 let map_area = MapArea::new(
                     start_va,
                     end_va,
@@ -398,14 +401,14 @@ impl MemorySet {
         let mut user_heap_bottom: usize = max_end_va.into();
         //guard page
         user_heap_bottom += PAGE_SIZE;
-        // let user_heap_top: usize = user_heap_bottom + USER_HEAP_SIZE;
-        //maparea1: user_heap
-        // memory_set.push(MapArea::new(
-        //     user_heap_bottom.into(),
-        //     user_heap_top.into(),
-        //     MapType::Framed,
-        //     MapPermission::R | MapPermission::W | MapPermission::U,
-        // ), None);
+        let user_heap_top: usize = user_heap_bottom + USER_HEAP_SIZE;
+        // maparea1: user_heap
+        memory_set.push(MapArea::new(
+            user_heap_bottom.into(),
+            user_heap_top.into(),
+            MapType::Framed,
+            MapPermission::R | MapPermission::W | MapPermission::U,
+        ), None);
 
         // maparea2: TrapContext
         memory_set.push_mmap(MapArea::new(
@@ -418,8 +421,8 @@ impl MemorySet {
         // map user stack with U flags
         // maparea3: user_stack
         let max_top_va: VirtAddr = TRAP_CONTEXT.into();
-        let mut user_stack_top: usize = TRAP_CONTEXT;
-        user_stack_top -= PAGE_SIZE;
+        let mut user_stack_top: usize = TRAP_CONTEXT - PAGE_SIZE;
+
         let user_stack_bottom: usize = user_stack_top - USER_STACK_SIZE_MIN; 
         memory_set.push_mmap(MapArea::new(
             user_stack_bottom.into(),
@@ -489,65 +492,79 @@ impl MemorySet {
     //     memory_set
     // }
 
-    pub fn from_copy_on_write(user_space: &mut MemorySet, split_addr: usize, pid: usize) -> MemorySet {
+    pub fn from_copy_on_write(user_space: &mut MemorySet, mut split_addr: usize, pid: usize) -> MemorySet {
+        
+        //split_addr: addr bigger than split_addr would not copy_on_write.
+
+        split_addr = 0;
+        // Yan_ice: temporarily change split_addr to 0, means EVERYTHING is not copy on write!
+
+        let old_pid: usize = user_space.id();
+        let new_pid: usize = pid;
+
         // create a new memory_set
         let mut memory_set = Self::new_bare(pid);
+
         // This part is not for Copy on Write.
         // Including:   Trampoline
         //              Trap_Context
         //              User_Stack
         // memory_set.map_trampoline();
+
+        println!("Copying old datas.");
+
         for area in user_space.areas.iter() {
             let head_vpn = area.vpn_range.get_start();
             let user_split_addr: VirtAddr = split_addr.into();
-            if head_vpn < user_split_addr.floor() {
-                //skipping the part using CoW
-                continue;
-            }
-            let new_area = MapArea::from_another(area);
-            memory_set.push_mmap(new_area, None);
-            for vpn in area.vpn_range {
-                let s_ppn = nkapi_translate(user_space.id(),vpn,false);
-                let d_ppn = nkapi_translate(memory_set.id(),vpn,false);
-                if s_ppn.is_some() & d_ppn.is_some() {
-                    let src_ppn = s_ppn.unwrap();
-                    let dst_ppn = d_ppn.unwrap();
-                // println!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
-                    dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
-                }
-                
-            }
-        }
-        //This part is for copy on write
-        let mut parent_areas = &user_space.areas;
-        let mut origin_page_table = nkapi_vun_getpt(user_space.id());
-        let mut target_page_table = nkapi_vun_getpt(memory_set.id());
 
-        for area in parent_areas.iter() {
-            let head_vpn = area.vpn_range.get_start();
-            let user_split_addr: VirtAddr = split_addr.into();
-            if head_vpn >= user_split_addr.floor() {
-                //skipping the part using Coping to new ppn
+            if head_vpn < user_split_addr.floor() {
+
+                //smaller than split_addr: copy on write.
+
+                // let mut new_area = MapArea::from_another(area);
+                // // map the former physical address
+                // for vpn in area.vpn_range {
+                //     //change the map permission of both pagetable
+                //     // get the former flags and ppn
+                //     let pte = origin_page_table.translate(vpn).unwrap();
+                //     let pte_flags = pte.flags() & !PTEFlags::W;
+                //     let src_ppn = pte.ppn();
+                //     //frame_add_ref(src_ppn);
+                //     // change the flags of the src_pte
+                //     origin_page_table.set_flags(vpn, pte_flags);
+                //     origin_page_table.set_cow(vpn);
+                //     // map the cow page table to src_ppn
+                //     target_page_table.map(vpn, src_ppn, pte_flags);
+                //     target_page_table.set_cow(vpn);
+                //     new_area.insert_map(vpn, src_ppn);
+                // }
+                // memory_set.push_mapped(new_area);
+
                 continue;
+            }else{
+
+                //bigger than split_addr: NOT copy on write, directly copy.
+
+                let new_area = MapArea::from_another(area);
+                memory_set.push_mmap(new_area, None);
+                for vpn in area.vpn_range {
+                    let s_ppn = nkapi_translate(user_space.id(),vpn,false);
+                    let d_ppn = nkapi_translate(memory_set.id(),vpn,false);
+                    if s_ppn.is_some() & d_ppn.is_some() {
+                        let src_ppn = s_ppn.unwrap();
+                        let dst_ppn = d_ppn.unwrap();
+                        println!{"forking {:?} -> {:?} (old: {:?})", vpn, dst_ppn, src_ppn};
+                        unsafe{
+                            let data: &mut [u8] = core::slice::from_raw_parts_mut(VirtAddr::from(vpn).0 as *mut u8, 4096);
+                            nkapi_copyTo(memory_set.id(),vpn, data, 0);
+                        }
+                        
+                    }
+                    
+                }
+
             }
-            let mut new_area = MapArea::from_another(area);
-            // map the former physical address
-            for vpn in area.vpn_range {
-                //change the map permission of both pagetable
-                // get the former flags and ppn
-                let pte = origin_page_table.translate(vpn).unwrap();
-                let pte_flags = pte.flags() & !PTEFlags::W;
-                let src_ppn = pte.ppn();
-                //frame_add_ref(src_ppn);
-                // change the flags of the src_pte
-                origin_page_table.set_flags(vpn, pte_flags);
-                origin_page_table.set_cow(vpn);
-                // map the cow page table to src_ppn
-                target_page_table.map(vpn, src_ppn, pte_flags);
-                target_page_table.set_cow(vpn);
-                new_area.insert_map(vpn, src_ppn);
-            }
-            memory_set.push_mapped(new_area);
+            
         }
 
         for vpn in user_space.chunks.vpn_table.iter() {
@@ -593,6 +610,7 @@ impl MemorySet {
             }
             memory_set.mmap_chunks.push(new_mmap_area);
         }
+
         memory_set
     }
 
@@ -719,6 +737,9 @@ impl ChunkArea {
 
     // Alloc and map one page
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
+        // if let Some(p) = nkapi_translate(pt_handle, vpn, false){
+        //     nkapi_dealloc(pt_handle, vpn)
+        // }
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
         self.data_frames.insert(vpn, ppn);
     }
@@ -774,14 +795,13 @@ impl MapArea {
 
     // Alloc and map one page
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
-        let mut mpt: MapType = self.map_type;
-        if self.map_type == MapType::Identical{
-            mpt = MapType::Specified(vpn.0.into())
-        }
         // println!{"map one!!!"}
+        if let Some(p) = nkapi_translate(pt_handle, vpn, false){
+            println!("{:?} already mapped in [{}].", vpn, pt_handle);
+            nkapi_dealloc(pt_handle, vpn);
+        }
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
-        
-        self.data_frames.insert(vpn, ppn);
+        self.data_frames.insert(vpn, ppn);  
     }
 
     pub fn unmap_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {

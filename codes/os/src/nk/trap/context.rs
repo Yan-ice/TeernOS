@@ -11,36 +11,32 @@ pub struct TrapContext {
     pub x: [usize; 32],
     pub sstatus: Sstatus,
     pub sepc: usize,
-    pub kernel_satp: usize,
+    //pub kernel_satp: usize,
     pub kernel_sp: usize,
     pub trap_handler: usize,
 }
 
-
 impl TrapContext {
     pub fn set_sp(&mut self, sp: usize) { self.x[2] = sp; }
     pub fn get_sp(& self)->usize { self.x[2] }
+
     pub fn app_init_context(
         // 只有三个函数调用过这个方法，在初始化的时候
         //，也就是从elf得到pcb的时候，trap context要一起初始化，这里初始化为elf的header
         entry: usize, // trap之前的上一条指令
         sp: usize, // 当前用户栈的栈顶
-        kernel_satp: usize,  // 未理解的内核页表，这东西在干啥
+        //kernel_satp: usize,  // 未理解的内核页表，这东西在干啥
         kernel_sp: usize  // 内核栈栈顶
-) -> Self {
+    ) -> Self {
         let mut sstatus = sstatus::read();
         // set CPU privilege to User after trapping back
-        // println!("TrapContext init with sepc: {:x}",entry);
-        
         //Yan_ice: If it is supervisor mode, it can use sret successfully.
-        //sstatus.set_spp(SPP::User);
-        sstatus.set_spp(SPP::Supervisor);
+        sstatus.set_spp(SPP::User);
 
         let mut cx = Self {
             x: [0; 32],
             sstatus,
             sepc: entry,
-            kernel_satp,
             kernel_sp,
             trap_handler: user_trap_handler as usize
         };

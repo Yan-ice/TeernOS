@@ -103,7 +103,7 @@ pub fn nkapi_activate(pt_handle: usize){
     return_void!();
 }
 
-pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8; crate::config::PAGE_SIZE], offset:usize){
+pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8], offset:usize){
     entry_gate!(nkapi::NKAPI_COPY_TO,pt_handle, current_vpn, data as *const [u8] as *const usize as usize, offset);
     return_void!();
 }
@@ -118,6 +118,10 @@ pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){
     return_void!();
 }
 
+pub fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
+    entry_gate!(nkapi::NKAPI_DEBUG, pt_handle, from, to);
+    return_void!();
+}
 
 pub fn id() -> usize {
     let cpu_id;
@@ -197,12 +201,12 @@ pub fn nk_main(){
     println!("trap init success.");
 
     //init page for outer kernel.
-    nkapi_pt_init(0);
+
     OUTER_KERNEL_SPACE().lock();
     println!("outer kernel pagetable init success.");
 
-
     nkapi_gatetest();
+    //nkapi_print_pt(0, 0, 0x5000);
 
     unsafe{
         let mut proxy = PROXYCONTEXT();

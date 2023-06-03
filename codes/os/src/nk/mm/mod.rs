@@ -19,14 +19,14 @@ use riscv::register::{
     stvec,
 };
 
-use alloc::sync::Arc;
+use alloc::{sync::Arc, boxed::Box};
 use lazy_static::*;
 use spin::Mutex;
 
 use alloc::vec::Vec;
 use riscv::register::satp;
 
-use crate::nk::nkapi::ProxyContext;
+use crate::{nk::nkapi::ProxyContext, task::{current_task, Signals}};
 use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
 
 pub use nkapi::{
@@ -67,6 +67,8 @@ pub use frame_allocator::FRAME_ALLOCATOR;
 use crate::config::*;
 
 use trap_handle::{handle_outer_trap, handle_nk_trap};
+
+use self::memory_set::KernelToken;
 
 use super::TrapContext;
 extern "C" {
@@ -180,14 +182,12 @@ lazy_static! {
     pub static ref PAGE_TABLE_LIST: Mutex<Vec<PageTable>> = Mutex::new(
         Vec::<PageTable>::new()
     );
+    pub static ref current_pt: Mutex<Box<usize>> = Mutex::new(Box::new(0));
 }
+
 
 //get the Pagetable from its handle(id)
 pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
-    //TODO: bogus descriptor?
-    // if pt_handle == 0{
-    //     return Some(outerkernel_pt());
-    // }
 
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
         if i.id() == pt_handle {
@@ -197,18 +197,21 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
     return None
 }
 
+pub fn pt_current() -> usize {
+    current_pt.lock().as_ref().clone()
+}
 
 fn nkapi_traphandle(ctx: &TrapContext){
+
     let scause: scause::Scause = scause::read();
     let stval = stval::read();
-    println!("nkapi handling trap.");
     match scause.cause() {
 
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            handle_outer_trap(scause, stval as usize)
+            handle_outer_trap(scause, stval as usize);
         }
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::StoreFault) |
@@ -221,13 +224,23 @@ fn nkapi_traphandle(ctx: &TrapContext){
         }
     }
 
-    
 }
+
 //the function below would expose to outer kernel
 fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
     println!("Entering nkapi_test.");
     assert_eq!(t1.0, t2.0, "asserting in nkapi_assert.");
     return Some(t1.0);
+}
+
+//the function below would expose to outer kernel
+fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
+    if let Some(mut target_pt) = pt_get(pt_handle){
+        target_pt.trace_address(from.into());
+        println!("printing pagetable [{}]", pt_handle);
+        target_pt.print_pagetable(from, to);
+    }
+    
 }
 
 // fn current_pt() -> usize {
@@ -245,13 +258,13 @@ fn nkapi_pt_init(pt_handle: usize){
 
     //Yan_ice: here we create a new pagetable,
     let mut pt = PageTable::new(pt_handle);
-    println!("Creating PageTable [{}] with token {:x}.",pt_handle, pt.token());
+    println!("Creating user PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
-    //Yan_ice: mapping signal trampoline, I don't know why here panic occurs.
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
         PhysAddr::from(ssignaltrampoline as usize).into(),
         PTEFlags::R | PTEFlags::X | PTEFlags::U,
     );
+
     // mapping trampoline
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
@@ -264,7 +277,6 @@ fn nkapi_pt_init(pt_handle: usize){
     }
 
     if pt_handle != 0{
-        println!("[debug] Mapping kernel_shared space.");
         pt.map_kernel_shared();
     }
 
@@ -295,6 +307,7 @@ fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     }
     println!("nk_set_perm: cannot find pagetable!");
 }
+
 fn pt_destroy(pt_handle: usize){
     // TODO
 }
@@ -302,12 +315,14 @@ fn pt_destroy(pt_handle: usize){
 fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
     let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
+    
     if let Some(mut target_pt) = pt_get(pt_handle){
         // get target ppn
         let target_ppn;
         match map_type{
             MapType::Framed => {
                 if let Some(ppn) = outer_frame_alloc(){
+                    //println!("outer allocating: {:?}", ppn);
                     target_ppn = ppn;
                 }else{
                     outer_print_free_pages();
@@ -315,13 +330,12 @@ fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapP
                 }
             }
             MapType::FramedInNK => {
-                panic!("outer kernel trying alloc NK frame!");
-                // if let Some(ppn) = frame_alloc(){
-                //     target_ppn = ppn;
-                // }else{
-                //     print_free_pages();
-                //     panic!("No more memory in Nested Kernel!");
-                // }
+                if let Some(ppn) = frame_alloc(){
+                    target_ppn = ppn;
+                }else{
+                    print_free_pages();
+                    panic!("No more memory in Nested Kernel!");
+                }
             }
             MapType::Identical => {
                 target_ppn = PhysPageNum::from(vpn.0);
@@ -332,7 +346,7 @@ fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapP
         }
 
         //clean the page frame
-        if map_type == MapType::Framed {
+        if map_type == MapType::Framed || map_type == MapType::FramedInNK{
             let bytes_array = target_ppn.get_bytes_array();
             for i in bytes_array {
                 *i = 0;
@@ -341,7 +355,6 @@ fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapP
         
         // modify pagetable entry
         target_pt.map(vpn, target_ppn, pte_flags);
-
         return target_ppn
     }
     println!("nkapi_alloc: cannot find pagetable!");
@@ -361,32 +374,32 @@ fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
 fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
 
     if let Some(mut pt) = pt_get(pt_handle){
-        let pte = pt.translate(vpn).unwrap();
-        if pte.is_valid() {
-            let former_ppn = pte.ppn();
+        if let Some(pte) = pt.translate(vpn){
+            if pte.is_valid() {
+                let former_ppn = pte.ppn();
 
-            if pte.is_cow() & write{
+                if pte.is_cow() & write{
 
-                //the code copy from memoryset::cow_alloc
-                if enquire_refcount(former_ppn) == 1 {
-                    pt.reset_cow(vpn);
-                    // change the flags of the src_pte
-                    pt.set_flags(
-                        vpn, pt.translate(vpn).unwrap().flags() | PTEFlags::W
-                    );
+                    //the code copy from memoryset::cow_alloc
+                    if enquire_refcount(former_ppn) == 1 {
+                        pt.reset_cow(vpn);
+                        // change the flags of the src_pte
+                        pt.set_flags(
+                            vpn, pt.translate(vpn).unwrap().flags() | PTEFlags::W
+                        );
+                    }
+
+                    let ppn = frame_alloc().unwrap();
+                    pt.remap_cow(vpn, ppn, former_ppn);
+                    return Some(ppn);
+
+                }else{
+                    return Some(former_ppn);
                 }
-
-                let ppn = frame_alloc().unwrap();
-                pt.remap_cow(vpn, ppn, former_ppn);
-                return Some(ppn);
-
-            }else{
-                return Some(former_ppn);
+                
             }
-            
         }
     }
-    println!("nk_translate: cannot find pagetable!");
     None
 }
 
@@ -401,14 +414,16 @@ fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
 
 
 fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
-
+    
     unsafe{
         if let Some(pt) = pt_get(pt_handle){
 
-            let data = &*(data_ptr as *const usize as *mut [u8; PAGE_SIZE]);
+            let former_pa = nkapi_translate_va(pt_current(), data_ptr.into()).unwrap();
+            //println!("nk_copy: copying data from {:x}", former_pa.0);
+            let data = &*(former_pa.0 as *const usize as *mut [u8; PAGE_SIZE]);
 
             let mut ppn = &mut pt.translate(vpn).unwrap().ppn();
-            //println!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset,vpn);
+            //println!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset, ppn);
 
             let src = &data[0..(PAGE_SIZE - offset)];
             let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
@@ -434,8 +449,10 @@ pub fn nkapi_activate(pt_handle: usize) {
 
         // println!("outer kernel's table switch.");
         println!("nkapi: pagetable [{}] activated.", pt_handle);
+        *current_pt.lock().as_mut() = pt_handle;
+
         unsafe{
-            (&mut PROXYCONTEXT()).outer_satp = page_table.token();
+            (&mut PROXYCONTEXT()).outer_satp = satp;
         }
         
         // unsafe {
@@ -448,26 +465,6 @@ pub fn nkapi_activate(pt_handle: usize) {
     }
     println!("nk_activate: cannot find pagetable!");
 }
-
-
-// //will be replace by nkapi_alloc
-// pub fn nkapi_mmap(pt_handle: usize, vpn: VirtPageNum, ppn: PhysPageNum, perm: MapPermission){
-//     println!("mmaping {:?} {:?} for pt {} !", vpn, ppn, pt_handle);
-//     if let Some(mut pt) = pt_get(pt_handle) {
-//         pt.map(vpn, ppn, perm.flags());
-//         return;
-//     }
-//     println!("nk_mmap: cannot find pagetable!");
-// }
-
-// //will be replaced by nkapi_dealloc
-// pub fn nkapi_unmap(pt_handle: usize, vpn: VirtPageNum){
-//     if let Some(mut pt) = pt_get(pt_handle){
-//         pt.unmap(vpn);
-//         return;
-//     }
-//     println!("nk_unmap: cannot find pagetable!");
-// }
 
 // this function is temporaily used. it is vulunerable!
 pub fn nkapi_vun_getpt(pt_handle: usize) -> PageTable{

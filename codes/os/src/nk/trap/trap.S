@@ -53,12 +53,10 @@ __alltraps:
     # fsd fs1, 34*8(sp)
     .half 0xba22
     .half 0xbe26
-    # load kernel_satp into t0
-    ld t0, 34*8(sp)
     # load trap_handler into t1
-    ld t1, 36*8(sp)
+    ld t1, 35*8(sp)
     # move to kernel_sp
-    ld sp, 35*8(sp)
+    ld sp, 34*8(sp)
 
     # sfence.vma
     sfence.vma zero, zero
@@ -75,10 +73,6 @@ __restore:
     # sfence.vma
     # sfence.vma zero, zero
 
-
-    # Yan_ice: temporarily not modify sp.
-    sd sp, 2*8(a0)
-
     mv sp, a0         # 把a0的值写入sp
     # now sp points to TrapContext in user space, start restoring based on it
 
@@ -87,7 +81,7 @@ __restore:
     ld t1, 33*8(sp)   
     csrw sstatus, t0  # 继续恢复上面的值
     csrw sepc, t1
-    
+
     # restore general purpose registers except x0/sp/tp
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
@@ -100,4 +94,6 @@ __restore:
 
     ld sp, 2*8(sp) # restore sp at last.
 
+    # csrr x30, sepc
+    # jr x30
     sret # 跳转到sepc的位置继续执行

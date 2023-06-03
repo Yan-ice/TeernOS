@@ -94,7 +94,7 @@ impl Drop for KernelStack {
     fn drop(&mut self) {
         let (kernel_stack_bottom, _) = kernel_stack_position(self.pid);
         let kernel_stack_bottom_va: VirtAddr = kernel_stack_bottom.into();
-        KERNEL_SPACE
+        OUTER_KERNEL_SPACE()
             .lock()
             .remove_area_with_start_vpn(kernel_stack_bottom_va.into());
     }

@@ -95,22 +95,13 @@ impl PageTable {
     pub fn id(&self) -> usize{
         return self.pt_id;
     }
+
     pub fn new(id: usize) -> Self {
         let ppn = frame_alloc().unwrap();
         PageTable {
             pt_id: id,
             root_ppn: ppn,
             //frames: vec![ppn],
-        }
-    }
-
-    /// Temporarily used to get arguments from user space.
-    pub fn from_id(id: usize) -> Self {
-        if let Some(pt) = super::pt_get(id) {
-            return pt;
-        }else{
-            super::nkapi_pt_init(id);
-            return PageTable::from_id(id);
         }
     }
     
@@ -138,6 +129,7 @@ impl PageTable {
             ppn = pte.ppn();
         }
         result
+
     }
     fn find_pte(&self, vpn: VirtPageNum) -> Option<&PageTableEntry> {
         let idxs = vpn.indexes();
@@ -200,10 +192,33 @@ impl PageTable {
         0
     }
 
+    pub fn trace_address(&mut self, va: VirtAddr){
+        let vpn = va.floor();
 
+        let idxs = vpn.indexes();
+        let mut ppn = self.root_ppn;
+        let mut result: Option<&PageTableEntry> = None;
+        print!("Tracing translation:");
 
-    pub fn print_pagetable(&mut self){
-        println!("[pt] printing pagetable {:x}",self.token());
+        for i in 0..3 {
+            print!("{:x}[{}] -> ", ppn.0, i);
+            let pte = &ppn.get_pte_array()[idxs[i]];
+            
+            if !pte.is_valid() {
+                println!("INVALID");
+                return;
+            }
+            if i == 2 {
+                println!("{:x}", pte.ppn().0);
+                break;
+            }
+            ppn = pte.ppn();
+        }
+        println!("Trace finished. {:?} -> {:?}", va, self.translate_va(va));
+    }
+
+    pub fn print_pagetable(&mut self, from: usize, to:usize){
+        println!("[pt] printing pagetable with token {:x}",self.token());
 
         let idxs = [0 as usize;3];
         let mut ppns = [PhysPageNum(0);3];
@@ -229,6 +244,9 @@ impl PageTable {
                     let va = ((((i<<9)+j)<<9)+k)<<12 ;
                     let pa = pte.ppn().0 << 12 ;
                     let flags = pte.flags();
+                    if va < from || va > to {
+                        continue;
+                    }
                     println!("va:0x{:x}  pa:0x{:x} flags:{:?}",va,pa,flags);
                 }
             }
@@ -258,9 +276,6 @@ impl PageTable {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         let p = self.find_pte(vpn)
             .map(|pte| {pte.clone()});
-        if p.is_none() {
-            println!("WARN: cannot translate {:?}", vpn);
-        }
         p
     }
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
@@ -270,7 +285,6 @@ impl PageTable {
                 return Some(pa);
             }
         }
-        println!("WARN: cannot translate {:?}", va);
         None
         
     }
@@ -287,13 +301,15 @@ impl PageTable {
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self){
         let kernel_pagetable = nkapi_vun_getpt(0);
+        
         // insert shared pte of from kernel
-        let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
+        let kernel_vpn:VirtPageNum = (OKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
         let mut ppn = self.root_ppn;
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
+
         // insert top va(kernel stack + trampoline)
         let kernel_vpn:VirtPageNum = (TRAMPOLINE / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
@@ -301,22 +317,25 @@ impl PageTable {
         let mut ppn = self.root_ppn;
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
+
+        // Yan_ice: TODO: problems about MMIO mapping.
+        // It maps level 1 PTE (0x0 ~ 0x2000000) instead of level 3, which cause mistake.
+
         // insert MMIO (assert that each MMIO length is one PAGE)
-        for pair in MMIO {
-            let kernel_vpn:VirtPageNum = (pair.0 / PAGE_SIZE).into();
-            let idxs = kernel_vpn.indexes();
-            let mut ppn = self.root_ppn;
-            for i in 0..3 {
-                let pte = &mut ppn.get_pte_array()[idxs[i]];
-                if !pte.is_valid() {
-                    let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, i+1);
-                    *pte = *pte_kernel.unwrap();
-                    break;
-                }
-                ppn = pte.ppn();
-            }
-        }
-        
+        // for pair in MMIO {
+        //     let kernel_vpn:VirtPageNum = (pair.0 / PAGE_SIZE).into();
+        //     let idxs = kernel_vpn.indexes();
+        //     let mut ppn = self.root_ppn;
+        //     for i in 0..3 {
+        //         let pte = &mut ppn.get_pte_array()[idxs[i]];
+        //         if !pte.is_valid() {
+        //             let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, i+1);
+        //             *pte = *pte_kernel.unwrap();
+        //             break;
+        //         }
+        //         ppn = pte.ppn();
+        //     }
+        // }
         
     }
 

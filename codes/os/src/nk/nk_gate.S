@@ -85,6 +85,10 @@ nk_exit:
     li x30, 0x1000
     sub x28, x28, x30
 
+    ld x30, 91*8(x28) # nkapi level
+    addi x30, x30, -1
+    sd x30, 91*8(x28) # api level remove 1 when exit
+
     # store all nk registers, 包括栈指针
     .set n, 1
     .rept 27
@@ -111,7 +115,6 @@ nk_exit:
 
 .globl nk_entry
 
-
     # 入参 x10 nkapi handler
     # 入参 x11~x15 params
     # 结构
@@ -129,6 +132,12 @@ nk_entry:
     li x28, 0
     li x30, 0x1000
     sub x28, x28, x30
+
+    ld x30, 91*8(x28) # nkapi_level
+    bne x30, zero, nk_bypass # nkapi_level is 0 means in ok (gate), >0 means in nk (bypass).
+
+    addi x30, x30, 1
+    sd x30, 91*8(x28) # api level add 1 when entry
 
     # change satp  
     ld x30, 8*64(x28)

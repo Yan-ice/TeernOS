@@ -12,7 +12,7 @@ use riscv::register::{
 use crate::{nk::{
     VirtAddr, nkapi_traphandler, nkapi_vun_getpt
 }, config::NK_TRAMPOLINE};
-use crate::syscall::{syscall, SYSCALLPARAMETER};
+use crate::syscall::{syscall};
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,
@@ -41,9 +41,8 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     let va: VirtAddr = (stval as usize).into();
 
     let x = nkapi_vun_getpt(1);
-    let pt = x.translate(VirtAddr::from(stval).floor()).unwrap();
-    println!("flags: {:?}", pt.flags());
-    println!("pte va: {:x} ppn: {:?}", va.0, pt.ppn());
+    let pt = x.translate(VirtAddr::from(stval).floor());
+    println!("va: {:?} flags: {:?}", va, pt.unwrap().flags());
 
     // The boundary decision
     if va > usize::MAX.into() {
@@ -52,6 +51,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     //println!("check_lazy 1");
     let lazy = current_task().unwrap().check_lazy(va, is_load);
     if lazy != 0 {
+        println!("check_lazy not 0: {:x}", lazy);
         // page fault exit code
         let current_task = current_task().unwrap();
         if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
@@ -66,11 +66,11 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
             exit_current_and_run_next(-2);
         }
     }
-    unsafe {
-        llvm_asm!("sfence.vma" :::: "volatile");
-        llvm_asm!("fence.i" :::: "volatile");
-    }
-    // println!{"Trap solved..."}
+    // unsafe {
+    //     llvm_asm!("sfence.vma" :::: "volatile");
+    //     llvm_asm!("fence.i" :::: "volatile");
+    // }
+    //println!{"Trap solved..."}
 }
 
 pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
@@ -86,7 +86,7 @@ Trap::Exception(Exception::InstructionPageFault) => {
 
     let x = nkapi_vun_getpt(1);
     let pt = x.translate(VirtAddr::from(stval).floor());
-    println!("flags: {:?}", pt.unwrap().flags());
+    println!("trans: {:?} {:?} flags: {:?}", stval<<12, pt.unwrap().ppn(), pt.unwrap().flags());
 
     println!(
         "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
@@ -103,45 +103,7 @@ Trap::Exception(Exception::InstructionPageFault) => {
         exit_current_and_run_next(-2);
     }
 }
-Trap::Exception(Exception::LoadFault) |
-Trap::Exception(Exception::StoreFault) |
-Trap::Exception(Exception::StorePageFault) |
-Trap::Exception(Exception::LoadPageFault) => {
-    // println!("page fault 1");
-    let is_load: bool;
-    if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-        is_load = true;
-    } else {
-        is_load = false;
-    }
-    let va: VirtAddr = (stval as usize).into();
-    // The boundary decision
-    if va > TRAMPOLINE.into() {
-        panic!("VirtAddr out of range!");
-    }
-    //println!("check_lazy 1");
-    let lazy = current_task().unwrap().check_lazy(va, is_load);
-    if lazy != 0 {
-        // page fault exit code
-        let current_task = current_task().unwrap();
-        if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-            //current_task.acquire_inner_lock().memory_set.print_pagetable();
-            println!(
-                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-                scause.cause(),
-                stval,
-                current_trap_cx().sepc,
-            );
-            drop(current_task);
-            exit_current_and_run_next(-2);
-        }
-    }
-    unsafe {
-        llvm_asm!("sfence.vma" :::: "volatile");
-        llvm_asm!("fence.i" :::: "volatile");
-    }
-    // println!{"Trap solved..."}
-}
+
 Trap::Exception(Exception::IllegalInstruction) => {
     // println!{"pinIllegalInstruction"}
     println!("[kernel] IllegalInstruction in application, continue.");
