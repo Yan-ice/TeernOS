@@ -83,6 +83,8 @@ pub fn test() {
     // }
     // let end = get_timeval();
     // println!("test: run sys_getppid 100000000 times, spent {:?}",end-start);
+
+    
 }
 
 struct Core2flag{
