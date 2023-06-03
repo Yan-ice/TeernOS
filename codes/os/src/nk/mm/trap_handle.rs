@@ -10,7 +10,7 @@ use riscv::register::{
     stvec, hpmcounter21::read
 };
 use crate::{nk::{
-    VirtAddr, nkapi_traphandler
+    VirtAddr, nkapi_traphandler, nkapi_vun_getpt
 }, config::NK_TRAMPOLINE};
 use crate::syscall::{syscall, SYSCALLPARAMETER};
 use crate::task::{
@@ -40,7 +40,11 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     }
     let va: VirtAddr = (stval as usize).into();
 
-    println!("pte va {:x}", va.0);
+    let x = nkapi_vun_getpt(1);
+    let pt = x.translate(VirtAddr::from(stval).floor()).unwrap();
+    println!("flags: {:?}", pt.flags());
+    println!("pte va: {:x} ppn: {:?}", va.0, pt.ppn());
+
     // The boundary decision
     if va > usize::MAX.into() {
         panic!("VirtAddr out of range!");
@@ -79,6 +83,11 @@ Trap::Exception(Exception::InstructionPageFault) => {
     let task = current_task().unwrap();
     // println!{"pinLoadFault"}
     //println!("prev syscall = {}", G_SATP.lock().get_syscall());
+
+    let x = nkapi_vun_getpt(1);
+    let pt = x.translate(VirtAddr::from(stval).floor());
+    println!("flags: {:?}", pt.unwrap().flags());
+
     println!(
         "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
         scause.cause(),

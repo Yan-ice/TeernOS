@@ -130,9 +130,9 @@ impl From<usize> for MapType{
 
 bitflags! {
     pub struct MapPermission: u8 {
-        const R = 1 << 1;
-        const W = 1 << 2;
-        const X = 1 << 3;
+        const R = 1 << 1;  // read
+        const W = 1 << 2;  // write
+        const X = 1 << 3;  // execute
         const U = 1 << 4;
     }
     
@@ -201,7 +201,9 @@ pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
 fn nkapi_traphandle(ctx: &TrapContext){
     let scause: scause::Scause = scause::read();
     let stval = stval::read();
+    println!("nkapi handling trap.");
     match scause.cause() {
+
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |
@@ -228,6 +230,9 @@ fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
     return Some(t1.0);
 }
 
+// fn current_pt() -> usize {
+    
+// }
 fn nkapi_pt_init(pt_handle: usize){
     
     for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
@@ -282,6 +287,9 @@ fn nkapi_pt_init(pt_handle: usize){
 fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     // find target pagetable
     if let Some(mut target_pt) = pt_get(pt_handle){
+        if target_pt.translate(vpn).is_none() {
+            println!("WARN: entry not valid while setting permission.");
+        }
         target_pt.set_pte_flags(vpn, flags);
         return;
     }

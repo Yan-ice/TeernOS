@@ -1,4 +1,4 @@
-use riscv::register::{
+use riscv::{register::{
     mtvec::TrapMode,
     scause::{
         self,
@@ -7,10 +7,10 @@ use riscv::register::{
         Interrupt,
     },
     stval,
-    stvec, hpmcounter21::read
-};
+    stvec, hpmcounter21::read, sstatus::Sstatus, sie
+}, addr::BitField};
 use crate::{TrapContext, nk::{
-    VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate, nkapi_alloc, MapPermission
+    VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate, nkapi_alloc, MapPermission, nkapi_set_permission
 }, config::NK_TRAMPOLINE};
 use crate::syscall::{syscall, SYSCALLPARAMETER};
 use crate::task::{
@@ -48,6 +48,13 @@ pub fn user_trap_handler() -> ! {
         Trap::Exception(Exception::UserEnvCall) =>{
             
         }
+        // Trap::Exception(Exception::InstructionFault) |
+        // Trap::Exception(Exception::InstructionPageFault) |        
+        // Trap::Exception(Exception::IllegalInstruction) |
+        // Trap::Interrupt(Interrupt::SupervisorTimer) => {
+        //     handle_outer_trap(scause, stval as usize);
+        //     return
+        // }
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |
@@ -91,10 +98,14 @@ pub fn user_trap_return() -> ! {
 
             // println!("temporarily change sepc to test.");
             //nkapi_activate(0);
-            //v.sepc = testing_sepc_ret as usize;
+            v.sepc = test_in_usr as usize;
+            //let mut sstatus = v.sstatus.bits();
+            //sstatus.set_bit(0,true);
 
-            println!("sp: {:x}, sepc: {:x}, sstatus: {:x}", v.x[2], v.sepc, v.sstatus.bits());
+            v.sstatus.set_spie(true);
 
+            //println!("sie reg: {:x}", sie.bits());
+            println!("sstatus: uie {} upie {} sie {} spie {}", v.sstatus.uie(), v.sstatus.upie(), v.sstatus.sie(), v.sstatus.spie());
             nkapi_alloc(1, VirtAddr::from(v.x[2]).into(), crate::nk::MapType::Framed, MapPermission::W | MapPermission::R );
             if let Some(sp_pa) = nkapi_translate_va(1, v.x[2].into()){
                 println!("stack is mapped to {:?}", pa);
@@ -107,8 +118,6 @@ pub fn user_trap_return() -> ! {
     }else{
         println!("WARN: TRAP_CONTEXT is not mapped!");
     }
-
-
 
     let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
     if trap_cx.get_sp() == 0{
@@ -123,16 +132,29 @@ pub fn user_trap_return() -> ! {
     //TODO: exit gate
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
     
-    let p1 = nkapi_translate_va(1, restore_va.into()).unwrap();
-    // println!("checking map: {:?} {:x}", p1, __restore as usize);
     println!("ready to jump");
+
     unsafe {
         //llvm_asm!("fence.i" :::: "volatile");
         // WARNING: here, we make a2 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
-        llvm_asm!("jalr x1, $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(user_satp), "{a2}"(__signal_trampoline as usize) :: "volatile");
+        llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(user_satp), "{a2}"(__signal_trampoline as usize) :: "volatile");
     }
     panic!("Unreachable in back_to_user!");
 }
-pub fn testing_sepc_ret(a: usize, b: usize){
-    panic!("Test sepc return success: {} {}",a,b);
+
+fn test_in_usr(){
+    println!("Test code in user.");
+
+
+    unsafe{
+        let mut satp: usize = 0;
+        llvm_asm!("csrr $0,satp" : "=r"(satp));
+        println!("current satp: {:x}", satp);
+        for i in 0..100{
+            nkapi_set_permission(1, 0.into(), (MapPermission::R | 
+                MapPermission::W | MapPermission::X | MapPermission::U).bits().into());
+            let aa = *(i as *const usize);
+            println!("val in {:x}: {:x}", i, aa);
+        }
+    }
 }
