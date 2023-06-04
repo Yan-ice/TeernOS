@@ -73,21 +73,22 @@ impl Processor {
             // True: Not first time to fetch a task 
             // 暂时没改
             if let Some(current_task) = take_current_task(){  //主动切换任务
-                println!(" fetch");
                 gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
                 //println!("get lock");
                 let task_cx_ptr2 = current_task_inner.get_task_cx_ptr2();
                 let idle_task_cx_ptr2 = self.get_idle_task_cx_ptr2();
+
                 // True: switch
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
-                    println!("if fetch");
-                    let mut task_inner = task.acquire_inner_lock();
+                    println!("[processor] switch to next task.");
+                    let mut next_task_inner = task.acquire_inner_lock();
                     // task_inner.memory_set.activate();// change satp
-                    let next_task_cx_ptr2 = task_inner.get_task_cx_ptr2();
-                    task_inner.task_status = TaskStatus::Running;
-                    drop(task_inner);
+                    let next_task_cx_ptr2 = next_task_inner.get_task_cx_ptr2();
+                    next_task_inner.task_status = TaskStatus::Running;
+                    drop(next_task_inner);
+
                     // release
                     self.inner.borrow_mut().current = Some(task);
                     ////////// current task  /////////
@@ -100,7 +101,13 @@ impl Processor {
                     current_task_inner.task_status = TaskStatus::Ready;
                     drop(current_task_inner);
                     add_task(current_task);
+
+                    let pt_id = self.inner.borrow_mut().current.as_ref().unwrap().getpid();
+                    nkapi_activate(pt_id);
+
                     ////////// current task  /////////
+                    println!("the first is {:?}", idle_task_cx_ptr2);
+                    println!("the second is {:?}", next_task_cx_ptr2);
                     unsafe {
                         __switch(
                             idle_task_cx_ptr2,
@@ -109,7 +116,7 @@ impl Processor {
                     }
                 }
                 else{
-                    println!("else fetch");  //想主动切换但是没有可换的
+                    println!("[processor] keep the same task.");  //想主动切换但是没有可换的
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
@@ -119,13 +126,13 @@ impl Processor {
                         );
                     }
                 }
+
             // False: First time to fetch a task
             } else {
                 // Keep fetching
-                println!("first fetch");  
+                println!("[processor] First fetch (kernel trick).");  
  
                 if let Some(task) = fetch_task() {
-                    println!("ready to context switch");
                     // acquire
                     let idle_task_cx_ptr2 = self.get_idle_task_cx_ptr2();
                     let mut task_inner = task.acquire_inner_lock();

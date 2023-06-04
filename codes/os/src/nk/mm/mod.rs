@@ -399,6 +399,7 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
                 
             }
         }
+        println!("WARN: cannot translate {:?}", vpn);
     }
     None
 }

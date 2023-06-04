@@ -32,8 +32,12 @@ global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
 
 #[no_mangle]
-pub fn user_trap_handler() -> ! {
-
+pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
+    let mut cx: &mut TrapContext;
+    unsafe{
+        //trap_ctx seems to be const value TRAP_CONTEXT?
+        cx = &mut *(TRAP_CONTEXT as *mut TrapContext);
+    }
     println!("handling user trap");
 
     // unsafe {
@@ -46,7 +50,7 @@ pub fn user_trap_handler() -> ! {
         Trap::Exception(Exception::UserEnvCall) =>{
             // println!{"pinUserEnvCall"}
             // jump to next instruction anyway
-            let mut cx = current_trap_cx();
+            // let mut cx = current_trap_cx();
             cx.sepc += 4;
 
             //G_SATP.lock().set_syscall(cx.x[17]);
@@ -56,6 +60,7 @@ pub fn user_trap_handler() -> ! {
                     //llvm_asm!("sfence.vma zero, zero" :::: "volatile");
                 }
             }
+            
             //get system call return value
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again

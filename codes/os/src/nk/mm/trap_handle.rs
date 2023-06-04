@@ -42,7 +42,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
 
     let x = nkapi_vun_getpt(1);
     let pt = x.translate(VirtAddr::from(stval).floor());
-    println!("va: {:?} flags: {:?}", va, pt.unwrap().flags());
+    println!("pte va: {:?}", va);
 
     // The boundary decision
     if va > usize::MAX.into() {

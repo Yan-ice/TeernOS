@@ -553,7 +553,7 @@ impl MemorySet {
                     if s_ppn.is_some() & d_ppn.is_some() {
                         let src_ppn = s_ppn.unwrap();
                         let dst_ppn = d_ppn.unwrap();
-                        println!{"forking {:?} -> {:?} (old: {:?})", vpn, dst_ppn, src_ppn};
+                        //println!{"forking {:?} -> {:?} (old: {:?})", vpn, dst_ppn, src_ppn};
                         unsafe{
                             let data: &mut [u8] = core::slice::from_raw_parts_mut(VirtAddr::from(vpn).0 as *mut u8, 4096);
                             nkapi_copyTo(memory_set.id(),vpn, data, 0);
@@ -796,10 +796,10 @@ impl MapArea {
     // Alloc and map one page
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
         // println!{"map one!!!"}
-        if let Some(p) = nkapi_translate(pt_handle, vpn, false){
-            println!("{:?} already mapped in [{}].", vpn, pt_handle);
-            nkapi_dealloc(pt_handle, vpn);
-        }
+        // if let Some(p) = nkapi_translate(pt_handle, vpn, false){
+        //     println!("{:?} already mapped in [{}].", vpn, pt_handle);
+        //     nkapi_dealloc(pt_handle, vpn);
+        // }
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
         self.data_frames.insert(vpn, ppn);  
     }

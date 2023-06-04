@@ -40,21 +40,26 @@ __alltraps:
         .set n, n+1
     .endr
 
+    # read user stack from sscratch and save it in TrapContext
+    csrr t2, sscratch
+    sd t2, 2*8(sp)
+
     # we can use t0/t1/t2 freely, because they have been saved in TrapContext
     csrr t0, sstatus
     csrr t1, sepc
     sd t0, 32*8(sp)
     sd t1, 33*8(sp)
 
-    # read user stack from sscratch and save it in TrapContext
-    csrr t2, sscratch
-    sd t2, 2*8(sp)
-
     # fsd fs1, 34*8(sp)
-    .half 0xba22
-    .half 0xbe26
+    # .half 0xba22
+    # .half 0xbe26
+
     # load trap_handler into t1
     ld t1, 35*8(sp)
+
+    # let a0 be trap context.
+    mv a0, sp
+    
     # move to kernel_sp
     ld sp, 34*8(sp)
 
@@ -79,7 +84,7 @@ __restore:
     # restore sstatus/sepc
     ld t0, 32*8(sp)   # 按照存储规则去加载trap context中的值
     ld t1, 33*8(sp)   
-    csrw sstatus, t0  # 继续恢复上面的值
+    csrw sstatus, t0
     csrw sepc, t1
 
     # restore general purpose registers except x0/sp/tp

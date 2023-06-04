@@ -387,10 +387,12 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     let tid = new_task.getpid();
     let flags = CloneFlags::from_bits(flags).unwrap();
     if flags.contains(CloneFlags::CLONE_CHILD_SETTID) && ctid != 0{
+        println!("fork 1");
         new_task.acquire_inner_lock().address.set_child_tid = ctid; 
         *translated_refmut(new_task.acquire_inner_lock().get_user_id(), ctid as *mut i32) = tid  as i32;
     }
     if flags.contains(CloneFlags::CLONE_CHILD_CLEARTID) && ctid != 0{
+        println!("fork 2");
         new_task.acquire_inner_lock().address.clear_child_tid = ctid;
     }
     if !flags.contains(CloneFlags::SIGCHLD){
@@ -409,6 +411,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     // we do not have to move to next instruction since we have done it before
     // for child process, fork returns 0
     trap_cx.x[10] = 0;
+
     // add new task to scheduler
     add_task(new_task);
     unsafe {
@@ -482,7 +485,8 @@ pub fn sys_wait4(pid: isize, wstatus: *mut i32, option: isize) -> isize {
             .iter()
             .find(|p| {pid == -1 || pid as usize == p.getpid()})
             .is_none() {
-            return -1;
+                println!("syscall_wait4: unknwon pid.");
+                return -1;
             // ---- release current PCB lock
             }
         let waited = inner.children

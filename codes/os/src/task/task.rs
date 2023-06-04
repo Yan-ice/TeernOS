@@ -118,8 +118,8 @@ impl TaskControlBlockInner {
     }
     pub fn print_cx(&self) {
         unsafe{ 
-            // println!("task_cx = {:?}", *(self.task_cx_ptr as *const TaskContext) );
-            // println!("trap_cx = {:?}", *(self.trap_cx_ppn.0 as *const TrapContext) );
+            println!("task_cx = {:x}", self.task_cx_ptr );
+            println!("trap_cx = {:x}", self.trap_cx_ppn.0 << 12);
         }
     }
 
@@ -290,7 +290,7 @@ impl TaskControlBlock {
         let tgid = pid_handle.0;
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
-        println!("kernel_stack_top: {:x}",kernel_stack_top);
+        
         // memory_set /user stack top /use heap bottom/ elf entry point
         let (memory_set, user_sp, user_heap, mut entry_point, auxv) = MemorySet::from_elf(elf_data,tgid);
 
@@ -298,6 +298,8 @@ impl TaskControlBlock {
 
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
+
+        println!("PID {:x} -> TRAP CONTEXT: {:x}", pid_handle.0, trap_cx_ppn.0<<12);
 
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
@@ -392,7 +394,9 @@ impl TaskControlBlock {
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false)
             .unwrap();
-        
+
+        println!("PID {:x} -> TRAP CONTEXT: {:x}", pid, trap_cx_ppn.0<<12);
+
         ////////////// envp[] ///////////////////
         let mut env: Vec<String> = Vec::new();
         env.push(String::from("SHELL=/user_shell"));
@@ -555,7 +559,7 @@ impl TaskControlBlock {
         else{
             tgid = pid_handle.0;
         }
-
+        println!("FORK PARENT PID {:x} -> TRAP CONTEXT: {:x}", self.pid.0, parent_inner.trap_cx_ppn.0<<12);
         // println!{"trap context of pid{}: {:X}", self.pid.0, parent_inner.trap_cx_ppn.0}
         parent_inner.print_cx();
         // let user_heap_top = parent_inner.heap_start + USER_HEAP_SIZE;
@@ -566,7 +570,10 @@ impl TaskControlBlock {
             user_heap_base,
             tgid
         );
-        let trap_cx_ppn = nkapi_translate(memory_set.id(), VirtPageNum::from(TRAP_CONTEXT).into(), false);
+
+        let trap_cx_ppn = nkapi_translate(memory_set.id(), VirtAddr::from(TRAP_CONTEXT).into(), false);
+
+        println!("FORK CHILD PID {:x} -> TRAP CONTEXT: {:x}", memory_set.id(), trap_cx_ppn.unwrap().0<<12);
 
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
