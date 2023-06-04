@@ -58,12 +58,12 @@ impl MmapArea {
     }
 
     pub fn push_kernel(&mut self, start: usize, len: usize, prot: usize, flags: usize,
-        fd: isize, offset: usize, fd_table: FdTable, token: usize) -> usize {
+        fd: isize, offset: usize, fd_table: FdTable, id: usize) -> usize {
 
         let start_addr = start.into();
 
         let mut mmap_space = MmapSpace::new(start_addr, len, prot, flags, 0, fd, offset);
-        mmap_space.map_file(start_addr, len, offset, fd_table, token);
+        mmap_space.map_file(start_addr, len, offset, fd_table, id);
         // println!{"The start addr is {:X}", start_addr.0};
 
         self.mmap_set.push(mmap_space);

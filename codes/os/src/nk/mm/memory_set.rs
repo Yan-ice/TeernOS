@@ -67,11 +67,11 @@ lazy_static! {
     );
 }
 
-lazy_static! {
-    pub static ref KERNEL_MMAP_AREA: Arc<Mutex<MmapArea>> = Arc::new(Mutex::new(
-        MmapArea::new(VirtAddr::from(KMMAP_BASE), VirtAddr::from(KMMAP_BASE))
-    ));
-}
+// lazy_static! {
+//     pub static ref KERNEL_MMAP_AREA: Arc<Mutex<MmapArea>> = Arc::new(Mutex::new(
+//         MmapArea::new(VirtAddr::from(KMMAP_BASE), VirtAddr::from(KMMAP_BASE))
+//     ));
+// }
 
 
 pub fn kernel_pt() -> PageTable {

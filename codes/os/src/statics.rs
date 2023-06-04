@@ -1,6 +1,8 @@
 use spin::*;
 
 use alloc::sync::Arc;
+use crate::config::KMMAP_BASE;
+use crate::nk::{MmapArea, VirtAddr};
 use crate::task::TaskManager;
 
 use crate::task::{TaskControlBlock, Processor};
@@ -11,6 +13,7 @@ use crate::task::pid::PidAllocator;
 pub struct StaticThings{
     pub MAGIC_NUM: usize,
     OUTER_KERNEL_SPACE: Option<Mutex<MemorySet>>,
+    OUTER_MMAP_AREA: Option<Arc<Mutex<MmapArea>>>,
     TASK_MANAGER: Option<Mutex<TaskManager>>,
     INITPROC: Option<Arc<TaskControlBlock>>,
     PROCESSOR_LIST: Option<[Processor; 2]>,
@@ -22,12 +25,25 @@ impl StaticThings{
         Self {
             MAGIC_NUM: 2333,
             OUTER_KERNEL_SPACE: None,
+            OUTER_MMAP_AREA: None,
             TASK_MANAGER: None,
             PROCESSOR_LIST: None,
             INITPROC: None,
             PID_ALLOCATOR: None
         }
     }
+}
+
+pub fn OUTER_MMAP_AREA() -> &'static Mutex<MmapArea>{
+    let mut sf = StaticThings();
+    if sf.OUTER_MMAP_AREA.is_none() {
+        sf.OUTER_MMAP_AREA = Some(
+            Arc::new(Mutex::new(
+                MmapArea::new(VirtAddr::from(KMMAP_BASE), VirtAddr::from(KMMAP_BASE))
+            ))
+        );
+    }
+    (&sf.OUTER_MMAP_AREA).as_ref().unwrap()
 }
 
 pub fn OUTER_KERNEL_SPACE() -> &'static Mutex<MemorySet>{

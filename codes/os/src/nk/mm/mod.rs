@@ -59,7 +59,7 @@ pub use page_table::{
 };
 
 pub use vma::{MmapArea, MmapSpace};
-pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_MMAP_AREA, KERNEL_TOKEN, kernel_token};
+pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, kernel_token};
 pub use memory_set::remap_test;
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
