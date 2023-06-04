@@ -559,9 +559,7 @@ impl TaskControlBlock {
         else{
             tgid = pid_handle.0;
         }
-        println!("FORK PARENT PID {:x} -> TRAP CONTEXT: {:x}", self.pid.0, parent_inner.trap_cx_ppn.0<<12);
-        // println!{"trap context of pid{}: {:X}", self.pid.0, parent_inner.trap_cx_ppn.0}
-        parent_inner.print_cx();
+        println!("pid [{}] -> trap_cx: {:?}", self.pid.0, parent_inner.trap_cx_ppn);
         // let user_heap_top = parent_inner.heap_start + USER_HEAP_SIZE;
         let user_heap_base = parent_inner.heap_start;
         // copy user space(include trap context)
@@ -572,9 +570,7 @@ impl TaskControlBlock {
         );
 
         let trap_cx_ppn = nkapi_translate(memory_set.id(), VirtAddr::from(TRAP_CONTEXT).into(), false);
-
-        println!("FORK CHILD PID {:x} -> TRAP CONTEXT: {:x}", memory_set.id(), trap_cx_ppn.unwrap().0<<12);
-
+        println!("pid [{}] -> trap_cx: {:?}", memory_set.id(), trap_cx_ppn.unwrap());
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
         // push a goto_trap_return task_cx on the top of kernel stack
@@ -621,7 +617,6 @@ impl TaskControlBlock {
         // modify kernel_sp in trap_cx
         // **** acquire child PCB lock
         let trap_cx = task_control_block.acquire_inner_lock().get_trap_cx();
-        task_control_block.acquire_inner_lock().print_cx();
         // **** release child PCB lock
         trap_cx.kernel_sp = kernel_stack_top;
         // return

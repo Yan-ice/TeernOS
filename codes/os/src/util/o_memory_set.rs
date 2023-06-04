@@ -271,7 +271,7 @@ impl MemorySet {
             (ekernel as usize).into(),
             NKSPACE_END.into(),
             MapType::Identical,
-            MapPermission::R,
+            MapPermission::R | MapPermission::W,
         ), None);
 
         println!("mapping outer kernel space");

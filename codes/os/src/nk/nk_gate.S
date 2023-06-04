@@ -109,6 +109,9 @@ nk_exit:
     ld x30, 65*8(x28)
     csrw satp, x30
     
+    # clear cache after changing satp!!
+    sfence.vma
+
     # jump back, according to outer kernel's ra
     jr x1
 
@@ -142,7 +145,7 @@ nk_entry:
     # change satp  
     ld x30, 8*64(x28)
     csrw satp, x30
-    
+
     # store all outer kernel registers, 包括栈指针
     .set n, 1
     .rept 27

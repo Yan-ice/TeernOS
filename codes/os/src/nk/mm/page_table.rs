@@ -303,6 +303,22 @@ impl PageTable {
         let kernel_pagetable = nkapi_vun_getpt(0);
         
         // insert shared pte of from kernel
+        let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
+        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
+        let idxs = kernel_vpn.indexes();
+        let mut ppn = self.root_ppn;
+        let pte = &mut ppn.get_pte_array()[idxs[0]];
+        *pte = *pte_kernel.unwrap();
+
+        // insert shared pte of from kernel
+        let kernel_vpn:VirtPageNum = (0x80c58000 / PAGE_SIZE).into();
+        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
+        let idxs = kernel_vpn.indexes();
+        let mut ppn = self.root_ppn;
+        let pte = &mut ppn.get_pte_array()[idxs[0]];
+        *pte = *pte_kernel.unwrap();
+
+        // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (OKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
@@ -310,6 +326,13 @@ impl PageTable {
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
 
+        // insert shared pte of from kernel
+        let kernel_vpn:VirtPageNum = (OKSPACE_START / PAGE_SIZE).into();
+        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
+        let idxs = kernel_vpn.indexes();
+        let mut ppn = self.root_ppn;
+        let pte = &mut ppn.get_pte_array()[idxs[0]];
+        *pte = *pte_kernel.unwrap();
         // insert top va(kernel stack + trampoline)
         let kernel_vpn:VirtPageNum = (TRAMPOLINE / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);

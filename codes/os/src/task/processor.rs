@@ -7,7 +7,7 @@ use lazy_static::*;
 use super::{fetch_task, TaskStatus};
 use super::__switch;
 use crate::timer::get_time_us;
-use crate::nk::{TrapContext, nkapi_activate};
+use crate::nk::{TrapContext, nkapi_activate, nkapi_translate, nkapi_translate_va, nkapi_print_pt};
 use crate::task::manager::add_task;
 use crate::gdb_print;
 use crate::monitor::*;
@@ -33,6 +33,9 @@ struct ProcessorInner {
     user_clock: usize,  /* Timer usec when last enter into the user program */
     kernel_clock: usize, /* Timer usec when user program traps into the kernel*/
 }
+
+
+use crate::TRAP_CONTEXT;
 
 impl Processor {
     pub fn new() -> Self {
@@ -103,11 +106,10 @@ impl Processor {
                     add_task(current_task);
 
                     let pt_id = self.inner.borrow_mut().current.as_ref().unwrap().getpid();
+
                     nkapi_activate(pt_id);
 
                     ////////// current task  /////////
-                    println!("the first is {:?}", idle_task_cx_ptr2);
-                    println!("the second is {:?}", next_task_cx_ptr2);
                     unsafe {
                         __switch(
                             idle_task_cx_ptr2,
@@ -143,8 +145,6 @@ impl Processor {
                     self.inner.borrow_mut().current = Some(task);
                     nkapi_activate(id); 
 
-                    println!("the first is {:?}", idle_task_cx_ptr2);
-                    println!("the second is {:?}", next_task_cx_ptr2);
                     unsafe {
                         __switch(
                             idle_task_cx_ptr2, // 这个值是taskcontext的指针，都是用汇编改的，相当于栈顶，以后所有的schedule都是调这个，两个栈切来切去

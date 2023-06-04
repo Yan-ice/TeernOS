@@ -450,6 +450,7 @@ pub fn nkapi_activate(pt_handle: usize) {
 
         // println!("outer kernel's table switch.");
         println!("nkapi: pagetable [{}] activated.", pt_handle);
+        println!("(satp: {:x} => {:x})", (&PROXYCONTEXT()).outer_satp, satp);
         *current_pt.lock().as_mut() = pt_handle;
 
         unsafe{

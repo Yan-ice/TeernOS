@@ -179,7 +179,7 @@ fn space(){
     println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
     println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
     println!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
-    println!("okheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+    println!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
     println!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
     println!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
 }
