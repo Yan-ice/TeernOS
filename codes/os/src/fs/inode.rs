@@ -12,7 +12,7 @@ use crate::util::mm_util::UserBuffer;
 use simple_fat32::{ATTRIBUTE_ARCHIVE, ATTRIBUTE_DIRECTORY, FAT32Manager, VFile};
 //use crate::config::*;
 //use crate::gdb_println;
-
+use crate::debug_info;
 pub const SEEK_SET:i32 = 0;  /* set to offset bytes.  */
 pub const SEEK_CUR:i32 = 1;  /* set to its current location plus offset bytes.  */
 pub const SEEK_END:i32 = 2;  /* set to the size of the file plus offset bytes.  */
@@ -164,7 +164,7 @@ impl OSInode {
             } else {
                 d_type = DT_UNKNOWN;
             }
-            //println!("name = {}", name.as_str());
+            //debug_info!("name = {}", name.as_str());
             dirent.fill_info(
                 name.as_str(), 
                 first_clu as usize, 
@@ -186,7 +186,7 @@ impl OSInode {
         let (size, atime, mtime, ctime, ino) = vfile.stat();
         let st_mod:u32 = {
             if vfile.is_dir() {
-                //println!("is dir");
+                //debug_info!("is dir");
                 finfo::S_IFDIR | finfo::S_IRWXU | finfo::S_IRWXG | finfo::S_IRWXO
             } else {
                 finfo::S_IFREG | finfo::S_IRWXU | finfo::S_IRWXG | finfo::S_IRWXO
@@ -237,7 +237,7 @@ impl OSInode {
         let inner = self.inner.lock();
         let cur_inode = inner.inode.clone();
         if !cur_inode.is_dir(){
-            println!("[create]:{} is not a directory!", path);
+            debug_info!("[create]:{} is not a directory!", path);
             return None;
         }
         let mut pathv:Vec<&str> = path.split('/').collect();
@@ -348,25 +348,25 @@ lazy_static! {
 */
 
 pub fn init_rootfs(){
-    println!("[fs] build rootfs ... start");
-    println!("[fs] build rootfs: creating /proc");
+    debug_info!("[fs] build rootfs ... start");
+    debug_info!("[fs] build rootfs: creating /proc");
     let file = open("/","proc", OpenFlags::CREATE, DiskInodeType::Directory).unwrap();
-    println!("[fs] build rootfs: init /proc");
+    debug_info!("[fs] build rootfs: init /proc");
     let file = open("/proc","mounts", OpenFlags::CREATE, DiskInodeType::File).unwrap();
     let meminfo = open("/proc","meminfo", OpenFlags::CREATE, DiskInodeType::File).unwrap();
     let file = open("/","ls", OpenFlags::CREATE, DiskInodeType::File).unwrap();
-    println!("[fs] build rootfs ... finish");
+    debug_info!("[fs] build rootfs ... finish");
 }
 
 
 pub fn list_apps() {
-    println!("/**** APPS ****");
+    debug_info!("/**** APPS ****");
     for app in ROOT_INODE.ls_lite().unwrap() {
         if app.1 & ATTRIBUTE_DIRECTORY == 0 {
-            println!("{}", app.0);
+            debug_info!("{}", app.0);
         }
     }
-    println!("**************/")
+    debug_info!("**************/");
 }
 
 // TODO: 对所有的Inode加锁！
@@ -374,7 +374,7 @@ pub fn list_apps() {
 pub fn list_files(work_path: &str, path: &str){
     let work_inode = {
         if work_path == "/" || (path.len()>0 && path.chars().nth(0).unwrap() == '/') {
-            //println!("curr is root");
+            //debug_info!("curr is root");
             ROOT_INODE.clone()
         } else {
             let wpath:Vec<&str> = work_path.split('/').collect();
@@ -388,10 +388,10 @@ pub fn list_files(work_path: &str, path: &str){
     file_vec.sort();
     for i in 0 .. file_vec.len() {
         if file_vec[i].1 & ATTRIBUTE_DIRECTORY != 0 {
-            println!("{}  ", color_text!(file_vec[i].0, 96));
+            debug_info!("{}  ", color_text!(file_vec[i].0, 96));
         } else {
             // TODO: 统一配色！
-            println!("{}  ", file_vec[i].0);
+            debug_info!("{}  ", file_vec[i].0);
         }
         
     }
@@ -439,7 +439,7 @@ pub fn open(work_path: &str, path: &str, flags: OpenFlags, type_: DiskInodeType)
     // shell应当保证此处输入的path不为空
     
     let (readable, writable) = flags.read_write();
-    //println!("[debug] open pathv = {:?}", pathv);
+    //debug_info!("[debug] open pathv = {:?}", pathv);
 
     if flags.contains(OpenFlags::CREATE) {
         if let Some(inode) = cur_inode.find_vfile_bypath(pathv.clone()) {
@@ -492,7 +492,7 @@ pub fn ch_dir(work_path: &str, path: &str) -> isize{
             ROOT_INODE.clone()
         } else {
             let wpath:Vec<&str> = work_path.split('/').collect();
-            //println!("in cd, work_pathv = {:?}", wpath);
+            //debug_info!("in cd, work_pathv = {:?}", wpath);
             ROOT_INODE.find_vfile_bypath( wpath ).unwrap()
         }
     };
@@ -554,7 +554,7 @@ impl File for OSInode {
         total_read_size
     }
     fn write(&self, buf: UserBuffer) -> usize {
-        //println!("ino_write");
+        //debug_info!("ino_write");
         let mut inner = self.inner.lock();
         let mut total_write_size = 0usize;
         for slice in buf.buffers.iter() {

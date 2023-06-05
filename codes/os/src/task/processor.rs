@@ -11,7 +11,7 @@ use crate::nk::{TrapContext, nkapi_activate, nkapi_translate, nkapi_translate_va
 use crate::task::manager::add_task;
 use crate::gdb_print;
 use crate::monitor::*;
-
+use crate::debug_info;
 pub fn get_core_id() -> usize{
     let tp:usize;
     unsafe {
@@ -78,14 +78,14 @@ impl Processor {
             if let Some(current_task) = take_current_task(){  //主动切换任务
                 gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
-                //println!("get lock");
+                //debug_info!("get lock");
                 let task_cx_ptr2 = current_task_inner.get_task_cx_ptr2();
                 let idle_task_cx_ptr2 = self.get_idle_task_cx_ptr2();
 
                 // True: switch
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
-                    //println!("[processor] switch to next task.");
+                    //debug_info!("[processor] switch to next task.");
                     let mut next_task_inner = task.acquire_inner_lock();
                     // task_inner.memory_set.activate();// change satp
                     let next_task_cx_ptr2 = next_task_inner.get_task_cx_ptr2();
@@ -118,7 +118,7 @@ impl Processor {
                     }
                 }
                 else{
-                    //println!("[processor] keep the same task.");  //想主动切换但是没有可换的
+                    //debug_info!("[processor] keep the same task.");  //想主动切换但是没有可换的
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
@@ -132,7 +132,7 @@ impl Processor {
             // False: First time to fetch a task
             } else {
                 // Keep fetching
-                //println!("[processor] First fetch (kernel trick).");  
+                //debug_info!("[processor] First fetch (kernel trick).");  
  
                 if let Some(task) = fetch_task() {
                     // acquire
@@ -201,8 +201,8 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 }
 
 pub fn print_core_info(){
-    println!( "[core{}] pid = {}", 0, crate::PROCESSOR_LIST()[0].current().unwrap().getpid() );
-    println!( "[core{}] pid = {}", 1, crate::PROCESSOR_LIST()[1].current().unwrap().getpid() );
+    debug_info!( "[core{}] pid = {}", 0, crate::PROCESSOR_LIST()[0].current().unwrap().getpid() );
+    debug_info!( "[core{}] pid = {}", 1, crate::PROCESSOR_LIST()[1].current().unwrap().getpid() );
 }
 
 // when trap return to user program, use this func to update user clock

@@ -16,7 +16,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::string::String;
 use spin::mutex::*;
-
+use crate::debug_info;
 //use easy_fs::DiskInodeType;
 const AT_FDCWD:isize = -100;
 pub const FD_LIMIT:usize = 128;
@@ -68,7 +68,7 @@ pub fn sys_writev(fd:usize, iov_ptr: usize, iov_num:usize)->isize{
     let iov_head = iov_ptr as *mut IoVec;
     
     let token = current_user_token();
-    println!("[debug] current pagetable id: {}",token);
+    debug_info!("[debug] current pagetable id: {}",token);
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
     if fd >= inner.fd_table.len() {
@@ -252,7 +252,7 @@ pub fn sys_close(fd: usize) -> isize {
 
 pub fn sys_pipe(pipe: *mut u32, flags: usize) -> isize {
     if flags != 0{
-        println!("[sys_pipe]: flags not support");
+        debug_info!("[sys_pipe]: flags not support");
     }
     let task = current_task().unwrap();
     let token = current_user_token();
@@ -295,11 +295,11 @@ pub fn sys_chdir(path: *const u8) -> isize{
     let mut inner = task.acquire_inner_lock();
     let path = translated_str(token, path);
     let mut work_path = inner.current_path.clone();
-    //println!("work path = {}", work_path);
-    //println!("path  = {}, len = {}", path, path.len());
-    //println!("curr inode id = {}", curr_inode_id);
+    //debug_info!("work path = {}", work_path);
+    //debug_info!("path  = {}, len = {}", path, path.len());
+    //debug_info!("curr inode id = {}", curr_inode_id);
     let new_ino_id = ch_dir(work_path.as_str(), path.as_str()) as isize;
-    //println!("new inode id = {}", new_ino_id);
+    //debug_info!("new inode id = {}", new_ino_id);
     if new_ino_id >= 0 {
         //inner.current_inode = new_ino_id as u32;
         if path.chars().nth(0).unwrap() == '/' {
@@ -327,7 +327,7 @@ pub fn sys_chdir(path: *const u8) -> isize{
             if new_pathv.len() == 0 {
                 new_wpath.push('/');
             }
-            //println!("after cd workpath = {}", new_wpath);
+            //debug_info!("after cd workpath = {}", new_wpath);
             inner.current_path = new_wpath.clone();
         }
         new_ino_id
@@ -337,14 +337,14 @@ pub fn sys_chdir(path: *const u8) -> isize{
 }
 
 pub fn sys_ls(path: *const u8) -> isize{
-    // println!("ls");
+    // debug_info!("ls");
     let token = current_user_token();
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
     let path = translated_str(token, path);
     let work_path = inner.current_path.clone();
-    // println!("work path = {}", work_path);
-    // println!("path  = {}, len = {}", path, path.len());
+    // debug_info!("work path = {}", work_path);
+    // debug_info!("path  = {}, len = {}", path, path.len());
     list_files(work_path.as_str(), path.as_str());
     //list_files(inner.current_inode);
     //list_files(inner.current_inode);
@@ -397,7 +397,7 @@ pub fn sys_dup3( old_fd: usize, new_fd: usize )->isize{
 
 pub fn sys_getdents64(fd:isize, buf: *mut u8, len:usize)->isize{
     //return 0;
-    //println!("=====================================");
+    //debug_info!("=====================================");
     let token = current_user_token();
     let task = current_task().unwrap();
     let buf_vec = translated_raw(token, buf, len);
@@ -516,7 +516,7 @@ pub fn sys_newfstatat(fd:isize, path: *const u8, buf: *mut u8, flag: u32)->isize
     let task = current_task().unwrap();
     let mut buf_vec = translated_raw(token, buf, size_of::<NewStat>());
     let inner = task.acquire_inner_lock();
-    //println!("size = {}", size_of::<NewStat>());
+    //debug_info!("size = {}", size_of::<NewStat>());
     // 使用UserBuffer结构，以便于跨页读写
     let mut userbuf = UserBuffer::new(buf_vec);
     let mut stat = NewStat::empty();
@@ -655,9 +655,9 @@ pub fn sys_unlinkat(fd:i32, path:*const u8, flags:u32)->isize{
     // 这里传入的地址为用户的虚地址，因此要使用用户的虚地址进行映射
     let path = translated_str(token, path);
     //print!("\n");
-    //println!("unlink: path = {}", path);
+    //debug_info!("unlink: path = {}", path);
     let mut inner = task.acquire_inner_lock();
-    //println!("openat: fd = {}", dirfd);
+    //debug_info!("openat: fd = {}", dirfd);
 
     if let Some(file) = get_file_discpt(fd as isize, & path, &inner, OpenFlags::from_bits(flags).unwrap()){
         match file {
@@ -778,9 +778,9 @@ pub fn sys_utimensat(fd:usize, path:*const u8, time:usize, flags:u32)->isize{
     // 这里传入的地址为用户的虚地址，因此要使用用户的虚地址进行映射
     let path = translated_str(token, path);
     //print!("\n");
-    //println!("unlink: path = {}", path);
+    //debug_info!("unlink: path = {}", path);
     let mut inner = task.acquire_inner_lock();
-    //println!("openat: fd = {}", dirfd);
+    //debug_info!("openat: fd = {}", dirfd);
     if let Some(file) = get_file_discpt(fd as isize, & path, &inner,  OpenFlags::from_bits(flags).unwrap() ){
         match file {
             FileClass::File(f)=>{
@@ -796,7 +796,7 @@ pub fn sys_utimensat(fd:usize, path:*const u8, time:usize, flags:u32)->isize{
 
 pub fn sys_renameat2( old_dirfd:isize, old_path:*const u8, new_dirfd:isize, new_path:*const u8, flags: u32 )->isize{
     if flags != 0 {
-        println!("[sys_renameat2] cannot handle flags != 0");
+        debug_info!("[sys_renameat2] cannot handle flags != 0");
         //return -1;
     }
     let task = current_task().unwrap();
@@ -945,7 +945,7 @@ fn get_file_discpt(fd: isize, path:&String, inner: &MutexGuard<TaskControlBlockI
             oflags,
             type_
         ) {
-            //println!("find old");
+            //debug_info!("find old");
             return Some(FileClass::File(inode))
         } else {
             return None
@@ -1178,7 +1178,7 @@ pub fn sys_pselect(
         if r_has_nready || w_has_nready {
             r_has_nready = false;
             w_has_nready = false;
-            //println!("timer = {}", timer );
+            //debug_info!("timer = {}", timer );
             let time_remain = get_timeval() - timer;
             if time_remain.is_zero() { // not reach timer (now < timer)
                 drop(fd_table);

@@ -82,7 +82,7 @@ pub fn test() {
     //     syscall(SYSCALL_GETPPID,[0,0,0,0,0,0]);
     // }
     // let end = get_timeval();
-    // println!("test: run sys_getppid 100000000 times, spent {:?}",end-start);
+    // debug_info!("test: run sys_getppid 100000000 times, spent {:?}",end-start);
 
     
 }
@@ -111,7 +111,7 @@ lazy_static! {
 
 pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
-    println!("UltraOS: outer kernel init.");
+    debug_info!("UltraOS: outer kernel init.");
     
     nkapi_gatetest();
 
@@ -122,25 +122,25 @@ pub fn outer_kernel_init(){
     }
     
     allocator_init();
-    println!("UltraOS: static struct initialized");
+    debug_info!("UltraOS: static struct initialized");
 
     timer::set_next_trigger();
-    println!("UltraOS: interrupt initialized");
+    debug_info!("UltraOS: interrupt initialized");
     fs::init_rootfs();
-    println!("UltraOS: fs initialized");
+    debug_info!("UltraOS: fs initialized");
     
     //unsafe { sie::set_stimer(); }
 
     task::add_initproc();
-    println!("UltraOS: task initialized");
+    debug_info!("UltraOS: task initialized");
 
-    println!("UltraOS: wake other cores");
+    debug_info!("UltraOS: wake other cores");
     let mask:usize = 1 << 1;
     sbi_send_ipi(&mask as *const usize as usize);
     // CORE2_FLAG.lock().set_in();
     //test();
     
-    println!("UltraOS: run tasks");
+    debug_info!("UltraOS: run tasks");
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

@@ -22,7 +22,7 @@ use crate::task::{
     Signals,
     perform_signal_handler,
 };
-
+use crate::debug_info;
 pub use crate::nk::nkapi::ProxyContext;
 use super::PROXYCONTEXT;
 
@@ -47,7 +47,7 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) =>{
-            // println!{"pinUserEnvCall"}
+            // debug_info!{"pinUserEnvCall"}
             // jump to next instruction anyway
             // let mut cx = current_trap_cx();
             cx.sepc += 4;
@@ -64,7 +64,7 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again
             //if syscall_id != 64 && syscall_id != 63{
-            //    println!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
+            //    debug_info!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
             //} 
             //cx = current_trap_cx();
             cx.x[10] = result as usize;
@@ -109,20 +109,20 @@ pub fn user_trap_return() -> ! {
     // }
     let trap_cx_ptr = TRAP_CONTEXT;
     // if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
-    //     println!("TRAP_CONTEXT is mapped to {:?}", pa);
+    //     debug_info!("TRAP_CONTEXT is mapped to {:?}", pa);
     //     unsafe{
     //         let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
-    //         println!("trap context: {:?}",v);
-    //         println!("trap context sp: {:x}",v.x[2]);
+    //         debug_info!("trap context: {:?}",v);
+    //         debug_info!("trap context sp: {:x}",v.x[2]);
             
     //     }
     // }else{
-    //     println!("WARN: TRAP_CONTEXT is not mapped!");
+    //     debug_info!("WARN: TRAP_CONTEXT is not mapped!");
     // }
 
     // let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
     // if trap_cx.get_sp() == 0{
-    //     println!("[trap_ret] sp = 0");
+    //     debug_info!("[trap_ret] sp = 0");
     // }
     extern "C" {
         fn __alltraps();

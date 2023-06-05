@@ -4,7 +4,7 @@ use crate::nk::{
     nkapi_copyTo, nkapi_translate, nkapi_set_permission, nkapi_print_pt};
 
 use crate::nk::{nkapi_vun_getpt};
-
+use crate::debug_info;
 use crate::nk::{VirtAddr, PhysAddr, PhysPageNum, VirtPageNum, MapType, MapPermission, PTEFlags};          
 use crate::nk::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
@@ -86,7 +86,7 @@ impl MemorySet {
     }
 
     pub fn insert_kernel_mmap_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
-        // println!{"insert kernel mmap_area: {:X} {:X}", start_va.0, end_va.0}
+        // debug_info!{"insert kernel mmap_area: {:X} {:X}", start_va.0, end_va.0}
         self.push_mmap(MapArea::new(
             start_va,
             end_va,
@@ -119,7 +119,7 @@ impl MemorySet {
         for i in 0..chunks_len {
             let chunk = &self.mmap_chunks[i];
             if (chunk.mmap_start.0 >> 12) == start_vpn.0 {
-                //println!("remove mmap_chunk 0x{:X}", chunk.mmap_start.0);
+                //debug_info!("remove mmap_chunk 0x{:X}", chunk.mmap_start.0);
                 self.mmap_chunks.remove(i);
                 break;
             }
@@ -127,7 +127,7 @@ impl MemorySet {
     }
 
     fn push_mmap(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        // println!{"2"}
+        // debug_info!{"2"}
         map_area.map(self.id);
         if let Some(data) = data {
             map_area.copy_data(self.id, data, 0);
@@ -149,7 +149,7 @@ impl MemorySet {
     }
 
     fn push_with_offset(&mut self, mut map_area: MapArea, offset: usize, data: Option<&[u8]>){
-        // println!{"3"}
+        // debug_info!{"3"}
         map_area.map(self.id);
         if let Some(data) = data {
             map_area.copy_data(self.id, data, offset);
@@ -189,7 +189,7 @@ impl MemorySet {
     // }
 
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        // println!{"2"}
+        // debug_info!{"2"}
         map_area.map(self.id);
         if let Some(data) = data {
             map_area.copy_data(self.id, data, 0);
@@ -200,31 +200,31 @@ impl MemorySet {
     pub fn new_outer_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
-        println!("mapping outer kernel");
+        debug_info!("mapping outer kernel");
 
         // map trampoline
         // memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
-        println!("mapping .text section");
+        debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+        debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::X,
         ), None);
-        println!("mapping .rodata section");
+        debug_info!("mapping .rodata section");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
             MapPermission::R,
         ), None);
-        println!("mapping .data section");
+        debug_info!("mapping .data section");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
@@ -232,7 +232,7 @@ impl MemorySet {
             MapPermission::R,
         ), None);
 
-        println!("mapping .bss section");
+        debug_info!("mapping .bss section");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
@@ -241,7 +241,7 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        println!("mapping proxy section");
+        debug_info!("mapping proxy section");
         memory_set.push(MapArea::new(
             (sproxy as usize).into(),
             (eproxy as usize).into(),
@@ -250,7 +250,7 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        println!("mapping nk heap memory");
+        debug_info!("mapping nk heap memory");
         memory_set.push(MapArea::new(
             (snkheap as usize).into(),
             (enkheap as usize).into(),
@@ -258,7 +258,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        // println!("mapping okheap memory");
+        // debug_info!("mapping okheap memory");
         // memory_set.push(MapArea::new(
         //     (snkheap as usize).into(),
         //     (enkheap as usize).into(),
@@ -266,7 +266,7 @@ impl MemorySet {
         //     MapPermission::R | MapPermission::W,
         // ), None);
 
-        println!("mapping nk frame memory (readonly)");
+        debug_info!("mapping nk frame memory (readonly)");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
             NKSPACE_END.into(),
@@ -274,7 +274,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping outer kernel space");
+        debug_info!("mapping outer kernel space");
         memory_set.push(MapArea::new(
             (NKSPACE_END).into(),
             OKSPACE_END.into(),
@@ -282,7 +282,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping memory-mapped registers");
+        debug_info!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
                 (*pair).0.into(),
@@ -318,7 +318,7 @@ impl MemorySet {
         let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
         let elf_header = elf.header;
         // let comment_sec = elf.find_section_by_name(".comment").unwrap();
-        // println!(".comment offset: {}", comment_sec.offset());
+        // debug_info!(".comment offset: {}", comment_sec.offset());
         
 
         let magic = elf_header.pt1.magic;
@@ -356,14 +356,14 @@ impl MemorySet {
                     comment_flag = false;
                 } 
 
-                //println!("[elf] ph={:?}", ph.to_string());
+                //debug_info!("[elf] ph={:?}", ph.to_string());
                 let mut map_perm = MapPermission::U;
                 let ph_flags = ph.flags();
                 if ph_flags.is_read() { map_perm |= MapPermission::R; }
                 if ph_flags.is_write() { map_perm |= MapPermission::W; }
                 if ph_flags.is_execute() { map_perm |= MapPermission::X; }
 
-                //println!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
+                //debug_info!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
                 //        ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset, map_perm);
                 
                 let map_area = MapArea::new(
@@ -372,7 +372,7 @@ impl MemorySet {
                     MapType::Framed,
                     map_perm,
                 );
-                //println!("[elf] map elfinput:\n    from 0x{:X} to 0x{:X}", ph.offset(), ph.offset() + ph.file_size());
+                //debug_info!("[elf] map elfinput:\n    from 0x{:X} to 0x{:X}", ph.offset(), ph.offset() + ph.file_size());
                 max_end_vpn = map_area.vpn_range.get_end();
                 
                 if offset == 0 {
@@ -511,7 +511,7 @@ impl MemorySet {
         //              User_Stack
         // memory_set.map_trampoline();
 
-        println!("Copying old datas.");
+        debug_info!("Copying old datas.");
 
         for area in user_space.areas.iter() {
             let head_vpn = area.vpn_range.get_start();
@@ -553,7 +553,7 @@ impl MemorySet {
                     if s_ppn.is_some() & d_ppn.is_some() {
                         let src_ppn = s_ppn.unwrap();
                         let dst_ppn = d_ppn.unwrap();
-                        //println!{"forking {:?} -> {:?} (old: {:?})", vpn, dst_ppn, src_ppn};
+                        //debug_info!{"forking {:?} -> {:?} (old: {:?})", vpn, dst_ppn, src_ppn};
                         unsafe{
                             let data: &mut [u8] = core::slice::from_raw_parts_mut(VirtAddr::from(vpn).0 as *mut u8, 4096);
                             nkapi_copyTo(memory_set.id(),vpn, data, 0);
@@ -575,7 +575,7 @@ impl MemorySet {
             if s_ppn.is_some() & d_ppn.is_some() {
                 let src_ppn = s_ppn.unwrap();
                 let dst_ppn = d_ppn.unwrap();
-                // println!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
+                // debug_info!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
                 dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
             }
         }
@@ -587,7 +587,7 @@ impl MemorySet {
             if s_ppn.is_some() & d_ppn.is_some() {
                 let src_ppn = s_ppn.unwrap();
                 let dst_ppn = d_ppn.unwrap();
-                // println!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
+                // debug_info!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
                 dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
             }
         }
@@ -604,7 +604,7 @@ impl MemorySet {
                 if s_ppn.is_some() & d_ppn.is_some() {
                     let src_ppn = s_ppn.unwrap();
                     let dst_ppn = d_ppn.unwrap();
-                    // println!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
+                    // debug_info!{"mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
                     dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
                 }
             }
@@ -795,9 +795,9 @@ impl MapArea {
 
     // Alloc and map one page
     pub fn map_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {
-        // println!{"map one!!!"}
+        // debug_info!{"map one!!!"}
         // if let Some(p) = nkapi_translate(pt_handle, vpn, false){
-        //     println!("{:?} already mapped in [{}].", vpn, pt_handle);
+        //     debug_info!("{:?} already mapped in [{}].", vpn, pt_handle);
         //     nkapi_dealloc(pt_handle, vpn);
         // }
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);

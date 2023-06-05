@@ -80,7 +80,7 @@ pub fn PROXYCONTEXT() -> &'static mut ProxyContext{
 // pub fn trap_from_kernel(){
 //     // panic!("a trap {:?} from kernel! Stvec:{:x}, Stval:{:X}", scause::read().cause(), stvec::read().bits(), stval::read());
 
-//     println!("trap from kernel");
+//     debug_info!("trap from kernel");
 //     unsafe{
 //     let mut sepc: usize;
 //         asm!("csrr {0}, sepc", out(reg) sepc,);

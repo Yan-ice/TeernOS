@@ -15,7 +15,3 @@ pub fn log2(num:usize) -> usize{
     }
     64
 }
-
-pub fn debug_log(mes:&str){
-    println!("{}",mes)
-}

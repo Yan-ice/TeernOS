@@ -64,7 +64,7 @@ impl MmapArea {
 
         let mut mmap_space = MmapSpace::new(start_addr, len, prot, flags, 0, fd, offset);
         mmap_space.map_file(start_addr, len, offset, fd_table, id);
-        // println!{"The start addr is {:X}", start_addr.0};
+        // debug_info!{"The start addr is {:X}", start_addr.0};
 
         self.mmap_set.push(mmap_space);
 
@@ -83,7 +83,7 @@ impl MmapArea {
 
         let mut mmap_space = MmapSpace::new(start_addr, len, prot, flags, 0, fd, offset);
         // mmap_space.map_file(start_addr, len, offset, fd_table, token);
-        // println!{"The start addr is {:X}", start_addr.0};
+        // debug_info!{"The start addr is {:X}", start_addr.0};
 
         self.mmap_set.push(mmap_space);
 
@@ -137,7 +137,7 @@ impl MmapSpace{
 
     pub fn lazy_map_page(&mut self, page_start: VirtAddr, fd_table: FdTable, pt_id: usize) {
         let offset: usize = self.offset - self.oaddr.0 + page_start.0;
-        //println!("map file 0x{:X} = 0x{:X} - 0x{:X} + 0x{:X}", offset, self.offset, self.oaddr.0, page_start.0);
+        //debug_info!("map file 0x{:X} = 0x{:X} - 0x{:X} + 0x{:X}", offset, self.offset, self.oaddr.0, page_start.0);
         self.map_file(page_start, PAGE_SIZE, offset, fd_table, pt_id);
     }
 
@@ -158,9 +158,9 @@ impl MmapSpace{
                 FileClass::File(f)=>{
                     f.set_offset(offset);
                     if !f.readable() { return -1; }
-                    //println!{"The va_start is 0x{:X}, offset of file is {}", va_start.0, offset};
+                    //debug_info!{"The va_start is 0x{:X}, offset of file is {}", va_start.0, offset};
                     let read_len = f.read(UserBuffer::new(translated_raw(pt_id, va_start.0 as *const u8, len)));
-                    //println!{"read {} bytes", read_len};
+                    //debug_info!{"read {} bytes", read_len};
                 },
                 _ => { return -1; },
             };

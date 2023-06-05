@@ -1,12 +1,13 @@
 use buddy_system_allocator::LockedHeap;
 use crate::config::KERNEL_HEAP_SIZE;
+use crate::debug_error;
 
 #[global_allocator]
 pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 #[alloc_error_handler]
 pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
-    println!("[handle_alloc_error]: May have no enough heap memory!");
+    debug_error!("[handle_alloc_error]: May have no enough heap memory!");
     panic!("Heap allocation error, layout = {:?}", layout);
 }
 
@@ -49,5 +50,5 @@ pub fn init_heap() {
 //     }
 //     assert!(bss_range.contains(&(v.as_ptr() as usize)));
 //     drop(v);
-//     println!("heap_test passed!");
+//     debug_info!("heap_test passed!");
 // }

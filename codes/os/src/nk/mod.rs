@@ -2,7 +2,7 @@ mod mm;
 mod trap;
 mod debug_util;
 pub mod tests;
-
+use crate::debug_info;
 use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, tests::{mem_access_timecost, nkapi_gatetest}}, 
 syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
@@ -172,15 +172,15 @@ fn space(){
         fn ssignaltrampoline();
         fn snktrampoline();
     }
-    println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-    println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-    println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-    println!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-    println!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
-    println!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
-    println!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
-    println!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
-    println!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
+    debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+    debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+    debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+    debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+    debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+    debug_info!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
+    debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
+    debug_info!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
+    debug_info!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
 }
 #[no_mangle]
 pub fn nk_main(){
@@ -192,17 +192,17 @@ pub fn nk_main(){
     
     mm::init();
     mm::remap_test();
-    println!("rmap test success.");
+    debug_info!("rmap test success.");
     
     nkapi::init_vec();
-    println!("nkapi call init success.");
+    debug_info!("nkapi call init success.");
     trap::init();
-    println!("trap init success.");
+    debug_info!("trap init success.");
 
     //init page for outer kernel.
 
     OUTER_KERNEL_SPACE().lock();
-    println!("outer kernel pagetable init success.");
+    debug_info!("outer kernel pagetable init success.");
 
     nkapi_gatetest();
     //nkapi_print_pt(0, 0, 0x5000);
@@ -225,7 +225,7 @@ pub fn nk_main(){
         fn eokheap();
     }
 
-    println!("copying heap");
+    debug_info!("copying heap");
     unsafe{
         let total_size = enkheap as usize - snkheap as usize;
         let unit_size = 1024;
@@ -241,7 +241,7 @@ pub fn nk_main(){
         }  
     }
 
-    println!("Nesked kernel init success");
+    debug_info!("Nesked kernel init success");
     space();
 
     mem_access_timecost();

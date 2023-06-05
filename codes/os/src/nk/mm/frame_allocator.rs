@@ -5,7 +5,7 @@ use crate::config::{NKSPACE_END,OKSPACE_END};
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;
-
+use crate::debug_info;
 #[derive(Clone)]
 pub struct FrameTracker {
     pub ppn: PhysPageNum,
@@ -56,7 +56,7 @@ impl StackFrameAllocator {
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
         self.current = l.0;
         self.end = r.0;
-        println!("last {} Physical Frames.", self.end - self.current);
+        debug_info!("last {} Physical Frames.", self.end - self.current);
     }
 
     pub fn add_free(&mut self, ppn: usize){
@@ -65,7 +65,7 @@ impl StackFrameAllocator {
 
     pub fn print_free(&mut self){
         let size = self.recycled.len() + self.end - self.current;
-        println!("Free memory: {} pages", size);
+        debug_info!("Free memory: {} pages", size);
     }
 }
 impl FrameAllocator for StackFrameAllocator {
@@ -80,14 +80,14 @@ impl FrameAllocator for StackFrameAllocator {
     fn alloc(&mut self) -> Option<PhysPageNum> {
         
         if let Some(ppn) = self.recycled.pop() {
-            // println!{"alloced recycled ppn: {:X}", ppn}
+            // debug_info!{"alloced recycled ppn: {:X}", ppn}
             self.refcounter.insert(ppn, 1);
             Some(ppn.into())
         } else {
             if self.current == self.end {
                 None
             } else {
-                // println!{"alloced ppn: {:X}", self.current}
+                // debug_info!{"alloced ppn: {:X}", self.current}
                 self.current += 1;
                 self.refcounter.insert(self.current - 1, 1);
                 Some((self.current - 1).into())
@@ -100,10 +100,10 @@ impl FrameAllocator for StackFrameAllocator {
         // let no_ref = false;
         let ref_times = self.refcounter.get_mut(&ppn).unwrap();
         *ref_times -= 1;
-        // println!{"the refcount of {:X} decrease to {}", ppn, ref_times}
+        // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
         if *ref_times == 0 {
             self.refcounter.remove(&ppn);
-            // println!{"dealloced ppn: {:X}", ppn}
+            // debug_info!{"dealloced ppn: {:X}", ppn}
             // validity check
             if ppn >= self.current || self.recycled
                 .iter()
@@ -200,15 +200,15 @@ pub fn outer_print_free_pages(){
 //     let mut v: Vec<FrameTracker> = Vec::new();
 //     for i in 0..5 {
 //         let frame = frame_alloc().unwrap();
-//         println!("{:?}", frame);
+//         debug_info!("{:?}", frame);
 //         v.push(frame);
 //     }
 //     v.clear();
 //     for i in 0..5 {
 //         let frame = frame_alloc().unwrap();
-//         println!("{:?}", frame);
+//         debug_info!("{:?}", frame);
 //         v.push(frame);
 //     }
 //     drop(v);
-//     println!("frame_allocator_test passed!");
+//     debug_info!("frame_allocator_test passed!");
 // }

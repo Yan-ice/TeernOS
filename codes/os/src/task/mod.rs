@@ -6,7 +6,7 @@ mod processor;
 pub(crate) mod pid;
 mod info;
 mod resource;
-
+use crate::debug_info;
 use crate::fs::{open, OpenFlags, DiskInodeType, File};
 use crate::util::mm_util::{UserBuffer};
 use crate::gdb_print;
@@ -65,13 +65,13 @@ pub fn suspend_current_and_run_next() -> isize{
 }
 
 pub fn exit_current_and_run_next(exit_code: i32) {
-    // println!("exit 1");
+    // debug_info!("exit 1");
     // Forbid more than one process exit (by acquiring lock of INITPROC)
     unsafe{
         let initproc = crate::INITPROC();
         let mut initproc_inner = initproc.acquire_inner_lock();
         let task = take_current_task().unwrap();
-        // println!("strong count of pid{} = {}", task.pid.0, Arc::strong_count(&task));
+        // debug_info!("strong count of pid{} = {}", task.pid.0, Arc::strong_count(&task));
         //if task.pid.0 == 2{
         //    crate::fs::clear_cache();
         //}
@@ -83,7 +83,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
             parent_inner.add_signal(Signals::SIGCHLD);
         }
         let mut inner = task.acquire_inner_lock();
-        // println!("exit 2");
+        // debug_info!("exit 2");
         // reset user tid area
         // let clear_child_tid = inner.address.clear_child_tid;
         // if clear_child_tid != 0{
@@ -100,7 +100,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
             initproc_inner.children.push(child.clone());
         }
 
-        // println!("exit 3");
+        // debug_info!("exit 3");
         // recycle all the data of task
         inner.children.clear();
         // deallocate user space
@@ -138,14 +138,14 @@ pub fn add_initproc_into_fs() {
     );
 
     // find if there already exits 
-    // println!("Find if there already exits ");
+    // debug_info!("Find if there already exits ");
     if let Some(inode) = open(
         "/",
         "initproc",
         OpenFlags::RDONLY,
         DiskInodeType::File
     ){
-        println!("Already have init proc in FS");
+        debug_info!("Already have init proc in FS");
         //return;
         inode.delete();
     }
@@ -156,13 +156,13 @@ pub fn add_initproc_into_fs() {
         OpenFlags::RDONLY,
         DiskInodeType::File
     ){
-        println!("Already have user shell in FS");
+        debug_info!("Already have user shell in FS");
         //return;
         inode.delete();
     }
 
 
-    // println!("Write apps(initproc & user_shell) to disk from mem ");
+    // debug_info!("Write apps(initproc & user_shell) to disk from mem ");
 
     //Write apps(initproc & user_shell) to disk from mem
     if let Some(inode) = open(
@@ -171,16 +171,16 @@ pub fn add_initproc_into_fs() {
         OpenFlags::CREATE,
         DiskInodeType::File
     ){
-        // println!("Create initproc ");
+        // debug_info!("Create initproc ");
         let mut data: Vec<&'static mut [u8]> = Vec::new();
         data.push( unsafe{
         core::slice::from_raw_parts_mut(
             app_start[0] as *mut u8,
             app_start[1] - app_start[0]
         )}) ;
-        // println!("Start write initproc ");
+        // debug_info!("Start write initproc ");
         inode.write(UserBuffer::new(data));
-        // println!("Init_proc OK");
+        // debug_info!("Init_proc OK");
     }
     else{
         // panic!("initproc create fail!");
@@ -192,7 +192,7 @@ pub fn add_initproc_into_fs() {
         OpenFlags::CREATE,
         DiskInodeType::File
     ){
-        // println!("Create user_shell ");
+        // debug_info!("Create user_shell ");
         let mut data:Vec<&'static mut [u8]> = Vec::new();
         data.push(unsafe{
         core::slice::from_raw_parts_mut(
@@ -200,19 +200,19 @@ pub fn add_initproc_into_fs() {
             app_start[2] - app_start[1]
         )});
         //data.extend_from_slice(  )
-        // println!("Start write user_shell ");
+        // debug_info!("Start write user_shell ");
         inode.write(UserBuffer::new(data));
-        // println!("User_shell OK");
+        // debug_info!("User_shell OK");
     }
     else{
         // panic!("user_shell create fail!");
     }
-    println!("Write apps(initproc & user_shell) to disk from mem");
+    debug_info!("Write apps(initproc & user_shell) to disk from mem");
 
 
     // release
     // let mut start_ppn = app_start[0] / PAGE_SIZE + 1;
-    // println!("Recycle memory: {:x}-{:x}", start_ppn* PAGE_SIZE, (app_start[2] / PAGE_SIZE)* PAGE_SIZE);
+    // debug_info!("Recycle memory: {:x}-{:x}", start_ppn* PAGE_SIZE, (app_start[2] / PAGE_SIZE)* PAGE_SIZE);
     // while start_ppn < app_start[2] / PAGE_SIZE {
     //     add_free(start_ppn);
     //     start_ppn += 1;
@@ -224,11 +224,11 @@ pub fn add_initproc() {
     add_initproc_into_fs();
     unsafe{
         let initproc = crate::INITPROC();
-        println!("ready to clone initproc");
+        debug_info!("ready to clone initproc");
         let proc = initproc.clone();
-        println!("ready to add task");
+        debug_info!("ready to add task");
         add_task(proc);
-        println!("add task success");
+        debug_info!("add task success");
     }
 }
 

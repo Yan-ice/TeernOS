@@ -9,6 +9,7 @@ use riscv::register::{
     stval,
     stvec, hpmcounter21::read
 };
+use crate::debug_info;
 use crate::{nk::{
     VirtAddr, nkapi_traphandler, nkapi_vun_getpt
 }, config::NK_TRAMPOLINE};
@@ -33,7 +34,7 @@ use crate::monitor::*;
 pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     let is_load: bool;
     if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-        println!("cause: {:?}", scause.cause());
+        debug_info!("cause: {:?}", scause.cause());
         is_load = true;
     } else {
         is_load = false;
@@ -44,15 +45,15 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     if va > usize::MAX.into() {
         panic!("VirtAddr out of range!");
     }
-    //println!("check_lazy 1");
+    //debug_info!("check_lazy 1");
     let lazy = current_task().unwrap().check_lazy(va, is_load);
     if lazy != 0 {
-        println!("check_lazy not 0: {:x}", lazy);
+        debug_info!("check_lazy not 0: {:x}", lazy);
         // page fault exit code
         let current_task = current_task().unwrap();
         if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
             // current_task.acquire_inner_lock().memory_set.print_pagetable();
-            println!(
+            debug_info!(
                 "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
                 stval,
@@ -66,7 +67,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     //     llvm_asm!("sfence.vma" :::: "volatile");
     //     llvm_asm!("fence.i" :::: "volatile");
     // }
-    //println!{"Trap solved..."}
+    //debug_info!{"Trap solved..."}
 }
 
 pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
@@ -77,10 +78,10 @@ match scause.cause() {
 Trap::Exception(Exception::InstructionFault) |
 Trap::Exception(Exception::InstructionPageFault) => {
     let task = current_task().unwrap();
-    // println!{"pinLoadFault"}
-    //println!("prev syscall = {}", G_SATP.lock().get_syscall());
+    // debug_info!{"pinLoadFault"}
+    //debug_info!("prev syscall = {}", G_SATP.lock().get_syscall());
     
-    println!(
+    debug_info!(
         "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
         scause.cause(),
         task.pid.0,
@@ -97,11 +98,11 @@ Trap::Exception(Exception::InstructionPageFault) => {
 }
 
 Trap::Exception(Exception::IllegalInstruction) => {
-    // println!{"pinIllegalInstruction"}
-    println!("[kernel] IllegalInstruction in application, continue.");
+    // debug_info!{"pinIllegalInstruction"}
+    debug_info!("[kernel] IllegalInstruction in application, continue.");
     //let mut cx = current_trap_cx();
     //cx.sepc += 4;
-    println!(
+    debug_info!(
         "         {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
         scause.cause(),
         stval,

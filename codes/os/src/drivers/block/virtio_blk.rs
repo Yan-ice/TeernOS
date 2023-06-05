@@ -11,7 +11,7 @@ use crate::{
     outer_frame_alloc,
     outer_frame_dealloc
 };
-
+use crate::debug_info;
 use super::BlockDevice;
 use spin::Mutex;
 use alloc::vec::Vec;
@@ -28,7 +28,7 @@ lazy_static! {
 
 impl BlockDevice for VirtIOBlock {
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {
-        // println!("{}",block_id);
+        // debug_info!("{}",block_id);
         self.0.lock().read_block(block_id, buf).expect("Error when reading VirtIOBlk");
     }
     fn write_block(&self, block_id: usize, buf: &[u8]) {
@@ -53,11 +53,11 @@ impl VirtIOBlock {
         self.read_block(0, &mut buf);
         let start = get_time();
         for i in 1..1000 {
-            //println!("wtest");
+            //debug_info!("wtest");
             self.write_block(0, &buf);
         }
         let end = get_time();
-        println!("[vblk writing test]: {}", end - start);
+        debug_info!("[vblk writing test]: {}", end - start);
     }
 }
 

@@ -10,7 +10,7 @@ use crate::{config::*, nk::nkapi_alloc};
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
 use spin::Mutex;
-
+use crate::debug_info;
 bitflags! {
     pub struct PTEFlags: u8 {
         const V = 1 << 0;
@@ -156,13 +156,13 @@ impl PageTableRecord {
                 break;
             }
             if !pte.is_valid() {
-                // println!("index i {}", idxs[i]);
-                // println!{"invalid!!!!!!!!"}
-                // println!("i {}", i);
-                // println!("root ppn {:x}", self.root_ppn.0);
-                // println!("vpn is {:x}", vpn.0);
+                // debug_info!("index i {}", idxs[i]);
+                // debug_info!{"invalid!!!!!!!!"}
+                // debug_info!("i {}", i);
+                // debug_info!("root ppn {:x}", self.root_ppn.0);
+                // debug_info!("vpn is {:x}", vpn.0);
                 let ppn = frame_alloc().unwrap();
-                // println!("ppn is {:x}", ppn.0);
+                // debug_info!("ppn is {:x}", ppn.0);
                 *pte = PageTableEntry::new(ppn, PTEFlags::V);
                 self.frames.push(ppn);
                 
@@ -246,26 +246,26 @@ impl PageTableRecord {
             let pte = &ppn.get_pte_array()[idxs[i]];
             
             if !pte.is_valid() {
-                println!("INVALID");
+                debug_info!("INVALID");
                 return;
             }
             if i == 2 {
-                println!("{:x}", pte.ppn().0);
+                debug_info!("{:x}", pte.ppn().0);
                 break;
             }
             ppn = pte.ppn();
         }
-        println!("Trace finished. {:?} -> {:?}", va, self.translate_va(va));
+        debug_info!("Trace finished. {:?} -> {:?}", va, self.translate_va(va));
     }
 
     pub fn print_pagetable(&mut self, from: usize, to:usize){
-        println!("[pt] printing pagetable with token {:x}",self.token());
+        debug_info!("[pt] printing pagetable with token {:x}",self.token());
 
         let idxs = [0 as usize;3];
         let mut ppns = [PhysPageNum(0);3];
         ppns[0] = self.root_ppn;
         for i in 0..512{
-            // println!("[pt] printing progress ({}/512)",i);
+            // debug_info!("[pt] printing progress ({}/512)",i);
             let pte = &mut ppns[0].get_pte_array()[i];
             if !pte.is_valid(){
                 continue;
@@ -288,7 +288,7 @@ impl PageTableRecord {
                     if va < from || va > to {
                         continue;
                     }
-                    println!("va:0x{:x}  pa:0x{:x} flags:{:?}",va,pa,flags);
+                    debug_info!("va:0x{:x}  pa:0x{:x} flags:{:?}",va,pa,flags);
                 }
             }
         }
@@ -303,7 +303,7 @@ impl PageTableRecord {
     #[allow(unused)]
     pub fn remap_cow(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, former_ppn: PhysPageNum) {
         let pte = self.find_pte_create(vpn).unwrap();
-        // println!{"remapping {:?}", 
+        // debug_info!{"remapping {:?}", 
         *pte = PageTableEntry::new(ppn, pte.flags() | PTEFlags::W);
         pte.set_cow();
         ppn.get_bytes_array().copy_from_slice(former_ppn.get_bytes_array());
@@ -342,7 +342,7 @@ impl PageTableRecord {
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self, kernel_pagetable: &mut PageTableRecord){
  
-        println!("kernel shared: PPN 0x80000 ~ PPN 0xb0000");
+        debug_info!("kernel shared: PPN 0x80000 ~ PPN 0xb0000");
 
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();

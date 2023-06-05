@@ -34,7 +34,7 @@ pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
     unsafe{
         TASK_MANAGER().lock().fetch()
     }
-    // println!("core{}:fetch task",get_core_id());
+    // debug_info!("core{}:fetch task",get_core_id());
 }
 
 pub fn find_task(pid:usize)->Option<Arc<TaskControlBlock>>{

@@ -20,7 +20,7 @@ use super::frame_allocator::{frame_alloc};
 use crate::outer_frame_alloc;
 use crate::monitor::*;
 use crate::task::AuxHeader;
-
+use crate::debug_info;
 extern "C" {
     fn stext();
     fn etext();
@@ -126,7 +126,7 @@ impl MemorySet {
         ), None);
     }
     pub fn insert_kernel_mmap_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
-        // println!{"insert kernel mmap_area: {:X} {:X}", start_va.0, end_va.0}
+        // debug_info!{"insert kernel mmap_area: {:X} {:X}", start_va.0, end_va.0}
         self.push_mmap(MapArea::new(
             start_va,
             end_va,
@@ -147,7 +147,7 @@ impl MemorySet {
         //), None);
     }
     fn push_mmap(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        // println!{"1"}
+        // debug_info!{"1"}
         map_area.map(&mut self.page_table);
         self.areas.push(map_area);
     }
@@ -162,7 +162,7 @@ impl MemorySet {
         for i in 0..chunks_len {
             let chunk = &self.mmap_chunks[i];
             if (chunk.mmap_start.0 >> 12) == start_vpn.0 {
-                //println!("remove mmap_chunk 0x{:X}", chunk.mmap_start.0);
+                //debug_info!("remove mmap_chunk 0x{:X}", chunk.mmap_start.0);
                 self.mmap_chunks.remove(i);
                 break;
             }
@@ -170,7 +170,7 @@ impl MemorySet {
     }
 
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        // println!{"2"}
+        // debug_info!{"2"}
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
             map_area.copy_data(&mut self.page_table, data, 0);
@@ -203,33 +203,33 @@ impl MemorySet {
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
-        println!("mapping nested kernel");
+        debug_info!("mapping nested kernel");
 
         // map trampoline
         memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-        println!("mapping .text section");
+        debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::X,
         ), None);
-        println!("mapping .rodata section");
+        debug_info!("mapping .rodata section");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
             MapPermission::R,
         ), None);
-        println!("mapping .data section");
+        debug_info!("mapping .data section");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
-        println!("mapping .bss section");
+        debug_info!("mapping .bss section");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
@@ -237,7 +237,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping proxy section");
+        debug_info!("mapping proxy section");
         memory_set.push(MapArea::new(
             (sproxy as usize).into(),
             (eproxy as usize).into(),
@@ -246,7 +246,7 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        println!("mapping nk heap memory");
+        debug_info!("mapping nk heap memory");
         memory_set.push(MapArea::new(
             (snkheap as usize).into(),
             (enkheap as usize).into(),
@@ -254,7 +254,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping nk frame memory");
+        debug_info!("mapping nk frame memory");
         memory_set.push(MapArea::new(
             (ekernel as usize).into(),
             NKSPACE_END.into(),
@@ -262,7 +262,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping outer kernel space");
+        debug_info!("mapping outer kernel space");
         memory_set.push(MapArea::new(
             (NKSPACE_END).into(),
             OKSPACE_END.into(),
@@ -270,7 +270,7 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        println!("mapping memory-mapped registers");
+        debug_info!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
                 (*pair).0.into(),
@@ -287,7 +287,7 @@ impl MemorySet {
         let satp = self.page_table.token();
         unsafe {
             satp::write(satp);
-            println!("satp updated: {:?}", satp::read());
+            debug_info!("satp updated: {:?}", satp::read());
             llvm_asm!("sfence.vma" :::: "volatile");
         }
     }
@@ -457,7 +457,7 @@ impl MapArea {
 
     // Alloc and map one page
     pub fn map_one(&mut self, page_table: &mut PageTableRecord, vpn: VirtPageNum) {
-        // println!{"map one!!!"}
+        // debug_info!{"map one!!!"}
         let mut ppn: PhysPageNum;
         match self.map_type {
             MapType::Identical => {
@@ -559,5 +559,5 @@ pub fn remap_test() {
         kernel_space.page_table.translate(mid_data.floor()).unwrap().executable(),
         false,
     );
-    println!("remap_test passed!");
+    debug_info!("remap_test passed!");
 }

@@ -54,7 +54,7 @@ macro_rules! gdb_println {
         unsafe{
             let enable:*mut u8 =  $place;
             if ($place == 1 )||(*enable > 0 && QEMU == 1){
-                println!($fmt $(, $($arg)+)?);
+                debug_info!($fmt $(, $($arg)+)?);
             }
         }
     };
@@ -63,7 +63,7 @@ macro_rules! gdb_println {
         unsafe{
             let enable:*mut u8 =  $place as *mut u8;
             if ($place == 1 )||(*enable > 0 && QEMU == 1){
-                println!($fmt $(, $($arg)+)?);
+                debug_info!($fmt $(, $($arg)+)?);
             }
         }
     };
