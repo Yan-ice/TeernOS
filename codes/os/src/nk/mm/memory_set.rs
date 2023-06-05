@@ -1,4 +1,5 @@
 
+use super::page_table::PageTableRecord;
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr, MapType, MapPermission};          
 use super::{frame_add_ref, enquire_refcount, print_free_pages};
@@ -74,17 +75,13 @@ lazy_static! {
 // }
 
 
-pub fn kernel_pt() -> PageTable {
-    KERNEL_SPACE.lock().page_table
-}
-
 pub fn kernel_token() -> usize {
     KERNEL_SPACE.lock().token()
 }
 
 pub struct MemorySet {
     id: usize,   // 这个也找不到
-    page_table: PageTable,
+    page_table: PageTableRecord,
     areas: Vec<MapArea>,  // 常规的Maparea
     chunks: ChunkArea,  // lazy优化，详见文档
     stack_chunks: ChunkArea,  // check_lazy这个方法是唯一用到这两个地方的位置
@@ -98,7 +95,7 @@ impl MemorySet {
     fn new_bare(id: usize) -> Self {
         Self {
             id,
-            page_table: PageTable::new(id),
+            page_table: PageTableRecord::new(id),
             areas: Vec::new(),
             chunks: ChunkArea::new(MapType::Framed,
                                 MapPermission::R | MapPermission::W | MapPermission::U),
@@ -352,7 +349,7 @@ impl ChunkArea {
         self.mmap_end = end;
     }
 
-    pub fn push_vpn(&mut self, vpn: VirtPageNum, page_table: &mut PageTable) {
+    pub fn push_vpn(&mut self, vpn: VirtPageNum, page_table: &mut PageTableRecord) {
         self.vpn_table.push(vpn);
         self.map_one(page_table, vpn);
     }
@@ -369,7 +366,7 @@ impl ChunkArea {
     }
 
     // Alloc and map one page
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTableRecord, vpn: VirtPageNum) {
         let mut ppn: PhysPageNum = PhysPageNum(vpn.0);
         match self.map_type {
             MapType::Identical => {
@@ -404,7 +401,7 @@ impl ChunkArea {
         page_table.map(vpn, ppn, pte_flags);
     }
 
-    pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn unmap_one(&mut self, page_table: &mut PageTableRecord, vpn: VirtPageNum) {
         match self.map_type {
             MapType::Framed => {
                 self.data_frames.remove(&vpn);
@@ -459,7 +456,7 @@ impl MapArea {
     }
 
     // Alloc and map one page
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTableRecord, vpn: VirtPageNum) {
         // println!{"map one!!!"}
         let mut ppn: PhysPageNum;
         match self.map_type {
@@ -494,7 +491,7 @@ impl MapArea {
         //gdb_println!(MAP_ENABLE,"[map_one]: pte_flags:{:?} vpn:0x{:X}",pte_flags,vpn.0);
         page_table.map(vpn, ppn, pte_flags);
     }
-    pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn unmap_one(&mut self, page_table: &mut PageTableRecord, vpn: VirtPageNum) {
         match self.map_type {
             MapType::Framed => {
                 self.data_frames.remove(&vpn);
@@ -505,19 +502,19 @@ impl MapArea {
     }
     
     // Alloc and map all pages
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    pub fn map(&mut self, page_table: &mut PageTableRecord) {
         for vpn in self.vpn_range {
             self.map_one(page_table, vpn);
         }
     }
-    pub fn unmap(&mut self, page_table: &mut PageTable) {
+    pub fn unmap(&mut self, page_table: &mut PageTableRecord) {
         for vpn in self.vpn_range {
             self.unmap_one(page_table, vpn);
         }
     }
     /// data: start-aligned but maybe with shorter length
     /// assume that all frames were cleared before
-    pub fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8], offset:usize) {
+    pub fn copy_data(&mut self, page_table: &mut PageTableRecord, data: &[u8], offset:usize) {
         assert_eq!(self.map_type, MapType::Framed);
         let mut start: usize = 0;
         let mut page_offset: usize = offset;

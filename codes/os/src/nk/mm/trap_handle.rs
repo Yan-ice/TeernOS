@@ -40,10 +40,6 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     }
     let va: VirtAddr = (stval as usize).into();
 
-    let x = nkapi_vun_getpt(1);
-    let pt = x.translate(VirtAddr::from(stval).floor());
-    println!("pte va: {:?}", va);
-
     // The boundary decision
     if va > usize::MAX.into() {
         panic!("VirtAddr out of range!");
@@ -83,11 +79,7 @@ Trap::Exception(Exception::InstructionPageFault) => {
     let task = current_task().unwrap();
     // println!{"pinLoadFault"}
     //println!("prev syscall = {}", G_SATP.lock().get_syscall());
-
-    let x = nkapi_vun_getpt(1);
-    let pt = x.translate(VirtAddr::from(stval).floor());
-    println!("trans: {:?} {:?} flags: {:?}", stval<<12, pt.unwrap().ppn(), pt.unwrap().flags());
-
+    
     println!(
         "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
         scause.cause(),

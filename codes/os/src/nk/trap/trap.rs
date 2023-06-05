@@ -38,7 +38,6 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
         //trap_ctx seems to be const value TRAP_CONTEXT?
         cx = &mut *(TRAP_CONTEXT as *mut TrapContext);
     }
-    println!("handling user trap");
 
     // unsafe {
     //     stvec::write(TRAMPOLINE as usize, TrapMode::Direct);

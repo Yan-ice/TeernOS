@@ -409,7 +409,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     let new_pid = new_task.pid.0;
     // modify trap context of new_task, because it returns immediately after switching
     let trap_cx = new_task.acquire_inner_lock().get_trap_cx();
-    println!("modifying cx with pa: {:x}", trap_cx as *mut crate::nk::TrapContext as *mut usize as usize);
+    
     // we do not have to move to next instruction since we have done it before
     // for child process, fork returns 0
     trap_cx.x[10] = 0;
@@ -425,7 +425,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
 }
 
 pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
-    //println!("[sys_exec]");
+    
     let pt_id = current_user_id();
     let path = translated_str(pt_id, path);
     let mut args_vec: Vec<String> = Vec::new();
@@ -435,17 +435,15 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
             break;
         }
         args_vec.push(translated_str(pt_id, arg_str_ptr as *const u8));
-        // println!("arg{}: {}",0, args_vec[0]);
+        
         unsafe { args = args.add(1); }
     }
     let task = current_task().unwrap();
     let mut inner = task.acquire_inner_lock();
     let args_vec_copy = args_vec.clone();
-    
     if let Some(app_inode) = open(inner.current_path.as_str(),path.as_str(), OpenFlags::RDONLY, DiskInodeType::File) {
         let len = app_inode.get_size();
-        println!("[exec] File size: {} bytes", len);
-        
+
         gdb_println!(EXEC_ENABLE,"[exec] File size: {} bytes", len);
         let fd = inner.alloc_fd();
         inner.fd_table[fd] = Some( 
@@ -473,6 +471,7 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
         gdb_println!(SYSCALL_ENABLE, "sys_exec(path: {}, args: {:?}) = {}", path, args_vec_copy, argc);
         0 
     } else {
+        println!("[sys_exec] failed to open file [{}].", path);
         -1
     }
 }

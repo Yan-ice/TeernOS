@@ -26,7 +26,7 @@ use spin::Mutex;
 use alloc::vec::Vec;
 use riscv::register::satp;
 
-use crate::{nk::nkapi::ProxyContext, task::{current_task, Signals}};
+use crate::{nk::{nkapi::ProxyContext, mm::page_table::PageTableRecord}, task::{current_task, Signals}};
 use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
 
 pub use nkapi::{
@@ -179,23 +179,28 @@ pub fn init_othercore(){
 }
 
 lazy_static! {
-    pub static ref PAGE_TABLE_LIST: Mutex<Vec<PageTable>> = Mutex::new(
-        Vec::<PageTable>::new()
+    pub static ref PAGE_TABLE_LIST: Mutex<Vec<PageTableRecord>> = Mutex::new(
+        Vec::<PageTableRecord>::new()
     );
     pub static ref current_pt: Mutex<Box<usize>> = Mutex::new(Box::new(0));
 }
 
-
-//get the Pagetable from its handle(id)
-pub fn pt_get(pt_handle: usize) -> Option<PageTable>{
-
-    for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
-        if i.id() == pt_handle {
-            return Some(i.clone());
+macro_rules! pt_operate {
+    ($handle:expr, $target:ident, $oper:block) => {
+        let mut _find = false;
+        for tar in PAGE_TABLE_LIST.lock().iter_mut(){
+            if tar.id() == $handle {
+                _find = true;
+                let $target: &mut PageTableRecord = tar;
+                $oper
+            }
         }
-    }
-    return None
+        if !_find {
+            panic!("Cannot find pagetable with handle [{}]!",$handle);
+        }
+    };
 }
+
 
 pub fn pt_current() -> usize {
     current_pt.lock().as_ref().clone()
@@ -235,29 +240,37 @@ fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
 
 //the function below would expose to outer kernel
 fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
-    if let Some(mut target_pt) = pt_get(pt_handle){
+    pt_operate! (pt_handle, target_pt, {
         target_pt.trace_address(from.into());
         println!("printing pagetable [{}]", pt_handle);
         target_pt.print_pagetable(from, to);
-    }
+    });
+    // if let Some(mut target_pt) = pt_get(pt_handle){
+    //     target_pt.trace_address(from.into());
+    //     println!("printing pagetable [{}]", pt_handle);
+    //     target_pt.print_pagetable(from, to);
+    // }
     
 }
 
 // fn current_pt() -> usize {
     
 // }
-fn nkapi_pt_init(pt_handle: usize){
+fn nkapi_pt_init(pt_handle: usize, re_generate: bool){
     
-    for i in PAGE_TABLE_LIST.lock().clone().into_iter(){
+    if re_generate{
+        nkapi_pt_destroy(pt_handle);
+    }
+    for i in PAGE_TABLE_LIST.lock().iter(){
         if i.id() == pt_handle {
-            println!("Pagetable [{}] already exists.",pt_handle);
+            println!("WARN: Pagetable [{}] already exists.",pt_handle);
             //pagetable with this handle already exist
             return;
         }
     }
 
     //Yan_ice: here we create a new pagetable,
-    let mut pt = PageTable::new(pt_handle);
+    let mut pt = PageTableRecord::new(pt_handle);
     println!("Creating user PageTable [{}] with token {:x}.",pt_handle, pt.token());
 
     pt.map(VirtAddr::from(SIGNAL_TRAMPOLINE).into(),
@@ -277,11 +290,17 @@ fn nkapi_pt_init(pt_handle: usize){
     }
 
     if pt_handle != 0{
-        pt.map_kernel_shared();
+        pt_operate!(0,pt_kernel,{
+            pt.map_kernel_shared(pt_kernel);
+        });
     }
 
     PAGE_TABLE_LIST.lock().push(pt);
-    println!("Creating Pagetable success.");
+
+    if pt_current() == pt_handle {
+        nkapi_activate(pt_handle);
+    }
+    return;
 }
 
 // pub fn nkapi_pt_copy(pt_handle: usize, parent_handle: usize){
@@ -298,25 +317,30 @@ fn nkapi_pt_init(pt_handle: usize){
 
 fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     // find target pagetable
-    if let Some(mut target_pt) = pt_get(pt_handle){
+    pt_operate! (pt_handle, target_pt, {
         if target_pt.translate(vpn).is_none() {
             println!("WARN: entry not valid while setting permission.");
         }
         target_pt.set_pte_flags(vpn, flags);
         return;
-    }
-    println!("nk_set_perm: cannot find pagetable!");
+    });
 }
 
-fn pt_destroy(pt_handle: usize){
-    // TODO
+fn nkapi_pt_destroy(pt_handle: usize){
+    let mut ptlist = PAGE_TABLE_LIST.lock();
+    for tar in 0..ptlist.len(){
+        if ptlist[tar].id() == pt_handle {
+            ptlist.remove(tar).destroy();
+            return;
+        }
+    }
 }
 
 fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
     let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     
-    if let Some(mut target_pt) = pt_get(pt_handle){
+    pt_operate! (pt_handle, target_pt, {
         // get target ppn
         let target_ppn;
         match map_type{
@@ -356,24 +380,24 @@ fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapP
         // modify pagetable entry
         target_pt.map(vpn, target_ppn, pte_flags);
         return target_ppn
-    }
+    });
     println!("nkapi_alloc: cannot find pagetable!");
     return PhysPageNum{0: vpn.0};
 
 }
 
 fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
-    if let Some(mut pt) = pt_get(pt_handle){
-        pt.unmap(vpn);
+    pt_operate! (pt_handle, target_pt, {
+        target_pt.unmap(vpn);
         return;
-    }
+    });
     println!("nk_dealloc: cannot find pagetable!");
 }
 
 // while translating COW with write==True, it would start alloc and copy.
 fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
 
-    if let Some(mut pt) = pt_get(pt_handle){
+    pt_operate! (pt_handle, pt, {
         if let Some(pte) = pt.translate(vpn){
             if pte.is_valid() {
                 let former_ppn = pte.ppn();
@@ -400,48 +424,44 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
             }
         }
         println!("WARN: cannot translate {:?}", vpn);
-    }
+    });
     None
 }
 
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
-    if let Some(pt) = pt_get(pt_handle){
-        let pa = pt.translate_va(va);
+    pt_operate! (pt_handle, target_pt, {
+        let pa = target_pt.translate_va(va);
         //println!("VA->PA: {:?} {:?}", va, pa);
         return pa;
-    }
-    panic!("nk_translate_va: cannot find pagetable!");
+    });
+    None
 }
 
 
 fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
-    
     unsafe{
-        if let Some(pt) = pt_get(pt_handle){
+        let former_pa = nkapi_translate_va(pt_current(), data_ptr.into()).unwrap();
 
-            let former_pa = nkapi_translate_va(pt_current(), data_ptr.into()).unwrap();
+        pt_operate! (pt_handle, target_pt, {
+
             //println!("nk_copy: copying data from {:x}", former_pa.0);
             let data = &*(former_pa.0 as *const usize as *mut [u8; PAGE_SIZE]);
 
-            let mut ppn = &mut pt.translate(vpn).unwrap().ppn();
+            let mut ppn = &mut target_pt.translate(vpn).unwrap().ppn();
             //println!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset, ppn);
 
             let src = &data[0..(PAGE_SIZE - offset)];
             let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);
-            //println!("nkapi_copy: copy success.");
 
-            return;
-        }
-        println!("nk_copyTo: cannot find pagetable!");
+        });
     }
-
 }
 
 //use crate::task::__switch;
 pub fn nkapi_activate(pt_handle: usize) {
-    if let Some(page_table) = pt_get(pt_handle) {
-        let satp = page_table.token();
+    pt_operate! (pt_handle, target_pt, {
+        let satp = target_pt.token();
         // nk_entry_gate();
         // unsafe {
         //     satp::write(satp);
@@ -450,7 +470,6 @@ pub fn nkapi_activate(pt_handle: usize) {
 
         // println!("outer kernel's table switch.");
         println!("nkapi: pagetable [{}] activated.", pt_handle);
-        println!("(satp: {:x} => {:x})", (&PROXYCONTEXT()).outer_satp, satp);
         *current_pt.lock().as_mut() = pt_handle;
 
         unsafe{
@@ -464,14 +483,13 @@ pub fn nkapi_activate(pt_handle: usize) {
         //     );
         // }
         return;
-    }
-    println!("nk_activate: cannot find pagetable!");
+    });
 }
 
 // this function is temporaily used. it is vulunerable!
 pub fn nkapi_vun_getpt(pt_handle: usize) -> PageTable{
-    if let Some(pt) = pt_get(pt_handle) {
-        return pt;
-    }
-    panic!("nk_vun_getpt: Pagetable handle not exist.");
+    pt_operate! (pt_handle, target_pt, {
+        return target_pt.into();
+    });
+    panic!("not found!");
 }

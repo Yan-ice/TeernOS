@@ -14,7 +14,7 @@ pub fn nkapi_gatetest(){
         }
 
         let test_pt = 2333;
-        nkapi_pt_init(test_pt);
+        nkapi_pt_init(test_pt, true);
 
         nkapi_alloc(test_pt, va_test.into(), crate::nk::MapType::Identical, MapPermission::R);
         if let Some(pa) = nkapi_translate_va(test_pt, va_test.into()) {

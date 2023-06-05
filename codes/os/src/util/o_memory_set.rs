@@ -53,7 +53,7 @@ impl MemorySet {
         self.areas.clone()
     }
     pub fn new_bare(id: usize) -> Self {
-        nkapi_pt_init(id);
+        nkapi_pt_init(id, true);
         Self {
             id,
             //page_table: PageTable::new(id),
@@ -363,8 +363,8 @@ impl MemorySet {
                 if ph_flags.is_write() { map_perm |= MapPermission::W; }
                 if ph_flags.is_execute() { map_perm |= MapPermission::X; }
 
-                println!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
-                        ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset, map_perm);
+                //println!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
+                //        ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset, map_perm);
                 
                 let map_area = MapArea::new(
                     start_va,

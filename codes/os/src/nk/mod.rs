@@ -87,8 +87,8 @@ pub fn nkapi_alloc(pt_handle:usize, vpn: VirtPageNum, map_type: MapType, perm: M
     return_value!(PhysPageNum);
 }
 
-pub fn nkapi_pt_init(pt_handle: usize){
-    entry_gate!(nkapi::NKAPI_PT_INIT,pt_handle);
+pub fn nkapi_pt_init(pt_handle: usize, regenerate: bool){
+    entry_gate!(nkapi::NKAPI_PT_INIT,pt_handle, regenerate);
     return_void!();
 }
 

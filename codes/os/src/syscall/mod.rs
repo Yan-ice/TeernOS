@@ -108,7 +108,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     //     test();
     // }
 
-    println!("SYSCALL [{}] params: {:?}",syscall_id, args);
+    //println!("SYSCALL [{}] params: {:?}",syscall_id, args);
     
     match syscall_id {
         SYSCALL_SIGRETURN => sys_sigreturn(),

@@ -298,8 +298,6 @@ impl TaskControlBlock {
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
 
-        println!("PID {:x} -> TRAP CONTEXT: {:x}", pid_handle.0, trap_cx_ppn.0<<12);
-
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
         let task_cx_ptr = kernel_stack.push_on_top(TaskContext::goto_trap_return());
@@ -393,8 +391,6 @@ impl TaskControlBlock {
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into(),false)
             .unwrap();
-
-        println!("PID {:x} -> TRAP CONTEXT: {:x}", pid, trap_cx_ppn.0<<12);
 
         ////////////// envp[] ///////////////////
         let mut env: Vec<String> = Vec::new();
@@ -558,7 +554,7 @@ impl TaskControlBlock {
         else{
             tgid = pid_handle.0;
         }
-        println!("pid [{}] -> trap_cx: {:?}", self.pid.0, parent_inner.trap_cx_ppn);
+        
         // let user_heap_top = parent_inner.heap_start + USER_HEAP_SIZE;
         let user_heap_base = parent_inner.heap_start;
         // copy user space(include trap context)
@@ -569,7 +565,7 @@ impl TaskControlBlock {
         );
 
         let trap_cx_ppn = nkapi_translate(memory_set.id(), VirtAddr::from(TRAP_CONTEXT).into(), false);
-        println!("pid [{}] -> trap_cx: {:?}", memory_set.id(), trap_cx_ppn.unwrap());
+        
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
         // push a goto_trap_return task_cx on the top of kernel stack

@@ -4,10 +4,12 @@ use super::{
     PhysPageNum,
     VirtPageNum,
     VirtAddr,
-    PhysAddr, nkapi_vun_getpt,
+    PhysAddr, nkapi_vun_getpt, MapPermission, nkapi_dealloc, nkapi_translate, nkapi_translate_va, frame_allocator::frame_dealloc,
 };
-use crate::config::*;
+use crate::{config::*, nk::nkapi_alloc};
+use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
+use spin::Mutex;
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -87,24 +89,62 @@ impl PageTableEntry {
 pub struct PageTable {
     pt_id: usize,
     root_ppn: PhysPageNum,
-    //frames: Vec<PhysPageNum>,
 }
 
-/// Assume that it won't oom when creating/mapping.
+pub struct PageTableRecord {
+    pt_id: usize,
+    root_ppn: PhysPageNum,
+    frames: Vec<PhysPageNum>
+}
+
+impl From<&PageTableRecord> for PageTable{
+    fn from(pt: &PageTableRecord) -> Self {
+        PageTable {
+            pt_id: pt.pt_id,
+            root_ppn: pt.root_ppn
+        }
+    }
+}
+impl From<&mut PageTableRecord> for PageTable{
+    fn from(pt: &mut PageTableRecord) -> Self {
+        PageTable {
+            pt_id: pt.pt_id,
+            root_ppn: pt.root_ppn
+        }
+    }
+}
+
 impl PageTable {
     pub fn id(&self) -> usize{
         return self.pt_id;
     }
+    pub fn token(&self) -> usize {
+        8usize << 60 | self.root_ppn.0
+    }
+}
 
-    pub fn new(id: usize) -> Self {
-        let ppn = frame_alloc().unwrap();
-        PageTable {
-            pt_id: id,
-            root_ppn: ppn,
-            //frames: vec![ppn],
-        }
+/// Assume that it won't oom when creating/mapping.
+impl PageTableRecord {
+    pub fn id(&self) -> usize{
+        return self.pt_id;
     }
     
+    pub fn new(id: usize) -> Self {
+        let ppn = frame_alloc().unwrap();
+        PageTableRecord {
+            pt_id: id,
+            root_ppn: ppn,
+            frames: Vec::new(),
+        }
+    }
+    pub fn destroy(mut self){
+        for mapped_frame in self.frames.into_iter(){
+            frame_dealloc(mapped_frame);
+        }
+        self.pt_id = usize::MAX;
+        self.root_ppn = 0.into();
+    }
+
     fn find_pte_create(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
@@ -124,7 +164,8 @@ impl PageTable {
                 let ppn = frame_alloc().unwrap();
                 // println!("ppn is {:x}", ppn.0);
                 *pte = PageTableEntry::new(ppn, PTEFlags::V);
-                //self.frames.push(ppn);
+                self.frames.push(ppn);
+                
             }
             ppn = pte.ppn();
         }
@@ -299,9 +340,8 @@ impl PageTable {
     }
 
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
-    pub fn map_kernel_shared(&mut self){
-        let kernel_pagetable = nkapi_vun_getpt(0);
-        
+    pub fn map_kernel_shared(&mut self, kernel_pagetable: &mut PageTableRecord){
+ 
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
@@ -326,13 +366,6 @@ impl PageTable {
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
 
-        // insert shared pte of from kernel
-        let kernel_vpn:VirtPageNum = (OKSPACE_START / PAGE_SIZE).into();
-        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
-        let idxs = kernel_vpn.indexes();
-        let mut ppn = self.root_ppn;
-        let pte = &mut ppn.get_pte_array()[idxs[0]];
-        *pte = *pte_kernel.unwrap();
         // insert top va(kernel stack + trampoline)
         let kernel_vpn:VirtPageNum = (TRAMPOLINE / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
@@ -344,21 +377,23 @@ impl PageTable {
         // Yan_ice: TODO: problems about MMIO mapping.
         // It maps level 1 PTE (0x0 ~ 0x2000000) instead of level 3, which cause mistake.
 
-        // insert MMIO (assert that each MMIO length is one PAGE)
-        // for pair in MMIO {
-        //     let kernel_vpn:VirtPageNum = (pair.0 / PAGE_SIZE).into();
-        //     let idxs = kernel_vpn.indexes();
-        //     let mut ppn = self.root_ppn;
-        //     for i in 0..3 {
-        //         let pte = &mut ppn.get_pte_array()[idxs[i]];
-        //         if !pte.is_valid() {
-        //             let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, i+1);
-        //             *pte = *pte_kernel.unwrap();
-        //             break;
-        //         }
-        //         ppn = pte.ppn();
-        //     }
-        // }
+        //insert MMIO (assert that each MMIO length is one PAGE)
+        for pair in MMIO {
+            let page_num = pair.0 / PAGE_SIZE;
+            self.map(page_num.into(), page_num.into(), PTEFlags::R | PTEFlags::W);
+            // let kernel_vpn:VirtPageNum = (pair.0 / PAGE_SIZE).into();
+            // let idxs = kernel_vpn.indexes();
+            // let mut ppn = self.root_ppn;
+            // for i in 0..3 {
+            //     let pte = &mut ppn.get_pte_array()[idxs[i]];
+            //     if !pte.is_valid() {
+            //         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, i+1);
+            //         *pte = *pte_kernel.unwrap();
+            //         break;
+            //     }
+            //     ppn = pte.ppn();
+            // }
+        }
         
     }
 
