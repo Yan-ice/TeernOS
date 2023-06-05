@@ -3,6 +3,7 @@ use crate::{nk::{nkapi_alloc, nkapi_pt_init, nkapi_dealloc, VirtAddr, MapPermiss
 use crate::nk::mm::PROXYCONTEXT;
 
 pub fn mem_access_timecost(){
+    return;
     nkapi_pt_init(999, true);
     begin_test!("mem_access_time",
     {

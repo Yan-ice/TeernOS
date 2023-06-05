@@ -26,7 +26,7 @@ use spin::Mutex;
 use alloc::vec::Vec;
 use riscv::register::satp;
 
-use crate::{nk::{nkapi::ProxyContext, mm::page_table::PageTableRecord}, task::{current_task, Signals}};
+use crate::{nk::{nkapi::ProxyContext, mm::page_table::PageTableRecord}, task::{current_task, Signals}, debug_print};
 use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
 
 pub use nkapi::{
@@ -340,6 +340,8 @@ fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapP
     let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     
+    //println!("nkapi_alloc [{}] {:?} {:?}", pt_handle, vpn, map_type);
+
     pt_operate! (pt_handle, target_pt, {
         // get target ppn
         let target_ppn;
@@ -469,7 +471,7 @@ pub fn nkapi_activate(pt_handle: usize) {
         // }
 
         // println!("outer kernel's table switch.");
-        println!("nkapi: pagetable [{}] activated.", pt_handle);
+        debug_print!("nkapi: pagetable [{}] activated.", pt_handle);
         *current_pt.lock().as_mut() = pt_handle;
 
         unsafe{

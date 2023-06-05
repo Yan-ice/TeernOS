@@ -342,24 +342,10 @@ impl PageTableRecord {
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self, kernel_pagetable: &mut PageTableRecord){
  
+        println!("kernel shared: PPN 0x80000 ~ PPN 0xb0000");
+
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
-        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
-        let idxs = kernel_vpn.indexes();
-        let mut ppn = self.root_ppn;
-        let pte = &mut ppn.get_pte_array()[idxs[0]];
-        *pte = *pte_kernel.unwrap();
-
-        // insert shared pte of from kernel
-        let kernel_vpn:VirtPageNum = (0x80c58000 / PAGE_SIZE).into();
-        let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
-        let idxs = kernel_vpn.indexes();
-        let mut ppn = self.root_ppn;
-        let pte = &mut ppn.get_pte_array()[idxs[0]];
-        *pte = *pte_kernel.unwrap();
-
-        // insert shared pte of from kernel
-        let kernel_vpn:VirtPageNum = (OKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
         let mut ppn = self.root_ppn;
@@ -373,6 +359,9 @@ impl PageTableRecord {
         let mut ppn = self.root_ppn;
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
+
+        let kernel_vpn:VirtPageNum = 0xb0000.into();
+        let idxs = kernel_vpn.indexes();
 
         // Yan_ice: TODO: problems about MMIO mapping.
         // It maps level 1 PTE (0x0 ~ 0x2000000) instead of level 3, which cause mistake.

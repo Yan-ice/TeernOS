@@ -2,7 +2,6 @@ use crate::util::MemorySet;
 
 use crate::{nk::{
     PhysPageNum,
-    KERNEL_SPACE, 
     //KERNEL_TOKEN,
     //PageTable,
     VirtAddr,
@@ -750,7 +749,7 @@ impl TaskControlBlock {
     }
 
     pub fn kmunmap(&self, start: usize, len: usize) -> isize {
-        let mut ks_lock = KERNEL_SPACE.lock();
+        let mut ks_lock = OUTER_KERNEL_SPACE().lock();
         let mut kma_lock = OUTER_MMAP_AREA().lock();
         ks_lock.remove_area_with_start_vpn(VirtAddr::from(start).into());
         kma_lock.remove(start, len)
