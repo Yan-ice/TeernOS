@@ -57,7 +57,7 @@ DISASM ?= -x
 build: $(KERNEL_BIN)
 
 env:
-	rustup override set nightly-2021-05-10
+	rustup override set nightly-2021-05-09
 	(rustup target list | grep "riscv64imac-unknown-none-elf (installed)") || rustup target add $(TARGET)
 	rustup component add rust-src
 	rustup component add llvm-tools-preview
@@ -87,7 +87,7 @@ fsimg-format:
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build $(FLAG) --features "board_$(BOARD)"
+	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"
 	@rm src/linker.ld 
 
 clean:
