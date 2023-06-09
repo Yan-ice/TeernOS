@@ -1,5 +1,7 @@
-use crate::{entry_gate, return_some, nk::{PhysAddr, nkapi, VirtAddr, nkapi_pt_init, nkapi_alloc, MapPermission, nkapi_dealloc, nkapi_translate_va}, begin_test};
+use crate::{entry_gate, return_some, begin_test};
 use crate::debug_info;
+use crate::shared::*;
+use crate::nkapi::*;
 
 const valA: usize = 66666;
 const va_test: VirtAddr = VirtAddr{0: 0x10000000336};
@@ -8,10 +10,6 @@ const pa_test: PhysAddr = PhysAddr{0: 0x20000000336};
 pub fn nkapi_gatetest(){
     begin_test!("nkapi gate test",
     {
-        if let Some(adr) = my_example(valA.into(), valA.into()) {
-            //assert_eq!(adr, valA, "testing return value.");
-            debug_info!("nkapi: basic test passed.");
-        }
 
         let test_pt = 2333;
         nkapi_pt_init(test_pt, true);
@@ -42,20 +40,4 @@ pub fn nkapi_gatetest(){
 
     }
     );
-}
-
-pub fn my_example(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
-    // unsafe{
-    //     llvm_asm!("addi sp, sp, -6*8");
-    //     llvm_asm!("sd x10, 8(sp)");
-    //     llvm_asm!("sd x11, 16(sp)");
-    //     llvm_asm!("sd x12, 24(sp)");
-    //     llvm_asm!("sd x13, 32(sp)");
-    //     llvm_asm!("sd x14, 40(sp)");
-    //     llvm_asm!("sd $0, 0(sp)" :: "r"(nkapi_example_imp as usize));
-    //     debug_info!("map_type_test: {:?} {:?} {:?}",pt_handle, t1, t2);
-    //     llvm_asm!("jal nk_entry");
-    // }
-    entry_gate!(nkapi::NKAPI_TEST, t1, t2);
-    return_some!(usize);
 }

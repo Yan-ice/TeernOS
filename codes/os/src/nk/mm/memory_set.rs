@@ -1,14 +1,13 @@
 
 use super::page_table::PageTableRecord;
 use super::{PageTable, PageTableEntry, PTEFlags};
-use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr, MapType, MapPermission};          
+use crate::shared::*;
+use super::{MapType, MapPermission};          
 use super::{frame_add_ref, enquire_refcount, print_free_pages};
-use super::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
 use alloc::vec::Vec;
 use buddy_system_allocator::FrameAllocator;
-use riscv::register::satp;
 use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;

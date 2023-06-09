@@ -34,6 +34,7 @@ mod statics;
 mod drivers;
 mod monitor;
 mod task;
+mod shared;
 #[macro_use]
 mod timer;
 

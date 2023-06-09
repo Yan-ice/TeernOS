@@ -63,62 +63,6 @@ pub fn nkapi_time() -> usize{
     return_value!(usize);
 }
 
-
-pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option<PhysPageNum>{
-    entry_gate!(nkapi::NKAPI_TRANSLATE,pt_handle,vpn,write);
-    return_some!(PhysPageNum);
-}
-
-pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
-    // if let Some(ppn) = nkapi_translate(pt_handle,va.clone().floor(),false) {
-    //     let pa: PhysAddr = PhysAddr{0: ppn.0*crate::config::PAGE_SIZE + va.page_offset()};
-    //     return Some(pa);
-    // }
-    // None
-    entry_gate!(nkapi::NKAPI_TRANSLATE_VA,pt_handle,va);
-    return_some!(PhysAddr);
-}
-
-pub fn nkapi_alloc(pt_handle:usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
-    entry_gate!(nkapi::NKAPI_ALLOC, pt_handle, vpn, usize::from(map_type), perm);
-    return_value!(PhysPageNum);
-}
-
-pub fn nkapi_pt_init(pt_handle: usize, regenerate: bool){
-    entry_gate!(nkapi::NKAPI_PT_INIT,pt_handle, regenerate);
-    return_void!();
-}
-
-pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
-    entry_gate!(nkapi::NKAPI_DEALLOC, pt_handle, vpn);
-    return_void!();
-}
-
-pub fn nkapi_activate(pt_handle: usize){
-    entry_gate!(nkapi::NKAPI_ACTIVATE, pt_handle);
-    return_void!();
-}
-
-pub fn nkapi_copyTo(pt_handle: usize, mut current_vpn: VirtPageNum, data: &[u8], offset:usize){
-    entry_gate!(nkapi::NKAPI_COPY_TO,pt_handle, current_vpn, data as *const [u8] as *const usize as usize, offset);
-    return_void!();
-}
-
-pub fn nkapi_traphandler(ctx: &TrapContext){
-    entry_gate!(nkapi::NKTRAP_HANDLE, ctx as *const TrapContext as *const usize as usize);
-    return_void!();
-}
-
-pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){
-    entry_gate!(nkapi::NKAPI_SET_PERM, pt_handle, vpn, flags);
-    return_void!();
-}
-
-pub fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
-    entry_gate!(nkapi::NKAPI_DEBUG, pt_handle, from, to);
-    return_void!();
-}
-
 pub fn id() -> usize {
     let cpu_id;
     unsafe {

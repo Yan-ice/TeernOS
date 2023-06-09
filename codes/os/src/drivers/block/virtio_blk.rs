@@ -7,6 +7,8 @@ use crate::nk::{
     PhysPageNum,
     StepByOne,
 };
+use crate::shared::*;
+
 use crate::{
     outer_frame_alloc,
     outer_frame_dealloc

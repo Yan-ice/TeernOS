@@ -1,16 +1,17 @@
 
 use super::{
     frame_alloc,
-    PhysPageNum,
-    VirtPageNum,
-    VirtAddr,
-    PhysAddr, nkapi_vun_getpt, MapPermission, nkapi_dealloc, nkapi_translate, nkapi_translate_va, frame_allocator::frame_dealloc,
+    nkapi_vun_getpt, MapPermission, nkapi_dealloc, 
+    nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
+use crate::shared::*;
+
 use crate::{config::*, nk::nkapi_alloc};
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
 use spin::Mutex;
 use crate::debug_info;
+
 bitflags! {
     pub struct PTEFlags: u8 {
         const V = 1 << 0;

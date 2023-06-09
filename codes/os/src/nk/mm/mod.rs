@@ -1,5 +1,4 @@
 mod heap_allocator;
-mod address;
 mod frame_allocator;
 mod page_table;
 pub mod nkapi;
@@ -49,7 +48,8 @@ pub use frame_allocator::{
 
 //nk内部的就不暴露啦
 use frame_allocator::{
-    frame_alloc
+    frame_alloc,
+    frame_dealloc
 };
 
 pub use page_table::{
@@ -126,18 +126,6 @@ impl From<usize> for MapType{
         }
         }
     }
-}
-
-
-
-bitflags! {
-    pub struct MapPermission: u8 {
-        const R = 1 << 1;  // read
-        const W = 1 << 2;  // write
-        const X = 1 << 3;  // execute
-        const U = 1 << 4;
-    }
-    
 }
 
 impl From<MapPermission> for usize{

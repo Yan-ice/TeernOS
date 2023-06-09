@@ -5,13 +5,14 @@ use crate::nk::{
 
 use crate::nk::{nkapi_vun_getpt};
 use crate::debug_info;
-use crate::nk::{VirtAddr, PhysAddr, PhysPageNum, VirtPageNum, MapType, MapPermission, PTEFlags};          
+use crate::shared::{VirtAddr, PhysAddr, PhysPageNum, VirtPageNum, MapType, MapPermission, PTEFlags};          
 use crate::nk::{VPNRange, StepByOne};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
 use alloc::vec::Vec;
 use crate::config::*;
 use crate::task::AuxHeader;
+use crate::shared::*;
 
 
 extern "C" {
