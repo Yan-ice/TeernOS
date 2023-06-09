@@ -1,0 +1,3 @@
+[submodule "opensbi_nk"]
+	path = opensbi_nk
+	url = git@github.com:Yan-ice/opensbi_nk.git

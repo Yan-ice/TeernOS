@@ -9,6 +9,7 @@ const SBI_REMOTE_FENCE_I: usize = 5;
 const SBI_REMOTE_SFENCE_VMA: usize = 6;
 const SBI_REMOTE_SFENCE_VMA_ASID: usize = 7;
 const SBI_SHUTDOWN: usize = 8;
+const SBI_UDPATE_SATP: usize = 9;
 
 #[inline(always)]
 fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
@@ -23,6 +24,11 @@ fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     }
     ret
 }
+
+pub fn sbi_satp(satp: usize) {
+    sbi_call(SBI_UPDATE_SATP, satp, 0, 0);
+}
+
 
 pub fn sbi_send_ipi(mask: usize) {
     sbi_call(SBI_SEND_IPI, mask, 0, 0);
