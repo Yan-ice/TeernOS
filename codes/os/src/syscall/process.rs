@@ -418,7 +418,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     // add new task to scheduler
     add_task(new_task);
     unsafe {
-        llvm_asm!("sfence.vma" :::: "volatile");
+        // llvm_asm!("sfence.vma" :::: "volatile");
         llvm_asm!("fence.i" :::: "volatile");
     }
     gdb_println!(SYSCALL_ENABLE,"sys_fork(flags: {:?}, stack_ptr: 0x{:X}, ptid: {}, ctid: {}, newtls: {}) = {}", flags, stack_ptr, ptid, ctid, newtls, new_pid);
@@ -466,7 +466,7 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
         let mut inner = task.acquire_inner_lock();
         inner.fd_table[fd].take();
         unsafe {
-            llvm_asm!("sfence.vma" :::: "volatile");
+            // llvm_asm!("sfence.vma" :::: "volatile");
             llvm_asm!("fence.i" :::: "volatile");
         }
         gdb_println!(SYSCALL_ENABLE, "sys_exec(path: {}, args: {:?}) = {}", path, args_vec_copy, argc);
@@ -602,7 +602,7 @@ pub fn sys_mprotect(addr: usize, len: usize, prot: isize) -> isize{
         memory_set.set_pte_flags(start_vpn.into(), (prot as usize)<<1)
     }
     unsafe {
-        llvm_asm!("sfence.vma" :::: "volatile");
+        // llvm_asm!("sfence.vma" :::: "volatile");
         llvm_asm!("fence.i" :::: "volatile");
     }
     0

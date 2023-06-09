@@ -12,7 +12,7 @@ use crate::{debug_stack_info, debug_context_info, entry_gate};
 pub use trap::{TrapContext as TrapContext, 
     user_trap_return};
 
-use mm::{nkapi, nkapi_activate as api_activate};
+use mm::{nkapi};
 
 #[macro_use]
 
@@ -63,9 +63,6 @@ pub fn nkapi_time() -> usize{
     return_value!(usize);
 }
 
-pub fn activate(pid: usize){
-    api_activate(pid);
-}
 
 pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option<PhysPageNum>{
     entry_gate!(nkapi::NKAPI_TRANSLATE,pt_handle,vpn,write);

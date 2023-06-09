@@ -3,6 +3,10 @@ all:
 	cd codes/user && make elf
 	cd codes/os && make release BOARD=k210
 
+sbi:
+	cd opensbi_nk && make
+	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
+
 env:
 	rustup update
 	cargo install cargo-binutils

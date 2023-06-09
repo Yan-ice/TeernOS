@@ -286,9 +286,10 @@ impl MemorySet {
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
-            satp::write(satp);
+            //satp::write(satp);
+            crate::sbi::sbi_satp(satp);
             debug_info!("satp updated: {:?}", satp::read());
-            llvm_asm!("sfence.vma" :::: "volatile");
+            //llvm_asm!("sfence.vma" :::: "volatile");
         }
     }
 

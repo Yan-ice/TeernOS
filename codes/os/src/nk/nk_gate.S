@@ -89,29 +89,22 @@ nk_exit:
     addi x30, x30, -1
     sd x30, 91*8(x28) # api level remove 1 when exit
 
-    # store all nk registers, 包括栈指针
-    .set n, 1
-    .rept 27
-        SAVE_REGISTER2 %n 0
-        .set n, n+1
-    .endr
+    # enable interrupt
+    csrsi sstatus, 2
+
+    # change satp  
+    ld x10, 65*8(x28)
+    li x17, 9
+    ecall
+    li x28, 0
+    li x30, 0x1000
+    sub x28, x28, x30
 
     .set n, 1
     .rept 27
         LOAD_REGISTER2 %n 32
     .set n, n+1
     .endr
-
-    # enable interrupt
-    csrsi sstatus, 2
-
-    # change satp  
-    ld x30, 65*8(x28)
-    csrw satp, x30
-    
-    # clear cache after changing satp!!
-    sfence.vma
-
     # jump back, according to outer kernel's ra
     jr x1
 
@@ -142,28 +135,21 @@ nk_entry:
     addi x30, x30, 1
     sd x30, 91*8(x28) # api level add 1 when entry
 
-    # change satp  
-    ld x30, 8*64(x28)
-    csrw satp, x30
+    # WARN: Here actually context may harmed by ecall. (Potential bug)
+    ld x10, 65*8(x28)
+    li x17, 9
+    ecall
+    li x28, 0
+    li x30, 0x1000
+    sub x28, x28, x30
 
     # store all outer kernel registers, 包括栈指针
     .set n, 1
     .rept 27
-    # has mistakes if use SAVE_REGISTER macro
-        SAVE_REGISTER2 %n 32
+       SAVE_REGISTER2 %n 32
         .set n, n+1
     .endr
-
-    # restore nk register
-    .set n, 1
-    .rept 27
-         LOAD_REGISTER2 %n 0
-    .set n, n+1
-    .endr
     
-    # temply load the outer sp, to load params
-    ld sp, 34*8(x28)
-
     # extract the params for handler function call
     ld x10, 0*8(sp)
     ld x11, 1*8(sp)

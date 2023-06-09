@@ -15,13 +15,13 @@ __wfi:
 .section .text.__sfence_vma_all
 .global __sfence_vma_all
 __sfence_vma_all:
-    sfence.vma
+    # sfence.vma
     ret
 
 .section .text.__sfence_vma
 .global __sfence_vma
 __sfence_vma:
-    sfence.vma a0, a1
+    # sfence.vma a0, a1
     ret
 
 // RISC-V hypervisor instructions.

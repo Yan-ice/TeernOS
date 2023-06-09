@@ -64,7 +64,7 @@ __alltraps:
     ld sp, 34*8(sp)
 
     # sfence.vma
-    sfence.vma zero, zero
+    # sfence.vma zero, zero
 
     # jump to trap_handler
     jr t1
