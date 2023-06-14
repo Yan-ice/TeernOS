@@ -63,9 +63,6 @@ __alltraps:
     # move to kernel_sp
     ld sp, 34*8(sp)
 
-    sfence.vma
-    sfence.vma zero, zero
-
     # jump to trap_handler
     jr t1
 
@@ -99,7 +96,4 @@ __restore:
 
     ld sp, 2*8(sp) # restore sp at last.
 
-    sfence.vma
-    sfence.vma zero, zero
-    
     sret # 跳转到sepc的位置继续执行

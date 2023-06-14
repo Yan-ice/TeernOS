@@ -1,4 +1,5 @@
 use crate::config::*;
+use crate::shared::PROXYCONTEXT;
 //use crate::nk::user_trap_return;
 #[derive(Debug)]
 #[repr(C)]
@@ -12,7 +13,7 @@ impl TaskContext {
     pub fn goto_trap_return() -> Self {
         unsafe{
             Self {
-                ra: *((NK_TRAMPOLINE as usize + 93*8) as *const usize),
+                ra: PROXYCONTEXT().usr_trap_return,
                 //ra: user_trap_return as usize,
                 s: [0; 12],
             }

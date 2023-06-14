@@ -35,7 +35,7 @@ impl TrapContext {
                 sstatus,
                 sepc: entry,
                 kernel_sp,
-                trap_handler: *((NK_TRAMPOLINE as usize + 92*8) as *const usize)
+                trap_handler: PROXYCONTEXT().usr_trap_handler
             };
             cx.set_sp(sp);
             cx

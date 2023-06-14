@@ -112,8 +112,6 @@ nk_exit:
     .set n, n+1
     .endr
 
-    sfence.vma
-    sfence.vma zero, zero
     # jump back, according to outer kernel's ra
     jr x1
 

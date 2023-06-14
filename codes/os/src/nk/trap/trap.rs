@@ -137,8 +137,6 @@ pub fn user_trap_return() -> ! {
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
    
     unsafe {
-        llvm_asm!("fence.i" :::: "volatile");
-        llvm_asm!("sfence.vma" :::: "volatile");
         // WARNING: here, we make a1 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
         llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(__signal_trampoline as usize) :: "volatile");
     }

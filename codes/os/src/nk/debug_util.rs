@@ -10,21 +10,6 @@ extern "C"{
 }
 
 #[macro_export]
-macro_rules! debug_current_reg{
-    () => {
-        debug_info!("============[debug]=============");
-        debug_info!("[debug] current reg info:");
-        debug_info!("SATP: {:?}",satp::read());
-        let sp: usize;
-        unsafe {
-            llvm_asm!("mv $0, sp" : "=r"(sp));
-        }
-        debug_info!("sp: {:x}",sp);
-        debug_info!("================================");
-    };
-}
-
-#[macro_export]
 macro_rules! debug_context_info{
     () => {
         unsafe{
