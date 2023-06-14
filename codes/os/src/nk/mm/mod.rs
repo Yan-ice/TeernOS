@@ -1,11 +1,10 @@
 mod heap_allocator;
 mod frame_allocator;
 mod page_table;
-pub mod nkapi;
-pub mod memory_set;
-mod vma;
+mod memory_set;
 mod trap_handle;
-use crate::debug_info;
+
+use crate::{debug_info, debug_stack_info};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{
@@ -18,22 +17,21 @@ use riscv::register::{
     stvec,
 };
 
+
 use alloc::{sync::Arc, boxed::Box};
 use lazy_static::*;
 use spin::Mutex;
 
 use alloc::vec::Vec;
-use riscv::register::satp;
 
-use crate::{nk::{nkapi::ProxyContext, mm::page_table::PageTableRecord}, task::{current_task, Signals}};
-use crate::{outer_frame_alloc, debug_stack_info, StaticThings, OUTER_KERNEL_SPACE};
+use crate::task::{current_task, Signals};
+use crate::{outer_frame_alloc, StaticThings, OUTER_KERNEL_SPACE};
 
-pub use nkapi::{
-    API_ENABLE as NKAPI_ENABLE,
-    PROXYCONTEXT as PROXYCONTEXT
-};
+use page_table::*;
 
-pub use address::{PhysAddr, VirtAddr, PhysPageNum, VirtPageNum, StepByOne, VPNRange};
+use crate::shared::*;
+use crate::config::*;
+
 pub use frame_allocator::{
     StackFrameAllocator, 
     FrameAllocator,
@@ -54,17 +52,13 @@ use frame_allocator::{
 
 pub use page_table::{
     PageTable,
-    PageTableEntry,
-    PTEFlags
+    PageTableEntry
 };
 
-pub use vma::{MmapArea, MmapSpace};
 pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, kernel_token};
-pub use memory_set::remap_test;
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
 
-use crate::config::*;
 
 use trap_handle::{handle_outer_trap, handle_nk_trap};
 
@@ -87,64 +81,7 @@ extern "C" {
     fn snktrampoline();
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum MapType {
-    Identical,
-    Framed,
-    FramedInNK,
-    Specified(PhysPageNum)
-}
-impl From<MapType> for usize {
-    fn from(v: MapType) -> Self {
-        match v {
-            MapType::Identical =>{
-                return usize::MAX-1;
-            }
-            MapType::Framed =>{
-                return usize::MAX-2;
-            }
-            MapType::FramedInNK =>{
-                return usize::MAX-3;
-            }
-            MapType::Specified(ppn) =>{
-                return ppn.0;
-            }
-        }
-    }
-}
-impl From<usize> for MapType{
-    fn from(v: usize) -> Self {
-        unsafe{
-             if v == usize::MAX-1 {
-            MapType::Identical
-        }else if v == usize::MAX-2 {
-            MapType::Framed
-        }else if v == usize::MAX-3 {
-            MapType::FramedInNK
-        }else{
-            MapType::Specified(PhysPageNum::from(v))
-        }
-        }
-    }
-}
 
-impl From<MapPermission> for usize{
-    fn from(v: MapPermission) -> Self{
-        v.bits().into()
-    }
-}
-
-impl From<usize> for MapPermission{
-    fn from(v: usize) -> Self{
-        MapPermission { bits: v as u8}
-    }
-}
-
-impl MapPermission{
-    pub fn flags(self) -> PTEFlags{
-        PTEFlags::from_bits(self.bits).unwrap()
-    }
-}
 
 pub fn init() {
 
@@ -152,13 +89,14 @@ pub fn init() {
 
     frame_allocator::init_frame_allocator();  // 物理页帧分配器
     // KERNEL_SPACE是个lazy启动的，启动时将pagetable等数据写好
-
     
     KERNEL_SPACE.lock().activate();  // 切换页表
     //KERNEL_SPACE.lock().print_pagetable();
     // unsafe{
     //     PROXYCONTEXT().nk_satp = KERNEL_SPACE.lock().token();
     // }
+    debug_info!("kernel table init success.");
+    init_vec();
 }
 
 pub fn init_othercore(){
@@ -188,6 +126,41 @@ macro_rules! pt_operate {
         }
     };
 }
+
+
+pub fn init_vec(){
+    let proxy = PROXYCONTEXT();
+
+    proxy.nkapi_enable = 1;
+    proxy.nkapi_vec[NKTRAP_HANDLE] = nkapi_traphandle as usize;
+    proxy.nkapi_vec[NKAPI_TEST] = nkapi_assert_eq_and_echo as usize;
+    proxy.nkapi_vec[NKAPI_PT_INIT] = nkapi_pt_init as usize;
+    proxy.nkapi_vec[NKAPI_ALLOC] = nkapi_alloc as usize;
+    proxy.nkapi_vec[NKAPI_DEALLOC] = nkapi_dealloc as usize;
+    proxy.nkapi_vec[NKAPI_ACTIVATE] = nkapi_activate as usize;
+    proxy.nkapi_vec[NKAPI_COPY_TO] = nkapi_copy_to as usize;
+    proxy.nkapi_vec[NKAPI_TRANSLATE] = nkapi_translate as usize;
+    proxy.nkapi_vec[NKAPI_TRANSLATE_VA] = nkapi_translate_va as usize;
+    proxy.nkapi_vec[NKAPI_SET_PERM] = nkapi_set_permission as usize;
+    proxy.nkapi_vec[NKAPI_TIME] = nkapi_time as usize;
+    proxy.nkapi_vec[NKAPI_DEBUG] = nkapi_print_pt as usize;
+
+}
+
+
+
+
+fn nkapi_time() -> usize {
+    let mut time:usize = 0;
+    unsafe{
+        asm!(
+            "rdtime a0",
+            inout("a0") time
+        );
+    }
+    time
+}
+
 
 
 pub fn pt_current() -> usize {
@@ -465,13 +438,7 @@ pub fn nkapi_activate(pt_handle: usize) {
         unsafe{
             (&mut PROXYCONTEXT()).outer_satp = satp;
         }
-        
-        // unsafe {
-        //     __switch(
-        //         start,
-        //         end,
-        //     );
-        // }
+
         return;
     });
 }

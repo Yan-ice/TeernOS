@@ -1,5 +1,4 @@
 use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
-use super::PageTableEntry;
 use core::fmt::{self, Debug, Formatter};
 
 /// Definitions
@@ -133,12 +132,7 @@ impl PhysAddr {
     }
 }
 impl PhysPageNum {
-    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
-        let pa: PhysAddr = self.clone().into();
-        unsafe {
-            core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512)
-        }
-    }
+    
     pub fn get_bytes_array(&self) -> &'static mut [u8] {
         let pa: PhysAddr = self.clone().into();
         unsafe {

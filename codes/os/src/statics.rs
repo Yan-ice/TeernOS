@@ -2,7 +2,7 @@ use spin::*;
 
 use alloc::sync::Arc;
 use crate::config::KMMAP_BASE;
-use crate::nk::{MmapArea, VirtAddr};
+use crate::shared::*;
 use crate::task::TaskManager;
 use crate::debug_info;
 use crate::task::{TaskControlBlock, Processor};

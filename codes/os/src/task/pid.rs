@@ -2,7 +2,8 @@ use alloc::vec::Vec;
 use lazy_static::*;
 use spin::Mutex;
 use crate::{OUTER_KERNEL_SPACE, PID_ALLOCATOR};
-use crate::nk::{KERNEL_SPACE, MapPermission, VirtAddr};
+use crate::shared::*;
+
 use crate::config::{
     PAGE_SIZE,
     TRAMPOLINE,

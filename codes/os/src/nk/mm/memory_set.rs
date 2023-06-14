@@ -1,8 +1,9 @@
 
 use super::page_table::PageTableRecord;
-use super::{PageTable, PageTableEntry, PTEFlags};
+use super::{PageTable, PageTableEntry};
 use crate::shared::*;
-use super::{MapType, MapPermission};          
+use crate::config::*;
+
 use super::{frame_add_ref, enquire_refcount, print_free_pages};
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
@@ -11,15 +12,14 @@ use buddy_system_allocator::FrameAllocator;
 use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
-use crate::config::*;
-use crate::nk::nkapi::ProxyContext;
-use super::vma::*;
+
 
 use super::frame_allocator::{frame_alloc};
 use crate::outer_frame_alloc;
 use crate::monitor::*;
 use crate::task::AuxHeader;
 use crate::debug_info;
+
 extern "C" {
     fn stext();
     fn etext();
@@ -284,12 +284,7 @@ impl MemorySet {
     ///修改satp，切换到该页表
     pub fn activate(&self) {
         let satp = self.page_table.token();
-        unsafe {
-            //satp::write(satp);
-            crate::sbi::sbi_satp(satp);
-            debug_info!("satp updated: {:?}", satp::read());
-            //llvm_asm!("sfence.vma" :::: "volatile");
-        }
+        crate::sbi::sbi_satp(satp);
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
@@ -396,7 +391,7 @@ impl ChunkArea {
             }
 
         }
-        let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
+        let pte_flags = PTEFlags::from_bits(self.map_perm.get_bits()).unwrap();
         // [WARNING]:因为没有map，所以不能使用
         page_table.map(vpn, ppn, pte_flags);
     }
@@ -486,7 +481,7 @@ impl MapArea {
                 }
             }
         }
-        let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
+        let pte_flags = PTEFlags::from_bits(self.map_perm.get_bits()).unwrap();
         // [WARNING]:因为没有map，所以不能使用
         //gdb_println!(MAP_ENABLE,"[map_one]: pte_flags:{:?} vpn:0x{:X}",pte_flags,vpn.0);
         page_table.map(vpn, ppn, pte_flags);
@@ -541,23 +536,3 @@ impl MapArea {
     }
 }
 
-#[allow(unused)]
-pub fn remap_test() {
-    let mut kernel_space = KERNEL_SPACE.lock();
-    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
-    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
-    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
-    assert_eq!(
-        kernel_space.page_table.translate(mid_text.floor()).unwrap().writable(),
-        false
-    );
-    assert_eq!(
-        kernel_space.page_table.translate(mid_rodata.floor()).unwrap().writable(),
-        false,
-    );
-    assert_eq!(
-        kernel_space.page_table.translate(mid_data.floor()).unwrap().executable(),
-        false,
-    );
-    debug_info!("remap_test passed!");
-}

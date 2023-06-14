@@ -1,9 +1,4 @@
-use crate::nk::{
-    VirtAddr,
-    StepByOne,
-    nkapi_translate,
-    nkapi_translate_va
-};
+use crate::shared::*;
 
 use crate::task::{current_task, current_user_id};
 use crate::debug_info;

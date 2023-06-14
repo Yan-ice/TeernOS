@@ -1,4 +1,13 @@
+
 .altmacro
+.macro SAVE_REGISTER n
+    sd x\n, \n*8(sp)
+.endm
+
+.macro LOAD_REGISTER n
+    ld x\n, \n*8(sp)
+.endm
+
 .macro SAVE_REGISTER2 n o
     sd x\n, \o*8+\n*8(x28)
 .endm
@@ -16,19 +25,11 @@ nk_bypass:
     li x30, 0x1000
     sub x28, x28, x30
 
-    # extract the params for handler function call
-    ld x10, 0*8(sp)
-    ld x11, 1*8(sp)
-    ld x12, 2*8(sp)
-    ld x13, 3*8(sp)
-    ld x14, 4*8(sp)
-    ld x15, 5*8(sp)
-    addi sp, sp, 6*8
-
-    # store all nk registers, 包括栈指针
+    addi sp,sp,-30*8
+    # store all nk registers
     .set n, 1
-    .rept 27
-        SAVE_REGISTER2 %n 0
+    .rept 28
+        SAVE_REGISTER %n
         .set n, n+1
     .endr
 
@@ -54,13 +55,14 @@ nk_bypass:
     mv x29, x10
     mv x30, x11
 
-    # load all nk registers, 包括栈指针
+    # load all nk registers
     .set n, 1
-    .rept 27
-        LOAD_REGISTER2 %n 0
+    .rept 28
+        LOAD_REGISTER %n
         .set n, n+1
     .endr
-    
+    addi sp,sp,30*8
+
     # restore the retval
     mv x10, x29
     mv x11, x30
@@ -85,6 +87,10 @@ nk_exit:
     li x30, 0x1000
     sub x28, x28, x30
 
+    # save nk sp
+    sd x1, 1*8(x28)
+    sd sp, 2*8(x28)
+
     ld x30, 91*8(x28) # nkapi level
     addi x30, x30, -1
     sd x30, 91*8(x28) # api level remove 1 when exit
@@ -105,6 +111,9 @@ nk_exit:
         LOAD_REGISTER2 %n 32
     .set n, n+1
     .endr
+
+    sfence.vma
+    sfence.vma zero, zero
     # jump back, according to outer kernel's ra
     jr x1
 
@@ -135,32 +144,38 @@ nk_entry:
     addi x30, x30, 1
     sd x30, 91*8(x28) # api level add 1 when entry
 
+
+    addi sp,sp,-30*8
+    # store all registers
+    .set n, 1
+    .rept 28
+        SAVE_REGISTER %n
+        .set n, n+1
+    .endr
+
     # WARN: Here actually context may harmed by ecall. (Potential bug)
     ld x10, 65*8(x28)
     li x17, 9
     ecall
+
+    # load all registers
+    .set n, 1
+    .rept 28
+        LOAD_REGISTER %n
+        .set n, n+1
+    .endr
+    addi sp,sp,30*8
+
     li x28, 0
     li x30, 0x1000
     sub x28, x28, x30
 
-    # store all outer kernel registers, 包括栈指针
+    # store all outer kernel registers to proxy, 包括栈指针
     .set n, 1
     .rept 27
        SAVE_REGISTER2 %n 32
         .set n, n+1
     .endr
-    
-    # extract the params for handler function call
-    ld x10, 0*8(sp)
-    ld x11, 1*8(sp)
-    ld x12, 2*8(sp)
-    ld x13, 3*8(sp)
-    ld x14, 4*8(sp)
-    ld x15, 5*8(sp)
-    addi sp, sp, 6*8
-
-    # save the outer sp, after taking params out
-    sd sp, 34*8(x28)
 
     # load nk sp back
     ld sp, 2*8(x28)

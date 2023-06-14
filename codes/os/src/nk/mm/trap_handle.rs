@@ -10,9 +10,10 @@ use riscv::register::{
     stvec, hpmcounter21::read
 };
 use crate::debug_info;
-use crate::{nk::{
-    VirtAddr, nkapi_traphandler, nkapi_vun_getpt
-}, config::NK_TRAMPOLINE};
+
+use crate::shared::*;
+use crate::config::*;
+
 use crate::syscall::{syscall};
 use crate::task::{
     exit_current_and_run_next,
@@ -24,10 +25,8 @@ use crate::task::{
     perform_signal_handler,
 };
 
-pub use crate::nk::nkapi::ProxyContext;
 use super::PROXYCONTEXT;
 use crate::timer::set_next_trigger;
-use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
 use crate::gdb_print;
 use crate::monitor::*;
 

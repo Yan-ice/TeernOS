@@ -7,7 +7,10 @@ use lazy_static::*;
 use super::{fetch_task, TaskStatus};
 use super::__switch;
 use crate::timer::get_time_us;
-use crate::nk::{TrapContext, nkapi_activate, nkapi_translate, nkapi_translate_va, nkapi_print_pt};
+
+use crate::shared::*;
+use crate::util::o_memory_set::*;
+
 use crate::task::manager::add_task;
 use crate::gdb_print;
 use crate::monitor::*;
@@ -85,7 +88,7 @@ impl Processor {
                 // True: switch
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
-                    //debug_info!("[processor] switch to next task.");
+                    debug_info!("[processor] switch to next task.");
                     let mut next_task_inner = task.acquire_inner_lock();
                     // task_inner.memory_set.activate();// change satp
                     let next_task_cx_ptr2 = next_task_inner.get_task_cx_ptr2();
@@ -118,7 +121,7 @@ impl Processor {
                     }
                 }
                 else{
-                    //debug_info!("[processor] keep the same task.");  //想主动切换但是没有可换的
+                    debug_info!("[processor] keep the same task.");  //想主动切换但是没有可换的
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
@@ -132,7 +135,7 @@ impl Processor {
             // False: First time to fetch a task
             } else {
                 // Keep fetching
-                //debug_info!("[processor] First fetch (kernel trick).");  
+                debug_info!("[processor] First fetch (kernel trick).");  
  
                 if let Some(task) = fetch_task() {
                     // acquire
@@ -144,7 +147,7 @@ impl Processor {
                     drop(task_inner);
                     self.inner.borrow_mut().current = Some(task);
                     nkapi_activate(id); 
-
+                    debug_info!("ready switch.");  
                     unsafe {
                         __switch(
                             idle_task_cx_ptr2, // 这个值是taskcontext的指针，都是用汇编改的，相当于栈顶，以后所有的schedule都是调这个，两个栈切来切去

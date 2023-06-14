@@ -9,7 +9,7 @@ pub const USEC_PER_SEC: usize = 1000_000;
 pub const NSEC_PER_SEC: usize = 1000_000_000;
 
 pub fn get_time() -> usize {
-    return crate::nk::nkapi_time();
+    return crate::shared::nkapi_time();
 }
 
 pub fn get_timeval() -> TimeVal {

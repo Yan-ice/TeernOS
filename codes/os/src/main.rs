@@ -14,6 +14,7 @@ use spin::*;
 use nk::*;
 use alloc::sync::Arc;
 pub use statics::*;
+use shared::*;
 
 extern crate alloc;
 

@@ -63,8 +63,8 @@ __alltraps:
     # move to kernel_sp
     ld sp, 34*8(sp)
 
-    # sfence.vma
-    # sfence.vma zero, zero
+    sfence.vma
+    sfence.vma zero, zero
 
     # jump to trap_handler
     jr t1
@@ -75,8 +75,8 @@ __restore:
                       # a0的值都是TRAP_CONTEXT，这个地方也是trap context存在的位置
 
     # 所有用户的trapcontext都保存在同一个虚拟地址位置 TRAP_CONTEXT
-    # sfence.vma
-    # sfence.vma zero, zero
+
+    # sd sp, 2*8(a0)
 
     mv sp, a0         # 把a0的值写入sp
     # now sp points to TrapContext in user space, start restoring based on it
@@ -86,7 +86,7 @@ __restore:
     ld t1, 33*8(sp)   
     csrw sstatus, t0
     csrw sepc, t1
-
+    
     # restore general purpose registers except x0/sp/tp
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
@@ -99,6 +99,7 @@ __restore:
 
     ld sp, 2*8(sp) # restore sp at last.
 
-    # csrr x30, sepc
-    # jr x30
+    sfence.vma
+    sfence.vma zero, zero
+    
     sret # 跳转到sepc的位置继续执行

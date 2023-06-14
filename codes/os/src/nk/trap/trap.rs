@@ -9,9 +9,10 @@ use riscv::{register::{
     stval,
     stvec, hpmcounter21::read, sstatus::Sstatus, sie
 }, addr::BitField};
-use crate::{TrapContext, nk::{
-    VirtAddr, nkapi_traphandler, nkapi_translate_va, mm::nkapi_activate, nkapi_alloc, MapPermission, nkapi_set_permission
-}, config::NK_TRAMPOLINE};
+
+use crate::shared::*;
+use crate::config::*;
+
 use crate::syscall::{syscall};
 use crate::task::{
     exit_current_and_run_next,
@@ -23,7 +24,6 @@ use crate::task::{
     perform_signal_handler,
 };
 use crate::debug_info;
-pub use crate::nk::nkapi::ProxyContext;
 use super::PROXYCONTEXT;
 
 use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
@@ -96,6 +96,7 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
 
 #[no_mangle]
 pub fn user_trap_return() -> ! {
+
     // update RUsage of process
     // update_user_clock();
     // let ru_stime = get_kernel_runtime_usec();
@@ -108,10 +109,12 @@ pub fn user_trap_return() -> ! {
     //     stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     // }
     let trap_cx_ptr = TRAP_CONTEXT;
+
     // if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
     //     debug_info!("TRAP_CONTEXT is mapped to {:?}", pa);
     //     unsafe{
     //         let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
+    //         //v.sepc = usr_test as usize;
     //         debug_info!("trap context: {:?}",v);
     //         debug_info!("trap context sp: {:x}",v.x[2]);
             
@@ -134,9 +137,14 @@ pub fn user_trap_return() -> ! {
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
    
     unsafe {
-        //llvm_asm!("fence.i" :::: "volatile");
+        llvm_asm!("fence.i" :::: "volatile");
+        llvm_asm!("sfence.vma" :::: "volatile");
         // WARNING: here, we make a1 = __signal_trampoline, because otherwise the "__signal_trampoline" func will be optimized to DEATH
         llvm_asm!("jr $0" :: "r"(restore_va), "{a0}"(trap_cx_ptr), "{a1}"(__signal_trampoline as usize) :: "volatile");
     }
     panic!("Unreachable in back_to_user!");
+}
+
+pub fn usr_test(){
+    debug_info!("reach usr test!");
 }

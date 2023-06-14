@@ -1,17 +1,11 @@
 use crate::util::MemorySet;
 
-use crate::{nk::{
-    PhysPageNum,
-    //KERNEL_TOKEN,
-    //PageTable,
-    VirtAddr,
-    VirtPageNum,
-    MmapArea,
-    MapPermission,
-    // PTEFlags,
-}, util::mm_util::translated_refmut, 
+use crate::{util::mm_util::translated_refmut, 
 syscall::FD_LIMIT, task::RLIMIT_NOFILE};
-use crate::nk::{TrapContext, nkapi_translate, nkapi_set_permission};
+
+use crate::shared::*;
+use crate::util::o_memory_set::*;
+
 use crate::{config::*, OUTER_KERNEL_SPACE, OUTER_MMAP_AREA};
 use crate::gdb_println;
 use crate::monitor::*;

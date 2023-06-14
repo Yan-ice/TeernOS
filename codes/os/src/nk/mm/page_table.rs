@@ -1,27 +1,24 @@
 
 use super::{
     frame_alloc,
-    nkapi_vun_getpt, MapPermission, nkapi_dealloc, 
+    nkapi_vun_getpt, nkapi_dealloc, nkapi_alloc,
     nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
 use crate::shared::*;
+use crate::config::*;
 
-use crate::{config::*, nk::nkapi_alloc};
+
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
 use spin::Mutex;
 use crate::debug_info;
 
-bitflags! {
-    pub struct PTEFlags: u8 {
-        const V = 1 << 0;
-        const R = 1 << 1;
-        const W = 1 << 2;
-        const X = 1 << 3;
-        const U = 1 << 4;
-        const G = 1 << 5;
-        const A = 1 << 6;
-        const D = 1 << 7;
+impl PhysPageNum{
+    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
+        let pa: PhysAddr = self.clone().into();
+        unsafe {
+            core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512)
+        }
     }
 }
 
@@ -31,10 +28,12 @@ pub struct PageTableEntry {
     pub bits: usize,
 }
 
+
+
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNum, flags: PTEFlags) -> Self {
         PageTableEntry {
-            bits: ppn.0 << 10 | flags.bits as usize,
+            bits: ppn.0 << 10 | flags.bits() as usize,
         }
     }
     pub fn empty() -> Self {
@@ -76,7 +75,7 @@ impl PageTableEntry {
         self.bits & (1 << 9) != 0
     }
     pub fn set_bits(&mut self, ppn: PhysPageNum, flags: PTEFlags) {
-        self.bits = ppn.0 << 10 | flags.bits as usize;
+        self.bits = ppn.0 << 10 | flags.bits() as usize;
     }
     // only X+W+R can be set
     pub fn set_pte_flags(&mut self, flags: usize) {

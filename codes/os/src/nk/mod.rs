@@ -3,38 +3,28 @@ mod trap;
 mod debug_util;
 pub mod tests;
 use crate::debug_info;
-use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, tests::{mem_access_timecost, nkapi_gatetest}}, 
-syscall::syscall, return_value, return_ref, return_some, return_void, OUTER_KERNEL_SPACE};
+use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, 
+    tests::{mem_access_timecost, nkapi_gatetest}}, 
+syscall::syscall, OUTER_KERNEL_SPACE};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
 
-use crate::{debug_stack_info, debug_context_info, entry_gate};
+use crate::shared::*;
+use crate::{debug_stack_info, debug_context_info};
 
-pub use trap::{TrapContext as TrapContext, 
-    user_trap_return};
-
-use mm::{nkapi};
+pub use trap::user_trap_return as user_trap_return;
 
 #[macro_use]
 
 pub use debug_util::*;
 
-pub use mm::{VirtPageNum as VirtPageNum, 
-            VirtAddr as VirtAddr, 
-            PhysPageNum as PhysPageNum,
-            PhysAddr as PhysAddr, 
+pub use mm::{
             KERNEL_SPACE as KERNEL_SPACE, 
-            MapPermission as MapPermission,
-            MapType as MapType,
-            PTEFlags as PTEFlags,
+        
             KERNEL_TOKEN as KERNEL_TOKEN,
             PageTableEntry as PageTableEntry,
-            MmapArea as MmapArea,
             PageTable as PageTable,
             StackFrameAllocator as StackFrameAllocator,
             FrameAllocator as FrameAllocator,
-            StepByOne as StepByOne,
-            VPNRange as VPNRange,
-
             //以下接口暂时未知。
             add_free as add_free, 
             print_free_pages as print_free_pages,
@@ -58,10 +48,6 @@ fn get_time() -> usize {
     time
 }
 
-pub fn nkapi_time() -> usize{
-    entry_gate!(nkapi::NKAPI_TIME);
-    return_value!(usize);
-}
 
 pub fn id() -> usize {
     let cpu_id;
@@ -132,11 +118,8 @@ pub fn nk_main(){
     clear_bss();
     
     mm::init();
-    mm::remap_test();
-    debug_info!("rmap test success.");
-    
-    nkapi::init_vec();
-    debug_info!("nkapi call init success.");
+    debug_info!("mm init success.");
+
     trap::init();
     debug_info!("trap init success.");
 
@@ -188,7 +171,6 @@ pub fn nk_main(){
     mem_access_timecost();
 
     unsafe{
-        crate::nk::mm::NKAPI_ENABLE = true;
         nk_exit();
         panic!("not reachable");
     }

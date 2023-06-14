@@ -1,4 +1,3 @@
-mod context;
 mod trap;
 
 use riscv::register::{
@@ -13,11 +12,10 @@ use riscv::register::{
     stval,
     stvec
 };
-pub use context::{TrapContext};
-use super::nkapi::ProxyContext;
-use trap::user_trap_handler;
+pub use crate::shared::*;
+pub use trap::user_trap_handler;
 pub use trap::user_trap_return;
-pub use crate::nk::mm::memory_set::{MemorySet, KERNEL_SPACE};
+pub use crate::nk::mm::{MemorySet, KERNEL_SPACE};
 use crate::{syscall::syscall, config::{TRAMPOLINE, NK_TRAMPOLINE}};
 
 pub fn init(){
@@ -27,6 +25,8 @@ pub fn init(){
         //stvec::write(user_trap_handler as usize, TrapMode::Direct);
 
         PROXYCONTEXT().delegate = syscall as usize;
+        PROXYCONTEXT().usr_trap_handler = user_trap_handler as usize;
+        PROXYCONTEXT().usr_trap_return = user_trap_return as usize;
     }
 
     //由于暂时nk的trap还没做好，所以先放nk trampoline吧

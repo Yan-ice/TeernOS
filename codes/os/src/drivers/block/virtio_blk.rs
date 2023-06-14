@@ -1,12 +1,6 @@
 
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
-use crate::nk::{
-    PhysAddr,
-    VirtAddr,
-    nkapi_translate_va,
-    PhysPageNum,
-    StepByOne,
-};
+
 use crate::shared::*;
 
 use crate::{

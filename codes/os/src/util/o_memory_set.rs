@@ -1,12 +1,8 @@
 
-use crate::nk::{
-    nkapi_pt_init, nkapi_alloc, nkapi_dealloc, nkapi_activate, 
-    nkapi_copyTo, nkapi_translate, nkapi_set_permission, nkapi_print_pt};
-
-use crate::nk::{nkapi_vun_getpt};
+// use crate::nk::{nkapi_vun_getpt};
 use crate::debug_info;
-use crate::shared::{VirtAddr, PhysAddr, PhysPageNum, VirtPageNum, MapType, MapPermission, PTEFlags};          
-use crate::nk::{VPNRange, StepByOne};
+use crate::shared::*;   
+
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
 use alloc::vec::Vec;

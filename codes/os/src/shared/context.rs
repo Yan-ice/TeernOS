@@ -1,9 +1,6 @@
 use riscv::register::sstatus::{Sstatus, self, SPP};
-use crate::config::TRAMPOLINE;
+use crate::config::{TRAMPOLINE, NK_TRAMPOLINE};
 
-use super::{user_trap_handler
-    //,nk_trap_handler
-};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -32,16 +29,50 @@ impl TrapContext {
         // set CPU privilege to User after trapping back
         //Yan_ice: If it is supervisor mode, it can use sret successfully.
         sstatus.set_spp(SPP::User);
-
-        let mut cx = Self {
-            x: [0; 32],
-            sstatus,
-            sepc: entry,
-            kernel_sp,
-            trap_handler: user_trap_handler as usize
-        };
-        cx.set_sp(sp);
-        cx
+        unsafe{
+            let mut cx = Self {
+                x: [0; 32],
+                sstatus,
+                sepc: entry,
+                kernel_sp,
+                trap_handler: *((NK_TRAMPOLINE as usize + 92*8) as *const usize)
+            };
+            cx.set_sp(sp);
+            cx
+        }
+        
     }
 
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct ProxyContext{
+    pub nk_register: [usize; 32], //nk的寄存器
+    //_+32*8
+    pub outer_register: [usize; 32], //outer kernel的寄存器 注意初始化的时候把栈指针设置好
+    //_+64*8
+    pub nk_satp: usize, // nk的satp
+    pub outer_satp: usize, // outer的satp
+
+    //_+66*8
+    pub nkapi_vec: [usize; 24],
+    
+    //_+90*8
+    pub delegate: usize,
+
+    //_+91*8
+    pub nkapi_enable: usize,
+
+    //_+92*8
+    pub usr_trap_handler: usize,
+    pub usr_trap_return: usize,
+}
+
+pub fn PROXYCONTEXT() -> &'static mut ProxyContext{
+    unsafe{ 
+        &mut *(NK_TRAMPOLINE as usize 
+        as *mut usize 
+        as *mut ProxyContext) 
+    }
 }
