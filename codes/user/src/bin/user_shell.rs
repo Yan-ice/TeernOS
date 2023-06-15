@@ -835,8 +835,8 @@ fn get_args_addr(op:&String)->Vec<*const u8>{
 #[no_mangle]
 pub fn main() -> i32 {
     // delete init programs in fs
-    //unlink("initproc\0");
-    //unlink("user_shell\0");
+    unlink("initproc\0");
+    unlink("user_shell\0");
     println!("Delete init programs initproc and user_shell in FS");
     // ArgMachine::auto_run_testsuites();
     let mut line: String;
@@ -911,9 +911,9 @@ pub fn main() -> i32 {
                 unreachable!();
             } else {
                 let mut exit_code: i32 = 0;
-                // println!{"<<<<<<<<<waiting pid of exec"}
+                println!{"<<<<<<<<<waiting pid of exec"}
                 let exit_pid = waitpid(pid as usize, &mut exit_code);
-                // println!{"<<<<<<<<<back of the pid exec"}
+                println!{"<<<<<<<<<back of the pid exec"}
                 assert_eq!(pid, exit_pid);
                 println!("Shell: Process {} exited with code {}", pid, exit_code);
                 shellmachine.clear();

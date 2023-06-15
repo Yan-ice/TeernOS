@@ -69,8 +69,8 @@ pub fn user_trap_return() -> ! {
     // current_task().unwrap().acquire_inner_lock().rusage.add_stime(ru_stime);
     unsafe{
         asm!("jalr x1, x28, 0", 
-        in("x28") PROXYCONTEXT().signal_handler
-    );
+            in("x28") PROXYCONTEXT().signal_handler
+        );
     }
     
     //perform_signal_handler();

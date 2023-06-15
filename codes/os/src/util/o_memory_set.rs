@@ -505,9 +505,6 @@ impl MemorySet {
         // Including:   Trampoline
         //              Trap_Context
         //              User_Stack
-        // memory_set.map_trampoline();
-
-        debug_info!("Copying old datas.");
 
         for area in user_space.areas.iter() {
             let head_vpn = area.vpn_range.get_start();

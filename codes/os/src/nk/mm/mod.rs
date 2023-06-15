@@ -174,7 +174,7 @@ fn nkapi_traphandle(ctx: &TrapContext){
     let scause: scause::Scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
-
+        Trap::Exception(Exception::UserEnvCall) |
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |

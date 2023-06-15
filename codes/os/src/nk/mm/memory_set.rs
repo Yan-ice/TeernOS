@@ -283,6 +283,7 @@ impl MemorySet {
 
     ///修改satp，切换到该页表
     pub fn activate(&self) {
+        println!("Special satp change.");
         let satp = self.page_table.token();
         crate::sbi::sbi_satp(satp);
     }

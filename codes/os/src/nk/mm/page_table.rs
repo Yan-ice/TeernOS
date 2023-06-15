@@ -342,8 +342,6 @@ impl PageTableRecord {
     // WARNING: This is a very naive version, which may cause severe errors when "config.rs" is changed
     pub fn map_kernel_shared(&mut self, kernel_pagetable: &mut PageTableRecord){
  
-        debug_info!("kernel shared: PPN 0x80000 ~ PPN 0xb0000");
-
         // insert shared pte of from kernel
         let kernel_vpn:VirtPageNum = (NKSPACE_START / PAGE_SIZE).into();
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);

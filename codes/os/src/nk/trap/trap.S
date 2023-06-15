@@ -81,8 +81,6 @@ __delegate:
         .set n, n+1
     .endr
 
-    csrw sscratch, sp
-
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
     li x30, 0x1000
@@ -93,7 +91,6 @@ __delegate:
 
     jalr x1, x29, 0
 
-    csrr sp, sscratch
     ld x1, 1*8(sp)
     # skip sp(x2), we will save it later
     ld x3, 3*8(sp)
