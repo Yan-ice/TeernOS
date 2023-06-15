@@ -67,6 +67,9 @@ pub struct ProxyContext{
     //_+92*8
     pub usr_trap_handler: usize,
     pub usr_trap_return: usize,
+
+    //94*8
+    pub signal_handler: usize,
 }
 
 pub fn PROXYCONTEXT() -> &'static mut ProxyContext{

@@ -70,7 +70,7 @@ pub use fs::*;
 use process::*;
 use crate::gdb_print;
 use crate::monitor::*;
-use crate::sbi::shutdown;
+use crate::shared::sbi::shutdown;
 use crate::timer::get_timeval;
 use crate::debug_info;
 //use crate::fs::Dirent;

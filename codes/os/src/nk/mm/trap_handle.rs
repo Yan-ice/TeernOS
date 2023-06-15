@@ -44,10 +44,9 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     if va > usize::MAX.into() {
         panic!("VirtAddr out of range!");
     }
-    //debug_info!("check_lazy 1");
+    debug_info!("check_lazy 1");
     let lazy = current_task().unwrap().check_lazy(va, is_load);
     if lazy != 0 {
-        debug_info!("check_lazy not 0: {:x}", lazy);
         // page fault exit code
         let current_task = current_task().unwrap();
         if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
@@ -66,60 +65,7 @@ pub fn handle_nk_trap(scause: scause::Scause, stval: usize) {
     //     llvm_asm!("sfence.vma" :::: "volatile");
     //     llvm_asm!("fence.i" :::: "volatile");
     // }
-    //debug_info!{"Trap solved..."}
+    debug_info!{"Trap solved..."}
 }
 
-pub fn handle_outer_trap(scause: scause::Scause, stval: usize){
 
-//TODO: entry gate
-//trap到outer kernel时，切换为kernel trap。
-match scause.cause() {
-Trap::Exception(Exception::InstructionFault) |
-Trap::Exception(Exception::InstructionPageFault) => {
-    let task = current_task().unwrap();
-    // debug_info!{"pinLoadFault"}
-    //debug_info!("prev syscall = {}", G_SATP.lock().get_syscall());
-    
-    debug_info!(
-        "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-        scause.cause(),
-        task.pid.0,
-        stval,
-        current_trap_cx().sepc,
-    );
-    drop(task);
-    // page fault exit code
-    let current_task = current_task().unwrap();
-    if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-        drop(current_task);
-        exit_current_and_run_next(-2);
-    }
-}
-
-Trap::Exception(Exception::IllegalInstruction) => {
-    // debug_info!{"pinIllegalInstruction"}
-    debug_info!("[kernel] IllegalInstruction in application, continue.");
-    //let mut cx = current_trap_cx();
-    //cx.sepc += 4;
-    debug_info!(
-        "         {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-        scause.cause(),
-        stval,
-        current_trap_cx().sepc,
-    );
-    // illegal instruction exit code
-    exit_current_and_run_next(-3);
-}
-
-Trap::Interrupt(Interrupt::SupervisorTimer) => {
-    gdb_print!(TIMER_ENABLE,"[timer]");
-    set_next_trigger();
-    suspend_current_and_run_next();
-    //is_schedule = true;
-}
-
-_ => {
-    panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
-}
-}
-}

@@ -24,19 +24,19 @@ extern crate bitflags;
 #[macro_use]
 mod console;
 mod lang_items;
-mod sbi;
 mod nk;
-mod config;
 mod utils;
 mod fs;
+#[macro_use]
 mod util;
+mod os_trap;
 mod syscall;
 mod statics;
 mod drivers;
 mod monitor;
 mod task;
-mod shared;
 #[macro_use]
+mod shared;
 mod timer;
 
 global_asm!(include_str!("entry.asm"));
@@ -115,6 +115,9 @@ pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     debug_info!("UltraOS: outer kernel init.");
     
+    nkapi_set_delegate_handler(os_trap::trap_handler_delegate as usize);
+    nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
+
     nkapi_gatetest();
 
     mem_access_timecost();

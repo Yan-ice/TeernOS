@@ -12,7 +12,6 @@ use crate::shared::*;
 use crate::util::o_memory_set::*;
 
 use crate::task::manager::add_task;
-use crate::gdb_print;
 use crate::monitor::*;
 use crate::debug_info;
 pub fn get_core_id() -> usize{
@@ -38,7 +37,7 @@ struct ProcessorInner {
 }
 
 
-use crate::TRAP_CONTEXT;
+
 
 impl Processor {
     pub fn new() -> Self {
@@ -79,7 +78,7 @@ impl Processor {
             // True: Not first time to fetch a task 
             // 暂时没改
             if let Some(current_task) = take_current_task(){  //主动切换任务
-                gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
+                //gdb_print!(PROCESSOR_ENABLE,"[hart {} run:pid{}]", get_core_id(), current_task.pid.0);
                 let mut current_task_inner = current_task.acquire_inner_lock();
                 //debug_info!("get lock");
                 let task_cx_ptr2 = current_task_inner.get_task_cx_ptr2();

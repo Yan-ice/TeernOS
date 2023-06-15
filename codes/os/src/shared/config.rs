@@ -53,8 +53,8 @@ pub const USER_SIGNAL_STACK: usize = USER_STACK - USER_STACK_SIZE - PAGE_SIZE;
 /// the value below is NK call number.
 /// 
 
-pub const NKTRAP_HANDLE: usize = 0;
-pub const NKAPI_TEST: usize = 1;
+pub const NKAPI_CONFIG: usize = 0;
+pub const NKAPI_TRAP_HANDLE: usize = 1;
 pub const NKAPI_PT_INIT: usize = 2;
 pub const NKAPI_ALLOC: usize = 3;
 pub const NKAPI_DEALLOC: usize = 4;
@@ -64,11 +64,20 @@ pub const NKAPI_TRANSLATE: usize = 7;
 pub const NKAPI_TRANSLATE_VA: usize = 8;
 pub const NKAPI_SET_PERM: usize = 9;
 pub const NKAPI_TIME: usize = 10;
-
 pub const NKAPI_DEBUG: usize = 11;
 ///
 ///////////////////////////////////
 
+///////////////////////////////////
+/// 
+/// the value below is NK_TRAP_HANDLE param.
+/// 
+
+pub const NKCFG_DELEGATE: usize = 1; // config the trap delegation target address.
+pub const NKCFG_SIGNAL: usize = 2;
+///
+///////////////////////////////////
+/// 
 
 // Execution of programs
 pub const  AT_NULL      : usize = 0 ;    /* end of vector */

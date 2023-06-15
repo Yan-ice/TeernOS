@@ -7,6 +7,7 @@
 .endm
     .section .text.trampoline
     .globl __alltraps
+    .globl __delegate
     .globl __restore
     .align 2
 __alltraps:
@@ -65,6 +66,48 @@ __alltraps:
 
     # jump to trap_handler
     jr t1
+
+__delegate:
+
+    addi sp,sp,-32*8
+    sd x1, 1*8(sp)
+    # skip sp(x2), we will save it later
+    sd x3, 3*8(sp)
+    # skip tp(x4), application does not use it
+    # save x5~x31
+    .set n, 5
+    .rept 27
+        SAVE_GP %n
+        .set n, n+1
+    .endr
+
+    csrw sscratch, sp
+
+    # let x28 to be ProxyContext (NK_TRAMPOLINE)
+    li x28, 0
+    li x30, 0x1000
+    sub x28, x28, x30
+
+    # x10 is delegate target
+    ld x29, 90*8(x28)
+
+    jalr x1, x29, 0
+
+    csrr sp, sscratch
+    ld x1, 1*8(sp)
+    # skip sp(x2), we will save it later
+    ld x3, 3*8(sp)
+    # skip tp(x4), application does not use it
+    # save x5~x31
+    .set n, 5
+    .rept 27
+        LOAD_GP %n
+        .set n, n+1
+    .endr
+    addi sp,sp,32*8
+
+    # jump to trap_handler
+    jr x1
 
 __restore:
 

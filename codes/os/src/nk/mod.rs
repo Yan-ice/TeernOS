@@ -1,6 +1,5 @@
 mod mm;   
 mod trap;
-mod debug_util;
 pub mod tests;
 use crate::debug_info;
 use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, 
@@ -9,13 +8,9 @@ syscall::syscall, OUTER_KERNEL_SPACE};
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
 
 use crate::shared::*;
-use crate::{debug_stack_info, debug_context_info};
 
 pub use trap::user_trap_return as user_trap_return;
 
-#[macro_use]
-
-pub use debug_util::*;
 
 pub use mm::{
             KERNEL_SPACE as KERNEL_SPACE, 
@@ -36,6 +31,9 @@ pub use mm::{
 
 global_asm!(include_str!("nk_gate.S"));
 global_asm!(include_str!("context.S"));
+
+
+#[macro_use]
 
 fn get_time() -> usize {
     let mut time:usize = 0;

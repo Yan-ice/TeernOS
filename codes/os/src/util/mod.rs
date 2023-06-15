@@ -8,6 +8,8 @@ pub use mm_util::{
 
 pub use o_memory_set::{MemorySet};
 
+#[macro_use]
+
 #[macro_export]
 macro_rules! debug_info {
     ($fmt: literal $(, $($arg: tt)+)?) => {

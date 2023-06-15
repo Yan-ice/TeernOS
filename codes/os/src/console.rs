@@ -1,5 +1,5 @@
 use core::fmt::{self, Write};
-use crate::sbi::console_putchar;
+use crate::shared::sbi::console_putchar;
 
 struct Stdout;
 

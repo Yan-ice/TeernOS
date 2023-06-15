@@ -4,7 +4,7 @@ mod page_table;
 mod memory_set;
 mod trap_handle;
 
-use crate::{debug_info, debug_stack_info};
+use crate::{debug_info};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{
@@ -25,7 +25,7 @@ use spin::Mutex;
 use alloc::vec::Vec;
 
 use crate::task::{current_task, Signals};
-use crate::{outer_frame_alloc, StaticThings, OUTER_KERNEL_SPACE};
+use crate::{outer_frame_alloc};
 
 use page_table::*;
 
@@ -60,7 +60,7 @@ pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
 
 
-use trap_handle::{handle_outer_trap, handle_nk_trap};
+use trap_handle::{handle_nk_trap};
 
 use self::memory_set::KernelToken;
 
@@ -132,8 +132,8 @@ pub fn init_vec(){
     let proxy = PROXYCONTEXT();
 
     proxy.nkapi_enable = 1;
-    proxy.nkapi_vec[NKTRAP_HANDLE] = nkapi_traphandle as usize;
-    proxy.nkapi_vec[NKAPI_TEST] = nkapi_assert_eq_and_echo as usize;
+    proxy.nkapi_vec[NKAPI_TRAP_HANDLE] = nkapi_traphandle as usize;
+    proxy.nkapi_vec[NKAPI_CONFIG] = nkapi_config as usize;
     proxy.nkapi_vec[NKAPI_PT_INIT] = nkapi_pt_init as usize;
     proxy.nkapi_vec[NKAPI_ALLOC] = nkapi_alloc as usize;
     proxy.nkapi_vec[NKAPI_DEALLOC] = nkapi_dealloc as usize;
@@ -144,6 +144,8 @@ pub fn init_vec(){
     proxy.nkapi_vec[NKAPI_SET_PERM] = nkapi_set_permission as usize;
     proxy.nkapi_vec[NKAPI_TIME] = nkapi_time as usize;
     proxy.nkapi_vec[NKAPI_DEBUG] = nkapi_print_pt as usize;
+
+    proxy.delegate = 0;
 
 }
 
@@ -177,7 +179,7 @@ fn nkapi_traphandle(ctx: &TrapContext){
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            handle_outer_trap(scause, stval as usize);
+            panic!("Should be handled by Outer Kernel. {:?}, stval = {:#x}!", scause.cause(), stval);
         }
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::StoreFault) |
@@ -193,10 +195,21 @@ fn nkapi_traphandle(ctx: &TrapContext){
 }
 
 //the function below would expose to outer kernel
-fn nkapi_assert_eq_and_echo(t1: PhysAddr, t2: VirtAddr) -> Option<usize>{
-    debug_info!("Entering nkapi_test.");
-    assert_eq!(t1.0, t2.0, "asserting in nkapi_assert.");
-    return Some(t1.0);
+fn nkapi_config(t: usize, val: usize){
+    debug_info!("Entering config.");
+    let proxy = PROXYCONTEXT();
+
+    match t{
+        NKCFG_DELEGATE =>{
+            proxy.delegate = val;
+        }
+        NKCFG_SIGNAL => {
+            proxy.signal_handler = val;
+        }
+        _ => {
+            debug_info!("Unknown config ID: {}", t);
+        }
+    }
 }
 
 //the function below would expose to outer kernel
