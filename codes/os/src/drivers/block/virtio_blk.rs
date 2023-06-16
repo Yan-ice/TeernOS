@@ -61,7 +61,6 @@ impl VirtIOBlock {
 pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
     let mut ppn_base = PhysPageNum(0);
     for i in 0..pages {
-        println!("raw_alloc");
         let frame_ppn = nkapi_alloc(0, VirtPageNum(0), 
         MapType::Raw, MapPermission::R | MapPermission:: W);
 
