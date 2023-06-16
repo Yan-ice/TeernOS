@@ -1,0 +1,2 @@
+cargo:rustc-link-search=/home/yan_ice/Desktop/Teecert/TeernOS/codes/nk/target/release/build/k210-pac-3405f8b66bb9601f/out
+cargo:rerun-if-changed=memory-k210.x
