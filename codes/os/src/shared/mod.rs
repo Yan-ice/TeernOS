@@ -1,3 +1,8 @@
+#[macro_use]
+pub mod console;
+#[macro_use]
+pub mod monitor;
+
 pub mod address;
 pub mod flags;
 pub mod context;
@@ -13,3 +18,4 @@ pub use vma::*;
 pub use nkapi::*;
 pub use sbi::*;
 pub use config::*;
+pub use monitor::*;

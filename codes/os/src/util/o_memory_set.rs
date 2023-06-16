@@ -201,11 +201,7 @@ impl MemorySet {
         // map trampoline
         // memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
-        debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+
         debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
@@ -287,6 +283,12 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W,
             ), None);
         }
+
+        debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
         memory_set
 
     }

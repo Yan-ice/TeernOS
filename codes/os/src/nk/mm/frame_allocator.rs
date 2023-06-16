@@ -1,7 +1,7 @@
 use super::{PhysAddr, PhysPageNum};
 use alloc::vec::Vec;
 use spin::Mutex;
-use crate::{config::{NKSPACE_END,OKSPACE_END}, nk::trap::context::PROXYCONTEXT, debug_warn};
+use crate::shared::*;
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;

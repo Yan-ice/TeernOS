@@ -37,27 +37,23 @@ pub use frame_allocator::{
     add_free, 
     print_free_pages, 
     frame_add_ref, 
-    enquire_refcount
-};
+    enquire_refcount,
 
-
-use frame_allocator::{
     frame_alloc,
     frame_dealloc,
     outer_frame_alloc,
     outer_frame_dealloc
 };
 
+
 pub use page_table::{
     PageTable,
     PageTableEntry
 };
 
-pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, kernel_token};
+pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, KernelToken, kernel_token};
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
-
-use self::memory_set::KernelToken;
 
 use super::TrapContext;
 extern "C" {
@@ -207,7 +203,7 @@ fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
 // }
 fn nkapi_pt_init(pt_handle: usize, re_generate: bool){
     
-    if re_generate{
+    if re_generate && pt_handle != 0{
         nkapi_pt_destroy(pt_handle);
     }
     for i in PAGE_TABLE_LIST.lock().iter(){
@@ -313,7 +309,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
                         print_free_pages();
                         panic!("No more memory in Nested Kernel!");
                     }
-                    target_pt.map(vpn, target_ppn, pte_flags);
+                    target_pt.map(VirtPageNum(target_ppn.0), target_ppn, pte_flags);
                     return target_ppn;
                 }
                 MapType::Identical => {

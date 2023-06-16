@@ -4,14 +4,14 @@ use super::{
     nkapi_vun_getpt, nkapi_dealloc, nkapi_alloc,
     nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
-use crate::debug_warn;
+use crate::{debug_warn, debug_info};
 use crate::shared::*;
 use crate::config::*;
 
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
 use spin::Mutex;
-use crate::debug_info;
+
 
 impl PhysPageNum{
     pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
@@ -299,6 +299,7 @@ impl PageTableRecord {
         let pte = self.find_pte_create(vpn).unwrap();
         if pte.is_valid() {
             debug_warn!("vpn {:?} is mapped before mapping.", vpn);
+            pte.set_flags(flags | PTEFlags::V);
             return;
         }
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);

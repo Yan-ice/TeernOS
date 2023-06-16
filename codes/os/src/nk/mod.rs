@@ -2,15 +2,13 @@ mod mm;
 mod trap;
 pub mod tests;
 use crate::debug_info;
-use crate::{outer_kernel_init, nk::{trap::PROXYCONTEXT, 
-    tests::{mem_access_timecost, nkapi_gatetest}}, 
-syscall::syscall, OUTER_KERNEL_SPACE};
+use crate::outer_kernel_init;
+
+use tests::{mem_access_timecost, nkapi_gatetest};
+
 use alloc::slice::{from_raw_parts, from_raw_parts_mut};
 
 use crate::shared::*;
-
-pub use trap::user_trap_return as user_trap_return;
-
 
 pub use mm::{
             KERNEL_SPACE as KERNEL_SPACE, 
@@ -103,8 +101,8 @@ fn space(){
     debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
     debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
     debug_info!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
-    debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
     debug_info!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
+    debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
     debug_info!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
 }
 #[no_mangle]
@@ -123,7 +121,14 @@ pub fn nk_main(){
 
     //init page for outer kernel.
 
-    OUTER_KERNEL_SPACE().lock();
+    nkapi_pt_init(0, false);
+    nkapi_alloc_mul(0, 0x80200.into(), 0x600, 
+    MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
+
+    nkapi_alloc_mul(0, 0x80800.into(), 0x4, 
+    MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
+
+    //OUTER_KERNEL_SPACE().lock();
     debug_info!("outer kernel pagetable init success.");
 
     nkapi_gatetest();

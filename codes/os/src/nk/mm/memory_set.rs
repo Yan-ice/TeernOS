@@ -2,7 +2,6 @@
 use super::page_table::PageTableRecord;
 use super::{PageTable, PageTableEntry};
 use crate::shared::*;
-use crate::config::*;
 
 use super::{frame_add_ref, enquire_refcount, print_free_pages};
 use alloc::collections::BTreeMap;
@@ -13,10 +12,7 @@ use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
 
-
 use super::frame_allocator::{frame_alloc};
-use crate::monitor::*;
-use crate::task::AuxHeader;
 use crate::debug_info;
 
 extern "C" {

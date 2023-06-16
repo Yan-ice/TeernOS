@@ -73,13 +73,14 @@ SECTIONS
     outer_static = .;
     . = .+3K;
 
+    sokernelstack = .;
+    . = .+8K;
+    eokernelstack = .;
+
     sokheap = .;
     . = . + 1024*4K;
     eokheap = .;
 
-    sokernelstack = .;
-    . = .+8K;
-    eokernelstack = .;
     . = .+8K;
     eokernel = .;
 

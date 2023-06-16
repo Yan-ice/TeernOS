@@ -18,25 +18,25 @@ use shared::*;
 
 extern crate alloc;
 
+
+#[macro_use]
+mod shared;
+
 #[macro_use]
 extern crate bitflags;
 
-#[macro_use]
-mod console;
 mod lang_items;
 mod nk;
-mod utils;
 mod fs;
+
 #[macro_use]
 mod util;
 mod os_trap;
 mod syscall;
 mod statics;
 mod drivers;
-mod monitor;
 mod task;
-#[macro_use]
-mod shared;
+
 mod timer;
 
 global_asm!(include_str!("entry.asm"));
@@ -88,15 +88,15 @@ pub fn outer_kernel_init(){
     nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
     nkapi_set_allocator_range(eokernel as usize,OKSPACE_END);
     debug_info!("Config success.");
+    OUTER_KERNEL_SPACE().lock();
+    //nkapi_gatetest();
 
-    nkapi_gatetest();
-
-    mem_access_timecost();
+    //mem_access_timecost();
     
     extern "C"{
         fn snkheap();
     }
-
+    
     debug_info!("UltraOS: static struct initialized");
 
     timer::set_next_trigger();

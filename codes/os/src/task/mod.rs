@@ -19,8 +19,8 @@ pub use resource::*;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use manager::fetch_task;
-use crate::utils::log2;
 pub use context::TaskContext;
+use crate::util::log2;
 
 pub use processor::{
     Processor,
