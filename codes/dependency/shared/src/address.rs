@@ -1,5 +1,6 @@
 use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 use core::fmt::{self, Debug, Formatter};
+use crate::flags::*;
 
 /// Definitions
 #[repr(C)]
@@ -207,3 +208,74 @@ impl<T> Iterator for SimpleRangeIterator<T> where
     }
 }
 pub type VPNRange = SimpleRange<VirtPageNum>;
+
+impl PhysPageNum{
+    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
+        let pa: PhysAddr = self.clone().into();
+        unsafe {
+            core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512)
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct PageTableEntry {
+    pub bits: usize,
+}
+
+
+
+impl PageTableEntry {
+    pub fn new(ppn: PhysPageNum, flags: PTEFlags) -> Self {
+        PageTableEntry {
+            bits: ppn.0 << 10 | flags.bits() as usize,
+        }
+    }
+    pub fn empty() -> Self {
+        PageTableEntry {
+            bits: 0,
+        }
+    }
+    pub fn ppn(&self) -> PhysPageNum {
+        (self.bits >> 10 & ((1usize << 44) - 1)).into()
+    }
+    pub fn flags(&self) -> PTEFlags {
+        PTEFlags::from_bits(self.bits as u8).unwrap()
+    }
+    pub fn is_valid(&self) -> bool {
+        (self.flags() & PTEFlags::V) != PTEFlags::empty()
+    }
+    pub fn readable(&self) -> bool {
+        (self.flags() & PTEFlags::R) != PTEFlags::empty()
+    }
+    pub fn writable(&self) -> bool {
+        (self.flags() & PTEFlags::W) != PTEFlags::empty()
+    }
+    pub fn executable(&self) -> bool {
+        (self.flags() & PTEFlags::X) != PTEFlags::empty()
+    }
+    pub fn set_flags(&mut self, flags: PTEFlags) {
+        let new_flags: u8 = flags.bits().clone();
+        self.bits = (self.bits & 0xFFFF_FFFF_FFFF_FF00) | (new_flags as usize);
+    }
+
+    // the 9th flag is used as COW flag.
+    pub fn set_cow(&mut self) {
+        (*self).bits = self.bits | (1 << 9);
+    }
+    pub fn reset_cow(&mut self) {
+        (*self).bits = self.bits & !(1 << 9);
+    }
+    pub fn is_cow(&self) -> bool {
+        self.bits & (1 << 9) != 0
+    }
+    pub fn set_bits(&mut self, ppn: PhysPageNum, flags: PTEFlags) {
+        self.bits = ppn.0 << 10 | flags.bits() as usize;
+    }
+    // only X+W+R can be set
+    pub fn set_pte_flags(&mut self, flags: usize) {
+        self.bits = (self.bits & !(0b1110 as usize)) | ( flags & (0b1110 as usize));
+    }
+
+}

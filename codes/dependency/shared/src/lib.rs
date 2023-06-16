@@ -1,7 +1,12 @@
+#![no_std]
+#![feature(llvm_asm)]
+#![feature(asm)]
 #[macro_use]
 pub mod console;
 #[macro_use]
 pub mod monitor;
+#[macro_use]
+extern crate bitflags;
 
 pub mod address;
 pub mod flags;

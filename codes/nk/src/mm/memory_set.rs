@@ -1,7 +1,7 @@
 
 use super::page_table::PageTableRecord;
 use super::{PageTable, PageTableEntry};
-use crate::shared::*;
+use shared::*;
 
 use super::{frame_add_ref, enquire_refcount, print_free_pages};
 use alloc::collections::BTreeMap;

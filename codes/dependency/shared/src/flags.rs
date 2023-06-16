@@ -1,4 +1,4 @@
-use super::address::*;
+use crate::address::*;
 
 bitflags! {
     pub struct MapPermission: u8 {

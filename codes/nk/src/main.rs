@@ -16,8 +16,7 @@ extern crate bitflags;
 #[macro_use]
 mod lang_items;
 
-#[macro_use]
-mod shared;
+extern crate shared;
 
 mod mm;   
 mod trap;

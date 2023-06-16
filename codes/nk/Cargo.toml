@@ -24,6 +24,7 @@ virtio-drivers = { path = "../dependency/virtio-drivers" }
 k210-pac = { path = "../dependency/k210-pac" }
 k210-hal = { path = "../dependency/k210-hal" }
 k210-soc = { path = "../dependency/k210-soc" }
+shared = { path = "../dependency/shared"}
 
 [features]
 board_qemu = []

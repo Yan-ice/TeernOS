@@ -48,7 +48,6 @@ pub use frame_allocator::{
 
 pub use page_table::{
     PageTable,
-    PageTableEntry
 };
 
 pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, KernelToken, kernel_token};
