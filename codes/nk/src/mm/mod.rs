@@ -23,7 +23,7 @@ use spin::Mutex;
 
 use alloc::vec::Vec;
 
-use crate::task::{current_task, Signals};
+// use crate::task::{current_task, Signals};
 
 use page_table::*;
 

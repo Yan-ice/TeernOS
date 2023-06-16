@@ -43,7 +43,6 @@ use mm::{
 };
 use core::panic::PanicInfo;
 use crate::shared::sbi::shutdown;
-use crate::debug_error;
 
 
 #[macro_use]

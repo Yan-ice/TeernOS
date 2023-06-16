@@ -1,0 +1,2 @@
+cargo:rustc-link-search=/home/wind/Desktop/TeernOS/codes/nk/target/debug/build/k210-pac-bec1ae6cd1bfd064/out
+cargo:rerun-if-changed=memory-k210.x

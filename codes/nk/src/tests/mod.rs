@@ -10,10 +10,10 @@ pub fn mem_access_timecost(){}
 macro_rules! begin_test {
     ($name:expr, $code:block) => {
         debug_info!("===========[TEST {}]============",$name);
-        let mut __time = crate::timer::get_time_ms();
+        // let mut __time = crate::timer::get_time_ms();
         $code
-        let __duration = crate::timer::get_time_ms() - __time;
-        debug_info!(">>>>> time usage: {} ms",__duration);
+        // let __duration = crate::timer::get_time_ms() - __time;
+        // debug_info!(">>>>> time usage: {} ms",__duration);
         debug_info!("=================================");
     };
 }

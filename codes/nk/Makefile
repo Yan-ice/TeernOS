@@ -3,7 +3,7 @@
 QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
 TARGET := riscv64imac-unknown-none-elf
 MODE ?= release
-KERNEL_ELF := target/$(TARGET)/$(MODE)/UltraOS
+KERNEL_ELF := target/$(TARGET)/$(MODE)/TeernOS_nk
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
 FS_IMG := ../user/target/$(TARGET)/$(MODE)/fs.img
@@ -81,6 +81,7 @@ kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"
+	@echo kernel build over
 	@rm src/linker.ld 
 
 clean:
@@ -110,7 +111,7 @@ endif
 
 
 monitor:
-	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/release/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/release/TeernOS_nk' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
 gdb: build
 	@$(QEMU_SYSTEM) -machine virt -nographic -bios $(BOOTLOADER) -device loader,\

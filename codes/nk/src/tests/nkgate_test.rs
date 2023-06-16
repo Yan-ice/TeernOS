@@ -13,7 +13,7 @@ pub fn nkapi_gatetest(){
 
         nkapi_pt_init(test_pt, true);
 
-        nkapi_alloc(test_pt, va_test.into(), crate::nk::MapType::Identical, MapPermission::R);
+        nkapi_alloc(test_pt, va_test.into(), crate::shared::MapType::Identical, MapPermission::R);
         if let Some(pa) = nkapi_translate_va(test_pt, va_test.into()) {
             assert_eq!(pa.0, va_test.0, "testing identical alloc.");
             debug_info!("nkapi: identical alloc test passed.");
@@ -28,7 +28,7 @@ pub fn nkapi_gatetest(){
             debug_info!("nkapi: dealloc test passed.");
         }
 
-        nkapi_alloc(test_pt, va_test.into(), crate::nk::MapType::Specified(pa_test.floor()), MapPermission::R);
+        nkapi_alloc(test_pt, va_test.into(), crate::shared::MapType::Specified(pa_test.floor()), MapPermission::R);
         if let Some(pa) = nkapi_translate_va(test_pt, va_test.into()) {
             assert_eq!(pa.0, pa_test.0, "testing identical alloc.");
             debug_info!("nkapi: specified alloc test passed.");
