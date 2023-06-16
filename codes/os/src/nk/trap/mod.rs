@@ -1,4 +1,5 @@
 mod trap;
+mod trap_handle;
 
 use riscv::register::{
     mtvec::TrapMode,
@@ -16,6 +17,7 @@ use crate::config::*;
 pub use crate::shared::*;
 pub use trap::user_trap_handler;
 pub use trap::user_trap_return;
+pub use trap_handle::nk_trap_handler_impl;
 use super::mm::{MemorySet, KERNEL_SPACE};
 
 

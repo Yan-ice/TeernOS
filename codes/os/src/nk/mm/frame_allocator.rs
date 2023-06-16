@@ -1,7 +1,7 @@
 use super::{PhysAddr, PhysPageNum};
 use alloc::vec::Vec;
 use spin::Mutex;
-use crate::config::{NKSPACE_END,OKSPACE_END};
+use crate::{config::{NKSPACE_END,OKSPACE_END}, nk::trap::context::PROXYCONTEXT, debug_warn};
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;
@@ -98,22 +98,23 @@ impl FrameAllocator for StackFrameAllocator {
         let ppn = ppn.0; 
         // if self.refcounter.contains_key(&ppn) {
         // let no_ref = false;
-        let ref_times = self.refcounter.get_mut(&ppn).unwrap();
-        *ref_times -= 1;
-        // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
-        if *ref_times == 0 {
-            self.refcounter.remove(&ppn);
-            // debug_info!{"dealloced ppn: {:X}", ppn}
-            // validity check
-            if ppn >= self.current || self.recycled
-                .iter()
-                .find(|&v| {*v == ppn})
-                .is_some() {
-                // panic!("Frame ppn={:#x} has not been allocated!", ppn);
+        if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
+            *ref_times -= 1;
+            // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
+            if *ref_times == 0 {
+                self.refcounter.remove(&ppn);
+                // debug_info!{"dealloced ppn: {:X}", ppn}
+                // validity check
+                if ppn >= self.current || self.recycled
+                    .iter()
+                    .find(|&v| {*v == ppn})
+                    .is_some() {
+                    // panic!("Frame ppn={:#x} has not been allocated!", ppn);
+                }
+                // recycle
+                self.recycled.push(ppn);
             }
-            // recycle
-            self.recycled.push(ppn);
-        }
+        }      
     }
     fn add_ref(&mut self, ppn: PhysPageNum) {
         let ppn = ppn.0; 
@@ -132,6 +133,8 @@ type FrameAllocatorImpl = StackFrameAllocator;
 lazy_static! {
     pub static ref FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
         Mutex::new(FrameAllocatorImpl::new());
+    pub static ref OUTER_FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> =
+        Mutex::new(FrameAllocatorImpl::new()); 
 }
 
 extern "C" {
@@ -146,12 +149,33 @@ pub fn init_frame_allocator() {
         .lock()
         .init(PhysAddr::from(ekernel as usize).ceil(), PhysAddr::from(NKSPACE_END).floor());
     
-    //Yan_ice: 给outer kernel的allocator指定进行alloc的空间（okernel以后剩余的outer kernel space)。
-    // OUTER_FRAME_ALLOCATOR
-    //     .lock()
-    //     .init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
 }
 
+
+pub fn outer_frame_alloc() -> Option<PhysPageNum> {
+    let st = PROXYCONTEXT().allocator_start as usize;
+    let ed = PROXYCONTEXT().allocator_end as usize;
+    let mut outer_allocator = OUTER_FRAME_ALLOCATOR.lock();
+    if outer_allocator.current == 0 {
+        outer_allocator
+        .init(PhysAddr::from(st).ceil(), PhysAddr::from(ed).floor());
+        debug_warn!("Allocator config: {:x} - {:x}", st, ed);
+    }
+
+    let pn = outer_allocator.alloc();
+    
+    if let Some(ppn) = pn{
+        let bytes_array = ppn.get_bytes_array();
+        for i in bytes_array {
+            *i = 0;
+        }
+    }
+    pn
+    
+}
+pub fn outer_frame_dealloc(ppn: PhysPageNum) {
+    OUTER_FRAME_ALLOCATOR.lock().dealloc(ppn);
+}
 
 pub fn frame_alloc() -> Option<PhysPageNum> {
     let pn = FRAME_ALLOCATOR
@@ -164,9 +188,11 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
             *i = 0;
         }
     }
-
     pn
 }
+
+
+
 
 pub fn frame_add_ref(ppn: PhysPageNum) {
     FRAME_ALLOCATOR
@@ -192,9 +218,7 @@ pub fn add_free(ppn: usize){
 pub fn print_free_pages(){
     FRAME_ALLOCATOR.lock().print_free();
 }
-pub fn outer_print_free_pages(){
-    //OUTER_FRAME_ALLOCATOR.lock().print_free();
-}
+
 // #[allow(unused)]
 // pub fn frame_allocator_test() {
 //     let mut v: Vec<FrameTracker> = Vec::new();

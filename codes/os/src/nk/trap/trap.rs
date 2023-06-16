@@ -35,22 +35,33 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
     let stval = stval::read();
     match scause.cause() {
 
-        Trap::Exception(Exception::UserEnvCall) |
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) |        
         Trap::Exception(Exception::IllegalInstruction) |
-        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+        Trap::Interrupt(Interrupt::SupervisorTimer) |
+        Trap::Exception(Exception::LoadFault) |
+        Trap::Exception(Exception::StoreFault) |
+        Trap::Exception(Exception::StorePageFault) |
+        Trap::Exception(Exception::LoadPageFault) => {
             unsafe{
                 __delegate(ctx);
             }
         }
 
-        Trap::Exception(Exception::LoadFault) |
-        Trap::Exception(Exception::StoreFault) |
-        Trap::Exception(Exception::StorePageFault) |
-        Trap::Exception(Exception::LoadPageFault) => {
-            println!("NK trap handle.");
-            nkapi_traphandler(ctx);
+        Trap::Exception(Exception::UserEnvCall) => {
+
+            if ctx.x[17] == usize::MAX {
+
+                //some special syscall can be designed, for let NK handle user's requirement instead of OS.
+                println!("NK trap handle.");
+                nkapi_traphandler(ctx);
+
+            }else{
+                unsafe{
+                    __delegate(ctx);
+                }
+            }
+            
         }
         _ => {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);

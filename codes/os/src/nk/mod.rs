@@ -132,7 +132,7 @@ pub fn nk_main(){
     unsafe{
         let mut proxy = PROXYCONTEXT();
         proxy.nk_satp = KERNEL_SPACE.lock().token();
-        proxy.outer_satp = crate::nk::nkapi_vun_getpt(0).token();
+        proxy.outer_satp = super::nkapi_vun_getpt(0).token();
         proxy.outer_register[1] = outer_kernel_init as usize; //let ra be outer kernel init
         proxy.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
     }

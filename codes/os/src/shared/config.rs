@@ -75,6 +75,8 @@ pub const NKAPI_DEBUG: usize = 11;
 
 pub const NKCFG_DELEGATE: usize = 1; // config the trap delegation target address.
 pub const NKCFG_SIGNAL: usize = 2;
+pub const NKCFG_ALLOCATOR_START: usize = 3;
+pub const NKCFG_ALLOCATOR_END: usize = 4;
 ///
 ///////////////////////////////////
 /// 

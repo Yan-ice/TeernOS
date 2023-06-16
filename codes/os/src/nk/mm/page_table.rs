@@ -4,9 +4,9 @@ use super::{
     nkapi_vun_getpt, nkapi_dealloc, nkapi_alloc,
     nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
+use crate::debug_warn;
 use crate::shared::*;
 use crate::config::*;
-
 
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;
@@ -297,7 +297,10 @@ impl PageTableRecord {
     #[allow(unused)]
     pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
         let pte = self.find_pte_create(vpn).unwrap();
-        assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
+        if pte.is_valid() {
+            debug_warn!("vpn {:?} is mapped before mapping.", vpn);
+            return;
+        }
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
     }
     #[allow(unused)]

@@ -15,7 +15,6 @@ use spin::Mutex;
 
 
 use super::frame_allocator::{frame_alloc};
-use crate::outer_frame_alloc;
 use crate::monitor::*;
 use crate::task::AuxHeader;
 use crate::debug_info;
@@ -372,16 +371,6 @@ impl ChunkArea {
                 ppn = pa;
             }
             MapType::Framed => {
-                panic!("NK should not use Framed, use FrameInNK instead.");
-                if let Some(alppn) = outer_frame_alloc(){
-                    ppn = alppn;
-                    self.data_frames.insert(vpn, ppn);
-                }
-                else{
-                    panic!("No more memory!");
-                }
-            }
-            MapType::FramedInNK =>{
                 if let Some(alppn) = frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
@@ -389,6 +378,9 @@ impl ChunkArea {
                 else{
                     panic!("No more memory!");
                 }
+            }
+            MapType::Raw =>{
+                panic!("not reachable");
             }
 
         }
@@ -463,16 +455,6 @@ impl MapArea {
                 ppn = pa;
             }
             MapType::Framed => {
-                panic!("NK should not use Framed, use FrameInNK instead.");
-                if let Some(alppn) = outer_frame_alloc(){
-                    ppn = alppn;
-                    self.data_frames.insert(vpn, ppn);
-                }
-                else{
-                    panic!("No more memory!");
-                }
-            }
-            MapType::FramedInNK =>{
                 if let Some(alppn) = frame_alloc(){
                     ppn = alppn;
                     self.data_frames.insert(vpn, ppn);
@@ -480,6 +462,10 @@ impl MapArea {
                 else{
                     panic!("No more memory!");
                 }
+            }
+            MapType::Raw =>{
+                //TODO: modify to lazy framed.
+                panic!("not reachable");
             }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.get_bits()).unwrap();

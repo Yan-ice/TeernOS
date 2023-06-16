@@ -3,10 +3,6 @@ use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
 use crate::shared::*;
 
-use crate::{
-    outer_frame_alloc,
-    outer_frame_dealloc
-};
 use crate::debug_info;
 use super::BlockDevice;
 use spin::Mutex;
@@ -57,11 +53,16 @@ impl VirtIOBlock {
     }
 }
 
+//Here has potential problem.
+//need modify!
+
+
 #[no_mangle]
 pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
     let mut ppn_base = PhysPageNum(0);
     for i in 0..pages {
-        let frame_ppn = outer_frame_alloc().unwrap();
+        let frame_ppn = nkapi_alloc(0, VirtPageNum(0), MapType::Raw, MapPermission::all());
+
         if i == 0 { ppn_base = frame_ppn; }
         QUEUE_FRAMES.lock().push(ppn_base);
     }
@@ -72,7 +73,8 @@ pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
 pub extern "C" fn virtio_dma_dealloc(pa: PhysAddr, pages: usize) -> i32 {
     let mut ppn_base: PhysPageNum = pa.into();
     for _ in 0..pages {
-        outer_frame_dealloc(ppn_base);
+        nkapi_dealloc(0, VirtPageNum(ppn_base.0));
+        
         ppn_base.step();
     }
     0

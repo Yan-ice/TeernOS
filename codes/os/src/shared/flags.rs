@@ -39,7 +39,7 @@ impl PTEFlags{
 pub enum MapType {
     Identical,
     Framed,
-    FramedInNK,
+    Raw,
     Specified(PhysPageNum)
 }
 
@@ -52,7 +52,7 @@ impl From<MapType> for usize {
             MapType::Framed =>{
                 return usize::MAX-2;
             }
-            MapType::FramedInNK =>{
+            MapType::Raw =>{
                 return usize::MAX-3;
             }
             MapType::Specified(ppn) =>{
@@ -69,7 +69,7 @@ impl From<usize> for MapType{
         }else if v == usize::MAX-2 {
             MapType::Framed
         }else if v == usize::MAX-3 {
-            MapType::FramedInNK
+            MapType::Raw
         }else{
             MapType::Specified(PhysPageNum::from(v))
         }

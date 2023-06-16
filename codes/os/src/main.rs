@@ -42,40 +42,6 @@ mod timer;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
 
-fn OuterAllocator() -> &'static mut StackFrameAllocator{
-    extern "C"{
-        fn outer_allocator();
-    }
-    unsafe{
-        let v = outer_allocator as usize as *mut StackFrameAllocator;
-        &mut (*v)
-    }
-}
-
-pub fn allocator_init(){
-    extern "C"{
-        fn outer_allocator();
-        fn eokernel();
-    }
-    let allocator = outer_allocator as usize as *mut StackFrameAllocator;
-    unsafe{
-        //init allocator
-        (*allocator) = StackFrameAllocator::new();
-        (*allocator).init(PhysAddr::from(eokernel as usize).ceil(), PhysAddr::from(OKSPACE_END).floor());
-    }
-}
-
-//Yan_ice 给outer kernel加俩函数,用outer kernel的frame allocator，
-//然后就暴露他俩咯
-pub fn outer_frame_alloc() -> Option<PhysPageNum> {
-    let padr = OuterAllocator().alloc();
-    padr
-    
-}
-pub fn outer_frame_dealloc(ppn: PhysPageNum) {
-    OuterAllocator().dealloc(ppn);
-}
-
 
 pub const SYSCALL_GETPPID:usize = 173;
 pub fn test() {
@@ -111,12 +77,17 @@ lazy_static! {
     ));
 }
 
+extern "C"{
+    fn eokernel();
+}
 pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     debug_info!("UltraOS: outer kernel init.");
     
     nkapi_set_delegate_handler(os_trap::trap_handler_delegate as usize);
     nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
+    nkapi_set_allocator_range(eokernel as usize,OKSPACE_END);
+    debug_info!("Config success.");
 
     nkapi_gatetest();
 
@@ -125,8 +96,7 @@ pub fn outer_kernel_init(){
     extern "C"{
         fn snkheap();
     }
-    
-    allocator_init();
+
     debug_info!("UltraOS: static struct initialized");
 
     timer::set_next_trigger();

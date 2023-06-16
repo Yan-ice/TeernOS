@@ -70,6 +70,9 @@ pub struct ProxyContext{
 
     //94*8
     pub signal_handler: usize,
+
+    pub allocator_start: usize,
+    pub allocator_end: usize,
 }
 
 pub fn PROXYCONTEXT() -> &'static mut ProxyContext{

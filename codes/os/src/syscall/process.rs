@@ -388,12 +388,10 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     let tid = new_task.getpid();
     let flags = CloneFlags::from_bits(flags).unwrap();
     if flags.contains(CloneFlags::CLONE_CHILD_SETTID) && ctid != 0{
-        debug_info!("fork 1");
         new_task.acquire_inner_lock().address.set_child_tid = ctid; 
         *translated_refmut(new_task.acquire_inner_lock().get_user_id(), ctid as *mut i32) = tid  as i32;
     }
     if flags.contains(CloneFlags::CLONE_CHILD_CLEARTID) && ctid != 0{
-        debug_info!("fork 2");
         new_task.acquire_inner_lock().address.clear_child_tid = ctid;
     }
     if !flags.contains(CloneFlags::SIGCHLD){

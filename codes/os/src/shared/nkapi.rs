@@ -174,7 +174,15 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
 pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
     let retval0: usize;
     let retval1: usize;
-    entry_gate!(NKAPI_ALLOC, pt_handle, vpn, usize::from(map_type), perm, 
+    entry_gate!(NKAPI_ALLOC, pt_handle, vpn, 1 as usize, usize::from(map_type), perm, 
+    retval0, retval1);
+    return retval0.into();
+}
+
+pub fn nkapi_alloc_mul(pt_handle: usize, vpn: VirtPageNum, size: usize, map_type: MapType, perm: MapPermission)-> PhysPageNum{
+    let retval0: usize;
+    let retval1: usize;
+    entry_gate!(NKAPI_ALLOC, pt_handle, vpn, size, usize::from(map_type), perm, 
     retval0, retval1);
     return retval0.into();
 }
@@ -222,6 +230,15 @@ pub fn nkapi_set_signal_handler(entry: usize){
     let retval0: usize;
     let retval1: usize;
     entry_gate!(NKAPI_CONFIG, NKCFG_SIGNAL, entry,
+        retval0, retval1);
+}
+
+pub fn nkapi_set_allocator_range(begin: usize, end: usize){
+    let mut retval0: usize;
+    let mut retval1: usize;
+    entry_gate!(NKAPI_CONFIG, NKCFG_ALLOCATOR_START, begin,
+        retval0, retval1);
+    entry_gate!(NKAPI_CONFIG, NKCFG_ALLOCATOR_END, end,
         retval0, retval1);
 }
 

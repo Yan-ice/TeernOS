@@ -2,7 +2,6 @@ mod heap_allocator;
 mod frame_allocator;
 mod page_table;
 mod memory_set;
-mod trap_handle;
 
 use crate::{debug_info};
 use riscv::register::{
@@ -25,10 +24,10 @@ use spin::Mutex;
 use alloc::vec::Vec;
 
 use crate::task::{current_task, Signals};
-use crate::{outer_frame_alloc};
 
 use page_table::*;
 
+use super::trap::nk_trap_handler_impl;
 use crate::shared::*;
 use crate::config::*;
 
@@ -37,17 +36,16 @@ pub use frame_allocator::{
     FrameAllocator,
     add_free, 
     print_free_pages, 
-    outer_print_free_pages, 
     frame_add_ref, 
     enquire_refcount
 };
 
 
-
-//nk内部的就不暴露啦
 use frame_allocator::{
     frame_alloc,
-    frame_dealloc
+    frame_dealloc,
+    outer_frame_alloc,
+    outer_frame_dealloc
 };
 
 pub use page_table::{
@@ -58,9 +56,6 @@ pub use page_table::{
 pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, kernel_token};
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
-
-
-use trap_handle::{handle_nk_trap};
 
 use self::memory_set::KernelToken;
 
@@ -132,7 +127,7 @@ pub fn init_vec(){
     let proxy = PROXYCONTEXT();
 
     proxy.nkapi_enable = 1;
-    proxy.nkapi_vec[NKAPI_TRAP_HANDLE] = nkapi_traphandle as usize;
+    proxy.nkapi_vec[NKAPI_TRAP_HANDLE] = nk_trap_handler_impl as usize;
     proxy.nkapi_vec[NKAPI_CONFIG] = nkapi_config as usize;
     proxy.nkapi_vec[NKAPI_PT_INIT] = nkapi_pt_init as usize;
     proxy.nkapi_vec[NKAPI_ALLOC] = nkapi_alloc as usize;
@@ -169,34 +164,8 @@ pub fn pt_current() -> usize {
     current_pt.lock().as_ref().clone()
 }
 
-fn nkapi_traphandle(ctx: &TrapContext){
-
-    let scause: scause::Scause = scause::read();
-    let stval = stval::read();
-    match scause.cause() {
-        Trap::Exception(Exception::UserEnvCall) |
-        Trap::Exception(Exception::InstructionFault) |
-        Trap::Exception(Exception::InstructionPageFault) |        
-        Trap::Exception(Exception::IllegalInstruction) |
-        Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            panic!("Should be handled by Outer Kernel. {:?}, stval = {:#x}!", scause.cause(), stval);
-        }
-        Trap::Exception(Exception::LoadFault) |
-        Trap::Exception(Exception::StoreFault) |
-        Trap::Exception(Exception::StorePageFault) |
-        Trap::Exception(Exception::LoadPageFault) => {
-            handle_nk_trap(scause, stval as usize);
-        }
-        _ => {
-            panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
-        }
-    }
-
-}
-
 //the function below would expose to outer kernel
 fn nkapi_config(t: usize, val: usize){
-    debug_info!("Entering config.");
     let proxy = PROXYCONTEXT();
 
     match t{
@@ -205,6 +174,12 @@ fn nkapi_config(t: usize, val: usize){
         }
         NKCFG_SIGNAL => {
             proxy.signal_handler = val;
+        }
+        NKCFG_ALLOCATOR_START => {
+            proxy.allocator_start = val;
+        }
+        NKCFG_ALLOCATOR_END => {
+            proxy.allocator_end = val;
         }
         _ => {
             debug_info!("Unknown config ID: {}", t);
@@ -310,61 +285,75 @@ fn nkapi_pt_destroy(pt_handle: usize){
     }
 }
 
-fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
+fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u: usize, perm: MapPermission) -> PhysPageNum{
     let map_type = MapType::from(map_type_u);
     let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
     
     //debug_info!("nkapi_alloc [{}] {:?} {:?}", pt_handle, vpn, map_type);
 
     pt_operate! (pt_handle, target_pt, {
-        // get target ppn
-        let target_ppn;
-        match map_type{
-            MapType::Framed => {
-                if let Some(ppn) = outer_frame_alloc(){
-                    //debug_info!("outer allocating: {:?}", ppn);
+        
+        let mut first_ppn: PhysPageNum = PhysPageNum(0);
+        for i in 0..size {
+            let vpn = VirtPageNum{0: root_vpn.0 + i};
+            let target_ppn;
+            match map_type{
+                MapType::Framed => {
+                    if let Some(ppn) = outer_frame_alloc(){
+                        //debug_info!("outer allocating: {:?}", ppn);
+                        target_ppn = ppn;
+                    }else{
+                        panic!("No more memory in Outer Kernel!");
+                    }
+                }
+                MapType::Raw => {
+                    if let Some(ppn) = outer_frame_alloc(){
+                        target_ppn = ppn;
+                    }else{
+                        print_free_pages();
+                        panic!("No more memory in Nested Kernel!");
+                    }
+                    target_pt.map(vpn, target_ppn, pte_flags);
+                    return target_ppn;
+                }
+                MapType::Identical => {
+                    target_ppn = PhysPageNum::from(vpn.0);
+                }
+                MapType::Specified(ppn) => {
                     target_ppn = ppn;
-                }else{
-                    outer_print_free_pages();
-                    panic!("No more memory in Outer Kernel!");
                 }
             }
-            MapType::FramedInNK => {
-                if let Some(ppn) = frame_alloc(){
-                    target_ppn = ppn;
-                }else{
-                    print_free_pages();
-                    panic!("No more memory in Nested Kernel!");
+            if i == 0{
+                first_ppn = target_ppn;
+            }
+            // get target ppn
+        
+            //clean the page frame
+            if map_type == MapType::Framed{
+                let bytes_array = target_ppn.get_bytes_array();
+                for i in bytes_array {
+                    *i = 0;
                 }
             }
-            MapType::Identical => {
-                target_ppn = PhysPageNum::from(vpn.0);
-            }
-            MapType::Specified(ppn) => {
-                target_ppn = ppn;
-            }
-        }
-
-        //clean the page frame
-        if map_type == MapType::Framed || map_type == MapType::FramedInNK{
-            let bytes_array = target_ppn.get_bytes_array();
-            for i in bytes_array {
-                *i = 0;
-            }
+            
+            // modify pagetable entry
+            target_pt.map(vpn, target_ppn, pte_flags);
         }
         
-        // modify pagetable entry
-        target_pt.map(vpn, target_ppn, pte_flags);
-        return target_ppn
+        return first_ppn;
     });
     debug_info!("nkapi_alloc: cannot find pagetable!");
-    return PhysPageNum{0: vpn.0};
+    return PhysPageNum{0: root_vpn.0};
 
 }
 
 fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
     pt_operate! (pt_handle, target_pt, {
-        target_pt.unmap(vpn);
+        if let Some(pte) = target_pt.translate(vpn){
+            target_pt.unmap(vpn);
+            outer_frame_dealloc(pte.ppn())
+        }
+        
         return;
     });
     debug_info!("nk_dealloc: cannot find pagetable!");
