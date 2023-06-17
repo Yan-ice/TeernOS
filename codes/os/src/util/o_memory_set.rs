@@ -19,15 +19,10 @@ extern "C" {
     fn edata();
     fn sbss_with_stack();
     fn ebss();
-    fn sproxy();
-    fn eproxy();
-    fn snkheap();
-    fn enkheap();
-    fn ekernel();
+    
     fn sokheap();
-    fn strampoline();
-    fn ssignaltrampoline();
-    fn snktrampoline();
+    fn eokheap();
+    fn ekernel();
 }
 
 
@@ -153,32 +148,6 @@ impl MemorySet {
         self.areas.push(map_area);
     }
 
-    /// Mention that trampoline is not collected by areas.
-    fn map_trampoline(&mut self) {
-        nkapi_alloc(self.id, 
-            VirtAddr::from(TRAMPOLINE).into(), 
-            MapType::Specified(PhysAddr::from(strampoline as usize).into()),
-            MapPermission::R | MapPermission::X,
-        );
-
-        nkapi_alloc(self.id, 
-            VirtAddr::from(NK_TRAMPOLINE).into(), 
-            MapType::Specified(PhysAddr::from(sproxy as usize).into()),
-            MapPermission::R | MapPermission::W,
-        );
-
-        
-    }
-
-    /// Mention that trampoline is not collected by areas.
-    /// Different from trampoline: this dosen't need to be mapped in kernel(executed in user)
-    fn map_signal_trampoline(&mut self) {
-        nkapi_alloc(self.id, 
-            VirtAddr::from(SIGNAL_TRAMPOLINE).into(), 
-            MapType::Specified(PhysAddr::from(ssignaltrampoline  as usize).into()),
-            MapPermission::R | MapPermission::X | MapPermission::U
-        );
-    }
 
     // fn map_kernel_shared(&mut self){
     //     self.page_table.map_kernel_shared();
@@ -201,6 +170,15 @@ impl MemorySet {
         // map trampoline
         // memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
+
+        debug_info!("mapping nk space (readonly)");
+        memory_set.push(MapArea::new(
+            (NKSPACE_START as usize).into(),
+            NKSPACE_END.into(),
+            MapType::Identical,
+            MapPermission::R,
+        ), None);
+
 
         debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
@@ -233,35 +211,10 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        debug_info!("mapping proxy section");
+        debug_info!("mapping heap");
         memory_set.push(MapArea::new(
-            (sproxy as usize).into(),
-            (eproxy as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W, 
-            //temporiliy cannot be readonly
-        ), None);
-
-        debug_info!("mapping nk heap memory");
-        memory_set.push(MapArea::new(
-            (snkheap as usize).into(),
-            (enkheap as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ), None);
-
-        // debug_info!("mapping okheap memory");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Specified(PhysAddr{0: sokheap as usize}),
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
-
-        debug_info!("mapping nk frame memory (readonly)");
-        memory_set.push(MapArea::new(
-            (ekernel as usize).into(),
-            NKSPACE_END.into(),
+            (sokheap as usize).into(),
+            (eokheap as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
@@ -288,7 +241,7 @@ impl MemorySet {
         debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
         debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
         debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+        debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
         memory_set
 
     }

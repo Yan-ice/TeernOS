@@ -3,7 +3,6 @@ use crate::config::*;
 use crate::context::*;
 use crate::flags::*;
 
-
 macro_rules! return_void {
     () => {
         return;

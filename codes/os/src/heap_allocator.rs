@@ -1,6 +1,6 @@
 use buddy_system_allocator::LockedHeap;
 use crate::config::KERNEL_HEAP_SIZE;
-use crate::debug_error;
+use shared::debug_error;
 
 #[global_allocator]
 pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -17,14 +17,14 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
 //Yan_ice let heap be another block in memory,
 //change heap by only modifying pagetable (same va, diff pa).
 extern "C"{
-    fn snkheap();
+    fn sokheap();
 } 
 
 pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR
             .lock()
-            .init(snkheap as usize, KERNEL_HEAP_SIZE);
+            .init(sokheap as usize, KERNEL_HEAP_SIZE);
     }
 }
 

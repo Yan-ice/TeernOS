@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(llvm_asm)]
 #![feature(asm)]
+#![feature(global_asm)]
+
 #[macro_use]
 pub mod console;
 #[macro_use]
@@ -22,3 +24,5 @@ pub use nkapi::*;
 pub use sbi::*;
 pub use config::*;
 pub use monitor::*;
+
+global_asm!(include_str!("nk_gate.S"));

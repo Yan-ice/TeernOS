@@ -12,7 +12,6 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 
-
 #[macro_use]
 mod lang_items;
 
@@ -24,10 +23,6 @@ mod tests;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
-
-global_asm!(include_str!("nk_gate.S"));
-global_asm!(include_str!("context.S"));
-
 
 use tests::{mem_access_timecost, nkapi_gatetest};
 
@@ -42,20 +37,6 @@ use mm::{
 };
 use core::panic::PanicInfo;
 use crate::shared::sbi::shutdown;
-
-
-#[macro_use]
-
-fn get_time() -> usize {
-    let mut time:usize = 0;
-    unsafe{
-        asm!(
-            "rdtime a0",
-            inout("a0") time
-        );
-    }
-    time
-}
 
 
 pub fn id() -> usize {

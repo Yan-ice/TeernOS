@@ -4,6 +4,7 @@ _start:
     # tp:hart_id 
     # mv a0,tp # RustSBI
     mv tp, a0 # OpenSBI
+
     la a1, boot_stack_top
     slli a0, a0, 15 # hart_id* stacksize
     add a0, a0, a1
@@ -11,7 +12,7 @@ _start:
 
     # Yan_ice sp一开始是boot_stack_top的位置。
     mv sp, a0
-    call nk_main
+    call outer_kernel_init
 
     .section .bss.stack
     .globl boot_stack

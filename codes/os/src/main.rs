@@ -14,7 +14,6 @@ extern crate alloc;
 extern crate bitflags;
 
 mod lang_items;
-mod nk;
 mod fs;
 
 #[macro_use]
@@ -26,14 +25,13 @@ mod drivers;
 mod task;
 
 mod timer;
+mod heap_allocator;
 
-
-use crate::{config::*, nk::tests::{nkapi_gatetest, mem_access_timecost}};
+use crate::{config::*};
 use lazy_static::lazy_static;
 use riscv::register::sie;
 use sbi::sbi_send_ipi;
 use spin::*;
-use nk::*;
 use alloc::sync::Arc;
 pub use statics::*;
 use shared::*;
@@ -80,6 +78,8 @@ lazy_static! {
 extern "C"{
     fn eokernel();
 }
+
+#[no_mangle]
 pub fn outer_kernel_init(){
     //temoraily have to add to make program run. only for test.
     debug_info!("UltraOS: outer kernel init.");
@@ -94,7 +94,7 @@ pub fn outer_kernel_init(){
     //mem_access_timecost();
     
     extern "C"{
-        fn snkheap();
+        fn sokheap();
     }
     
     debug_info!("UltraOS: static struct initialized");
