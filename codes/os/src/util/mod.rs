@@ -1,5 +1,6 @@
 pub mod mm_util;
 pub mod o_memory_set;
+pub mod vma;
 
 pub use mm_util::{
     translated_array_copy,
@@ -7,8 +8,7 @@ pub use mm_util::{
 };
 
 pub use o_memory_set::{MemorySet};
-
-
+pub use vma::*;
 
 pub fn log2(num:usize) -> usize{
     let mut num = num;

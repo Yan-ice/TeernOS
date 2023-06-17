@@ -13,12 +13,10 @@ use bitflags::*;
 use spin::Mutex;
 
 
-impl PhysPageNum{
-    pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
-        let pa: PhysAddr = self.clone().into();
-        unsafe {
-            core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512)
-        }
+pub fn get_pte_array(ppn: PhysPageNum) -> &'static mut [PageTableEntry] {
+    let pa: PhysAddr = ppn.clone().into();
+    unsafe {
+        core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512)
     }
 }
 
@@ -150,7 +148,7 @@ impl PageTableRecord {
         let mut ppn = self.root_ppn;
         let mut result: Option<&mut PageTableEntry> = None;
         for i in 0..3 {
-            let pte = &mut ppn.get_pte_array()[idxs[i]];
+            let pte = &mut get_pte_array(ppn)[idxs[i]];
             if i == 2 {
                 result = Some(pte);
                 break;
@@ -177,7 +175,7 @@ impl PageTableRecord {
         let mut ppn = self.root_ppn;
         let mut result: Option<&PageTableEntry> = None;
         for i in 0..3 {
-            let pte = &ppn.get_pte_array()[idxs[i]];
+            let pte = &get_pte_array(ppn)[idxs[i]];
             if !pte.is_valid() {
                 return None;
             }
@@ -196,7 +194,7 @@ impl PageTableRecord {
         let mut ppn = self.root_ppn;
         let mut result: Option<&PageTableEntry> = None;
         for i in 0..(level) {
-            let pte = &ppn.get_pte_array()[idxs[i]];
+            let pte = &get_pte_array(ppn)[idxs[i]];
             if !pte.is_valid() {
                 return None;
             }
@@ -215,7 +213,7 @@ impl PageTableRecord {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
         for i in 0..3 {
-            let pte = &mut ppn.get_pte_array()[idxs[i]];
+            let pte = &mut get_pte_array(ppn)[idxs[i]];
             if i == 2 {
                 // if pte == None{
                 //     panic!("set_pte_flags: no such pte");
@@ -243,7 +241,7 @@ impl PageTableRecord {
 
         for i in 0..3 {
             print!("{:x}[{}] -> ", ppn.0, i);
-            let pte = &ppn.get_pte_array()[idxs[i]];
+            let pte = &get_pte_array(ppn)[idxs[i]];
             
             if !pte.is_valid() {
                 debug_info!("INVALID");
@@ -266,19 +264,19 @@ impl PageTableRecord {
         ppns[0] = self.root_ppn;
         for i in 0..512{
             // debug_info!("[pt] printing progress ({}/512)",i);
-            let pte = &mut ppns[0].get_pte_array()[i];
+            let pte = &mut get_pte_array(ppns[0])[i];
             if !pte.is_valid(){
                 continue;
             }
             ppns[1] = pte.ppn();
             for j in 0..512{
-                let pte = &mut ppns[1].get_pte_array()[j];
+                let pte = &mut get_pte_array(ppns[1])[j];
                 if !pte.is_valid(){
                     continue;
                 }
                 ppns[2] = pte.ppn();
                 for k in 0..512{
-                    let pte = &mut ppns[2].get_pte_array()[k];
+                    let pte = &mut get_pte_array(ppns[2])[k];
                     if !pte.is_valid(){
                         continue;
                     }
@@ -351,7 +349,7 @@ impl PageTableRecord {
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
         let mut ppn = self.root_ppn;
-        let pte = &mut ppn.get_pte_array()[idxs[0]];
+        let pte = &mut get_pte_array(ppn)[idxs[0]];
         *pte = *pte_kernel.unwrap();
 
         // insert top va(kernel stack + trampoline)
@@ -359,7 +357,7 @@ impl PageTableRecord {
         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, 1);
         let idxs = kernel_vpn.indexes();
         let mut ppn = self.root_ppn;
-        let pte = &mut ppn.get_pte_array()[idxs[0]];
+        let pte = &mut get_pte_array(ppn)[idxs[0]];
         *pte = *pte_kernel.unwrap();
 
         let kernel_vpn:VirtPageNum = 0xb0000.into();
@@ -376,7 +374,7 @@ impl PageTableRecord {
             // let idxs = kernel_vpn.indexes();
             // let mut ppn = self.root_ppn;
             // for i in 0..3 {
-            //     let pte = &mut ppn.get_pte_array()[idxs[i]];
+            //     let pte = &mut get_pte_array(ppn)[idxs[i]];
             //     if !pte.is_valid() {
             //         let pte_kernel = kernel_pagetable.find_pte_level(kernel_vpn, i+1);
             //         *pte = *pte_kernel.unwrap();

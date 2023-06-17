@@ -6,21 +6,9 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-use crate::{config::*, nk::tests::{nkapi_gatetest, mem_access_timecost}};
-use lazy_static::lazy_static;
-use riscv::register::sie;
-use sbi::sbi_send_ipi;
-use spin::*;
-use nk::*;
-use alloc::sync::Arc;
-pub use statics::*;
-use shared::*;
-
-extern crate alloc;
-
-
 #[macro_use]
-mod shared;
+extern crate shared;
+extern crate alloc;
 
 #[macro_use]
 extern crate bitflags;
@@ -38,6 +26,18 @@ mod drivers;
 mod task;
 
 mod timer;
+
+
+use crate::{config::*, nk::tests::{nkapi_gatetest, mem_access_timecost}};
+use lazy_static::lazy_static;
+use riscv::register::sie;
+use sbi::sbi_send_ipi;
+use spin::*;
+use nk::*;
+use alloc::sync::Arc;
+pub use statics::*;
+use shared::*;
+
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
