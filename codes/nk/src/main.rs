@@ -26,8 +26,6 @@ global_asm!(include_str!("start_app.S"));
 
 use tests::{mem_access_timecost, nkapi_gatetest};
 
-use alloc::slice::{from_raw_parts, from_raw_parts_mut};
-
 use crate::shared::*;
 
 use mm::{
@@ -74,17 +72,7 @@ fn space(){
         fn ebss();
         fn sproxy();
         fn eproxy();
-        fn snkheap();
-        fn enkheap();
         fn ekernel();
-        fn sokernel();
-        fn outer_allocator();
-        fn outer_static();
-        fn sokheap();
-        fn eokheap();
-        fn sokernelstack();
-        fn eokernelstack();
-        fn eokernel();
         fn strampoline();
         fn ssignaltrampoline();
         fn snktrampoline();
@@ -93,11 +81,11 @@ fn space(){
     debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
     debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
     debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-    debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
+    // debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
     debug_info!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
-    debug_info!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
-    debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
-    debug_info!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
+    // debug_info!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
+    // debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
+    // debug_info!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
 }
 
 #[no_mangle]
@@ -134,34 +122,9 @@ pub fn nk_main(){
         proxy.nk_satp = KERNEL_SPACE.lock().token();
         proxy.outer_satp = nkapi_vun_getpt(0).token();
         proxy.outer_register[1] = 0x80800000 as usize; //let ra be outer kernel init
-        proxy.outer_register[2] = eokernelstack as usize; // 初始化 outer kernel的栈指针
+        proxy.outer_register[2] = 0x80812000 as usize; // 初始化 outer kernel的栈指针 
     }
 
-    extern "C"{
-        fn nk_kernel_stack_top();
-        fn eokernelstack();
-        fn __exit_gate();
-        fn snkheap();
-        fn enkheap();
-        fn sokheap();
-        fn eokheap();
-    }
-
-    debug_info!("copying heap");
-    unsafe{
-        let total_size = enkheap as usize - snkheap as usize;
-        let unit_size = 1024;
-        let from_addr = snkheap as usize;
-        let to_addr = sokheap as usize;
-
-        for part in 0..(total_size/unit_size){
-            let a1 = from_addr+unit_size*part;
-            let a2 = to_addr+unit_size*part;
-            let mut src_data = from_raw_parts(a1 as *const u8, unit_size);
-            let mut dst_data = from_raw_parts_mut(a2 as *mut u8, unit_size);
-            dst_data.copy_from_slice(src_data);
-        }  
-    }
 
     debug_info!("Nesked kernel init success");
     space();

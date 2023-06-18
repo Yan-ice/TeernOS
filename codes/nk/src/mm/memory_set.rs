@@ -26,10 +26,7 @@ extern "C" {
     fn ebss();
     fn sproxy();
     fn eproxy();
-    fn snkheap();
-    fn enkheap();
     fn ekernel();
-    fn sokheap();
     fn strampoline();
     fn ssignaltrampoline();
     fn snktrampoline();
@@ -240,13 +237,13 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        debug_info!("mapping nk heap memory");
-        memory_set.push(MapArea::new(
-            (snkheap as usize).into(),
-            (enkheap as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ), None);
+        // debug_info!("mapping nk heap memory");
+        // memory_set.push(MapArea::new(
+        //     (snkheap as usize).into(),
+        //     (enkheap as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
 
         debug_info!("mapping nk frame memory");
         memory_set.push(MapArea::new(
