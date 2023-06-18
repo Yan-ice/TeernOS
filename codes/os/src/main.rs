@@ -81,13 +81,18 @@ extern "C"{
 
 #[no_mangle]
 pub fn outer_kernel_init(){
+    
     //temoraily have to add to make program run. only for test.
-    debug_info!("UltraOS: outer kernel init.");
+    
+    unsafe{
+        asm!("ecall", in("a0") 2333, in("a7") 9);
+    }
     
     nkapi_set_delegate_handler(os_trap::trap_handler_delegate as usize);
     nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
     nkapi_set_allocator_range(eokernel as usize,OKSPACE_END);
-    debug_info!("Config success.");
+    
+    debug_info!("Outer Kernel init: Config success.");
     OUTER_KERNEL_SPACE().lock();
     //nkapi_gatetest();
 

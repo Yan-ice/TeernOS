@@ -9,7 +9,6 @@
 
 extern crate alloc;
 
-#[macro_use]
 extern crate bitflags;
 
 #[macro_use]
@@ -23,8 +22,9 @@ mod tests;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
+global_asm!(include_str!("nk_gate.S"));
 
-use tests::{mem_access_timecost, nkapi_gatetest};
+use tests::{nkapi_gatetest};
 
 use crate::shared::*;
 
@@ -56,7 +56,7 @@ fn clear_bss() {
 }
 extern "C" {
     pub fn nk_entry();
-    pub fn nk_exit();
+    pub fn nk_exit(hart: usize);
 }
 
 fn space(){
@@ -66,26 +66,17 @@ fn space(){
         fn etext();
         fn srodata();
         fn erodata();
-        fn sdata();
-        fn edata();
         fn sbss_with_stack();
         fn ebss();
-        fn sproxy();
-        fn eproxy();
+        fn sdata();
+        fn edata();
         fn ekernel();
-        fn strampoline();
-        fn ssignaltrampoline();
-        fn snktrampoline();
     }
     debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
     debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
     debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
     debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-    // debug_info!("nkheap [{:#x}, {:#x})", snkheap as usize, enkheap as usize);
     debug_info!("nkframe [{:#x}, {:#x})", ekernel as usize, crate::config::NKSPACE_END);
-    // debug_info!("okstack [{:#x}, {:#x})", sokernelstack as usize, eokernelstack as usize);
-    // debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
-    // debug_info!("okframe [{:#x}, {:#x})", eokernel as usize, crate::config::OKSPACE_END);
 }
 
 #[no_mangle]
@@ -97,18 +88,18 @@ pub fn nk_main(){
     clear_bss();
     
     mm::init();
+    space();
     debug_info!("mm init success.");
-
     trap::init();
     debug_info!("trap init success.");
 
     //init page for outer kernel.
-
+    
     nkapi_pt_init(0, false);
-    nkapi_alloc_mul(0, 0x80200.into(), 0x600, 
+    nkapi_alloc_mul(0, VirtAddr(config::NKSPACE_START).into(), 0x600, 
     MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
 
-    nkapi_alloc_mul(0, 0x80800.into(), 0x4, 
+    nkapi_alloc_mul(0, VirtAddr(config::OKSPACE_START).floor().into(), 0x100, 
     MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
 
     //OUTER_KERNEL_SPACE().lock();
@@ -118,21 +109,23 @@ pub fn nk_main(){
     //nkapi_print_pt(0, 0, 0x5000);
 
     unsafe{
+        println!("test: {:x}", *(0x80800000 as *mut usize));
+
         let mut proxy = PROXYCONTEXT();
         proxy.nk_satp = KERNEL_SPACE.lock().token();
         proxy.outer_satp = nkapi_vun_getpt(0).token();
-        proxy.outer_register[1] = 0x80800000 as usize; //let ra be outer kernel init
+        proxy.outer_register[1] = config::OKSPACE_START as usize; //let ra be outer kernel init
         proxy.outer_register[2] = 0x80812000 as usize; // 初始化 outer kernel的栈指针 
     }
 
 
-    debug_info!("Nesked kernel init success");
-    space();
-
-    mem_access_timecost();
-
+    debug_info!("Ready to outer kernel.");
     unsafe{
-        nk_exit();
+        //nk_exit(0);
+        asm!("jr x31", 
+        //in("x31") nk_exit as usize,
+        in("x31") config::NK_TRAMPOLINE + nk_exit as usize - nk_entry as usize,
+        in("x10") 0 );
         panic!("not reachable");
     }
 

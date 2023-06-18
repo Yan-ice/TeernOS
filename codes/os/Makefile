@@ -84,7 +84,7 @@ fat32:
 fsimg-format:
 	sudo mkfs.vfat -F 32 ${U_FAT32}
 
-kernel:
+kernel: fat32
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"

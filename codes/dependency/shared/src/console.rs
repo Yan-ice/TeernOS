@@ -5,6 +5,12 @@ struct Stdout;
 
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> fmt::Result {
+        if print as usize > 0x80800000 {
+            unsafe{
+                asm!("ecall", in("a0") 2333, in("a7") 9);
+            }
+        
+        }
         for c in s.chars() {
             console_putchar(c as usize);
         }
@@ -13,6 +19,7 @@ impl Write for Stdout {
 }
 
 pub fn print(args: fmt::Arguments) {
+    //accessible
     Stdout.write_fmt(args).unwrap();
 }
 

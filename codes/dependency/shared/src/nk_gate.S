@@ -22,7 +22,7 @@
 nk_bypass:
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     addi sp,sp,-30*8
@@ -48,7 +48,7 @@ nk_bypass:
 
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
     
     # keep the retval
@@ -84,7 +84,7 @@ nk_exit:
 
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     # save nk sp
@@ -103,7 +103,7 @@ nk_exit:
     li x17, 9
     ecall
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     .set n, 1
@@ -133,7 +133,7 @@ nk_entry:
 
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     ld x30, 91*8(x28) # nkapi_level
@@ -165,7 +165,7 @@ nk_entry:
     addi sp,sp,30*8
 
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     # store all outer kernel registers to proxy, 包括栈指针
@@ -192,7 +192,7 @@ nk_entry:
 
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
     
     # save ret value and ret address from function handler call

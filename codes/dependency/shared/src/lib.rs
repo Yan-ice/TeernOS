@@ -25,4 +25,4 @@ pub use sbi::*;
 pub use config::*;
 pub use monitor::*;
 
-global_asm!(include_str!("nk_gate.S"));
+//global_asm!(include_str!("nk_gate.S"));

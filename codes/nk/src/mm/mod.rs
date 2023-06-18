@@ -50,25 +50,15 @@ pub use page_table::{
     PageTable,
 };
 
-pub use memory_set::{MemorySet, KERNEL_SPACE, KERNEL_TOKEN, KernelToken, kernel_token};
+pub use memory_set::{MemorySet, KERNEL_SPACE};
 pub use heap_allocator::HEAP_ALLOCATOR;
 pub use frame_allocator::FRAME_ALLOCATOR;
 
-use super::TrapContext;
 extern "C" {
-    fn stext();
-    fn etext();
-    fn srodata();
-    fn erodata();
-    fn sdata();
-    fn edata();
-    fn sbss_with_stack();
-    fn ebss();
-    fn ekernel();
     fn sproxy();
     fn strampoline();
-    fn ssignaltrampoline();
     fn snktrampoline();
+    fn ssignaltrampoline();
 }
 
 
@@ -98,7 +88,7 @@ lazy_static! {
     pub static ref PAGE_TABLE_LIST: Mutex<Vec<PageTableRecord>> = Mutex::new(
         Vec::<PageTableRecord>::new()
     );
-    pub static ref current_pt: Mutex<Box<usize>> = Mutex::new(Box::new(0));
+    pub static ref CURRENT_PT: Mutex<Box<usize>> = Mutex::new(Box::new(0));
 }
 
 macro_rules! pt_operate {
@@ -156,7 +146,7 @@ fn nkapi_time() -> usize {
 
 
 pub fn pt_current() -> usize {
-    current_pt.lock().as_ref().clone()
+    CURRENT_PT.lock().as_ref().clone()
 }
 
 //the function below would expose to outer kernel
@@ -226,12 +216,13 @@ fn nkapi_pt_init(pt_handle: usize, re_generate: bool){
     pt.map(VirtAddr::from(TRAMPOLINE).into(), 
         PhysAddr::from(strampoline as usize).into(),
         PTEFlags::R | PTEFlags::X);
-
-    unsafe{
-        pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
-        PhysAddr::from(sproxy as *const ProxyContext as usize).into(),
-        PTEFlags::R | PTEFlags::W);
-    }
+    pt.map(VirtAddr::from(NK_TRAMPOLINE).into(), 
+        PhysAddr::from(snktrampoline as usize).into(),
+        PTEFlags::R | PTEFlags::X);
+    pt.map(VirtAddr::from(PROXY_CONTEXT).into(),
+        PhysAddr::from(sproxy as usize).into(),
+        PTEFlags::R | PTEFlags::W,
+    );
 
     if pt_handle != 0{
         pt_operate!(0,pt_kernel,{
@@ -430,12 +421,8 @@ pub fn nkapi_activate(pt_handle: usize) {
 
         // debug_info!("outer kernel's table switch.");
         debug_info!("nkapi: pagetable [{}] activated.", pt_handle);
-        *current_pt.lock().as_mut() = pt_handle;
-
-        unsafe{
-            (&mut PROXYCONTEXT()).outer_satp = satp;
-        }
-
+        *CURRENT_PT.lock().as_mut() = pt_handle;
+        PROXYCONTEXT().outer_satp = satp;
         return;
     });
 }

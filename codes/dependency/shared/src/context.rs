@@ -1,5 +1,5 @@
 use riscv::register::sstatus::{Sstatus, self, SPP};
-use crate::config::{TRAMPOLINE, NK_TRAMPOLINE};
+use crate::config::*;
 
 
 #[repr(C)]
@@ -77,7 +77,7 @@ pub struct ProxyContext{
 
 pub fn PROXYCONTEXT() -> &'static mut ProxyContext{
     unsafe{ 
-        &mut *(NK_TRAMPOLINE as usize 
+        &mut *(crate::PROXY_CONTEXT as usize 
         as *mut usize 
         as *mut ProxyContext) 
     }

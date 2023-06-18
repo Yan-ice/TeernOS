@@ -28,18 +28,8 @@ extern "C" {
     fn eproxy();
     fn ekernel();
     fn strampoline();
-    fn ssignaltrampoline();
     fn snktrampoline();
-}
-
-
-pub struct KernelToken {
-    token:usize
-}
-impl KernelToken {
-    pub fn token(&self)->usize{
-        self.token
-    }
+    fn ssignaltrampoline();
 }
 
 lazy_static! {
@@ -52,11 +42,6 @@ lazy_static! {
     //     MemorySet::new_outer_kernel()
     // ));
 
-    pub static ref KERNEL_TOKEN: Arc<KernelToken> = Arc::new(
-        KernelToken{
-            token: KERNEL_SPACE.lock().token()
-        }
-    );
 }
 
 // lazy_static! {
@@ -64,11 +49,6 @@ lazy_static! {
 //         MmapArea::new(VirtAddr::from(KMMAP_BASE), VirtAddr::from(KMMAP_BASE))
 //     ));
 // }
-
-
-pub fn kernel_token() -> usize {
-    KERNEL_SPACE.lock().token()
-}
 
 pub struct MemorySet {
     id: usize,   // 这个也找不到
@@ -95,69 +75,9 @@ impl MemorySet {
                                 MapPermission::R | MapPermission::W | MapPermission::U)
         }
     }
-    pub fn set_cow(&mut self, vpn: VirtPageNum) {
-        self.page_table.set_cow(vpn);
-    }
-    pub fn reset_cow(&mut self, vpn: VirtPageNum) {
-        self.page_table.reset_cow(vpn);
-    }
-    pub fn set_flags(&mut self, vpn: VirtPageNum, flags: PTEFlags) {
-        self.page_table.set_flags(vpn, flags);
-    }
+
     pub fn token(&self) -> usize {
         self.page_table.token()
-    }
-    /// Assume that no conflicts.
-    pub fn insert_framed_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
-        self.push(MapArea::new(
-            start_va,
-            end_va,
-            MapType::Framed,
-            permission,
-        ), None);
-    }
-    pub fn insert_kernel_mmap_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
-        // debug_info!{"insert kernel mmap_area: {:X} {:X}", start_va.0, end_va.0}
-        self.push_mmap(MapArea::new(
-            start_va,
-            end_va,
-            MapType::Framed,
-            permission,
-        ), None);
-    }
-    pub fn insert_mmap_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
-        let mut new_chunk_area = ChunkArea::new(MapType::Framed, permission,);
-        new_chunk_area.set_mmap_range(start_va, end_va);
-        self.mmap_chunks.push(new_chunk_area);
-
-        //self.push_mmap(MapArea::new(
-        //    start_va,
-        //    (end_va.0).into(),  // bin lazy (X
-        //    MapType::Framed,
-        //    permission,
-        //), None);
-    }
-    fn push_mmap(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        // debug_info!{"1"}
-        map_area.map(&mut self.page_table);
-        self.areas.push(map_area);
-    }
-    pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
-        if let Some((idx, area)) = self.areas.iter_mut().enumerate()
-            .find(|(_, area)| area.vpn_range.get_start() == start_vpn) {
-            area.unmap(&mut self.page_table);
-            self.areas.remove(idx);
-        }
-
-        let chunks_len = self.mmap_chunks.len();
-        for i in 0..chunks_len {
-            let chunk = &self.mmap_chunks[i];
-            if (chunk.mmap_start.0 >> 12) == start_vpn.0 {
-                //debug_info!("remove mmap_chunk 0x{:X}", chunk.mmap_start.0);
-                self.mmap_chunks.remove(i);
-                break;
-            }
-        }
     }
 
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
@@ -178,14 +98,17 @@ impl MemorySet {
             PTEFlags::R | PTEFlags::X,
         );
         //Yan_ice:额外为proxy context加一个跳板
-        unsafe{
-            self.page_table.map(
+        self.page_table.map(
             
             VirtAddr::from(NK_TRAMPOLINE).into(),
-            PhysAddr::from(sproxy as *const ProxyContext as usize).into(),
+            PhysAddr::from(snktrampoline as usize).into(),
+            PTEFlags::R | PTEFlags::X,
+        );
+        self.page_table.map(
+            VirtAddr::from(PROXY_CONTEXT).into(),
+            PhysAddr::from(sproxy as usize).into(),
             PTEFlags::R | PTEFlags::W,
         );
-        }
         
     }
 
@@ -236,14 +159,6 @@ impl MemorySet {
             MapPermission::R | MapPermission::W, 
             //temporiliy cannot be readonly
         ), None);
-
-        // debug_info!("mapping nk heap memory");
-        // memory_set.push(MapArea::new(
-        //     (snkheap as usize).into(),
-        //     (enkheap as usize).into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W,
-        // ), None);
 
         debug_info!("mapping nk frame memory");
         memory_set.push(MapArea::new(

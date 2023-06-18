@@ -4,8 +4,6 @@ use crate::debug_info;
 //pub use efficiency_test::mem_access_timecost as mem_access_timecost;
 pub use nkgate_test::nkapi_gatetest as nkapi_gatetest;
 
-pub fn mem_access_timecost(){}
-
 #[macro_export]
 macro_rules! begin_test {
     ($name:expr, $code:block) => {

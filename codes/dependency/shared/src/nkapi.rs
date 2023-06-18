@@ -44,7 +44,8 @@ macro_rules! entry_gate {
     ($tar:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 lateout("a0") $retval0,
                 lateout("a1") $retval1,
@@ -54,7 +55,8 @@ macro_rules! entry_gate {
     ($tar:expr,$t1:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 in("a1") usize::from($t1),
                 lateout("a0") $retval0,
@@ -70,7 +72,8 @@ macro_rules! entry_gate {
     ($tar:expr,$t1:expr,$t2:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 in("a1") usize::from($t1),
                 in("a2") usize::from($t2),
@@ -87,7 +90,8 @@ macro_rules! entry_gate {
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 in("a1") usize::from($t1),
                 in("a2") usize::from($t2),
@@ -106,7 +110,8 @@ macro_rules! entry_gate {
         unsafe{
 
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 in("a1") usize::from($t1),
                 in("a2") usize::from($t2),
@@ -125,7 +130,8 @@ macro_rules! entry_gate {
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$t4:expr,$t5:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
             asm!(
-                "jal nk_entry",
+                "jalr x1, t3, 0",
+                in("t3") crate::config::NK_TRAMPOLINE,
                 in("a0") $tar as usize*8,
                 in("a1") usize::from($t1),
                 in("a2") usize::from($t2),
