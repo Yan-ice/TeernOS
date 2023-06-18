@@ -55,7 +55,7 @@ nk_entry:
     .endr
 
     # WARN: Here actually context may harmed by ecall. (Potential bug)
-    ld x10, 65*8(x28)
+    ld x10, 64*8(x28)
     li x17, 9
     ecall
 
