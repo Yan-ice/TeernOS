@@ -55,10 +55,6 @@ SECTIONS
     . = .+4K;
     eproxy = .;
     
-    snkheap = .;
-    . = . + 1024*4K;
-    enkheap = .;
-
     ekernel = .;
 
     /DISCARD/ : {
@@ -66,7 +62,7 @@ SECTIONS
     }
 
     /* 新加一段outer kernel space，暂时命名为okernel */
-    . = 0x80800000;
+    /* . = 0x80800000;
     sokernel = .;
     outer_allocator = .;
     . = .+1K;
@@ -82,7 +78,7 @@ SECTIONS
     eokheap = .;
 
     . = .+8K;
-    eokernel = .;
+    eokernel = .; */
 
     /* . = 0x88000000; */
     /* OUTER SPACE END */

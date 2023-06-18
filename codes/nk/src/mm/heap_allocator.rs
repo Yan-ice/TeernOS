@@ -2,6 +2,8 @@ use buddy_system_allocator::LockedHeap;
 use crate::config::KERNEL_HEAP_SIZE;
 use shared::debug_error;
 
+static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+
 #[global_allocator]
 pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
@@ -11,20 +13,15 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
     panic!("Heap allocation error, layout = {:?}", layout);
 }
 
-// 这里应该变成双堆
-//static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
-
-//Yan_ice let heap be another block in memory,
-//change heap by only modifying pagetable (same va, diff pa).
 extern "C"{
-    fn snkheap();
+    fn sokheap();
 } 
 
 pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR
             .lock()
-            .init(snkheap as usize, KERNEL_HEAP_SIZE);
+            .init(HEAP_SPACE.as_ptr() as usize, KERNEL_HEAP_SIZE);
     }
 }
 
@@ -53,3 +50,4 @@ pub fn init_heap() {
 //     drop(v);
 //     debug_info!("heap_test passed!");
 // }
+
