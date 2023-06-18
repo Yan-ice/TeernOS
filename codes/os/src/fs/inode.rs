@@ -348,14 +348,14 @@ lazy_static! {
 */
 
 pub fn init_rootfs(){
-    debug_info!("[fs] build rootfs ... start");
-    debug_info!("[fs] build rootfs: creating /proc");
+    // debug_info!("[fs] build rootfs ... start");
+    // debug_info!("[fs] build rootfs: creating /proc");
     let file = open("/","proc", OpenFlags::CREATE, DiskInodeType::Directory).unwrap();
-    debug_info!("[fs] build rootfs: init /proc");
+    // debug_info!("[fs] build rootfs: init /proc");
     let file = open("/proc","mounts", OpenFlags::CREATE, DiskInodeType::File).unwrap();
     let meminfo = open("/proc","meminfo", OpenFlags::CREATE, DiskInodeType::File).unwrap();
     let file = open("/","ls", OpenFlags::CREATE, DiskInodeType::File).unwrap();
-    debug_info!("[fs] build rootfs ... finish");
+    // debug_info!("[fs] build rootfs ... finish");
 }
 
 

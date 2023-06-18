@@ -40,6 +40,8 @@ use shared::*;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
 
+use crate::heap_allocator::init_heap;
+
 
 pub const SYSCALL_GETPPID:usize = 173;
 pub fn test() {
@@ -83,40 +85,45 @@ extern "C"{
 pub fn outer_kernel_init(){
     
     //temoraily have to add to make program run. only for test.
-
     nkapi_set_delegate_handler(os_trap::trap_handler_delegate as usize);
     nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
     nkapi_set_allocator_range(eokernel as usize, OKSPACE_END);
     
-    debug_info!("Outer Kernel init: Config success.");
+    init_heap();
+    //debug_info!("Outer Kernel init: Config success.");
     OUTER_KERNEL_SPACE().lock();
     //nkapi_gatetest();
-
     //mem_access_timecost();
     
     extern "C"{
         fn sokheap();
     }
     
-    debug_info!("UltraOS: static struct initialized");
+    //debug_info!("UltraOS: static struct initialized");
 
     timer::set_next_trigger();
-    debug_info!("UltraOS: interrupt initialized");
+    //debug_info!("UltraOS: interrupt initialized");
+
+    // unsafe{
+    //     asm!("ecall", in("a7")9);
+    // }
+
     fs::init_rootfs();
-    debug_info!("UltraOS: fs initialized");
-    
+    //debug_info!("UltraOS: fs initialized");
+
     //unsafe { sie::set_stimer(); }
 
     task::add_initproc();
-    debug_info!("UltraOS: task initialized");
+    // debug_info!("UltraOS: task initialized");
 
-    debug_info!("UltraOS: wake other cores");
+    // debug_info!("UltraOS: wake other cores");
     let mask:usize = 1 << 1;
     sbi_send_ipi(&mask as *const usize as usize);
     // CORE2_FLAG.lock().set_in();
     //test();
     
-    debug_info!("UltraOS: run tasks");
+    // debug_info!("UltraOS: run tasks");
+
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

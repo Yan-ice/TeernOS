@@ -1,5 +1,6 @@
 
 use crate::debug_info;
+use crate::eokernel;
 use crate::shared::*;   
 
 use alloc::collections::BTreeMap;
@@ -163,44 +164,44 @@ impl MemorySet {
     pub fn new_outer_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
-        debug_info!("mapping outer kernel");
+        // debug_info!("mapping outer kernel");
 
         // map trampoline
         // memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
 
-        debug_info!("mapping nk space (readonly)");
-        memory_set.push(MapArea::new(
-            (NKSPACE_START as usize).into(),
-            NKSPACE_END.into(),
-            MapType::Identical,
-            MapPermission::R,
-        ), None);
+        // debug_info!("mapping nk space (readonly)");
+        // memory_set.push(MapArea::new(
+        //     (NKSPACE_START as usize).into(),
+        //     NKSPACE_END.into(),
+        //     MapType::Identical,
+        //     MapPermission::R,
+        // ), None);
 
 
-        debug_info!("mapping .text section");
+        //debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::X,
         ), None);
-        debug_info!("mapping .rodata section");
+        // debug_info!("mapping .rodata section");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
             MapPermission::R,
         ), None);
-        debug_info!("mapping .data section");
+        // debug_info!("mapping .data section");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
             MapType::Identical,
-            MapPermission::R,
+            MapPermission::R | MapPermission::W,
         ), None);
 
-        debug_info!("mapping .bss section");
+        // debug_info!("mapping .bss section");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
@@ -217,15 +218,15 @@ impl MemorySet {
         //     MapPermission::R | MapPermission::W,
         // ), None);
 
-        debug_info!("mapping outer kernel space");
+        // debug_info!("mapping outer kernel space");
         memory_set.push(MapArea::new(
-            (NKSPACE_END).into(),
+            (eokernel as usize).into(),
             OKSPACE_END.into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W,
         ), None);
 
-        debug_info!("mapping memory-mapped registers");
+        // debug_info!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
                 (*pair).0.into(),
@@ -235,10 +236,10 @@ impl MemorySet {
             ), None);
         }
 
-        debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        // debug_info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        // debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        // debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        // debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
         //debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
         memory_set
 
@@ -747,7 +748,7 @@ impl MapArea {
         //     nkapi_dealloc(pt_handle, vpn);
         // }
         let ppn: PhysPageNum = nkapi_alloc(pt_handle, vpn, self.map_type, self.map_perm);
-        self.data_frames.insert(vpn, ppn);  
+        self.data_frames.insert(vpn, ppn); 
     }
 
     pub fn unmap_one(&mut self, pt_handle: usize, vpn: VirtPageNum) {

@@ -40,7 +40,7 @@ build_kernel:
 	cd codes/os && make build
 	cd codes/nk && make build
 
-build_os: build_sbi build_kernel
+build_os: build_kernel
 	cd codes/user && make elf
 
 gdb:

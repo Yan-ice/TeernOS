@@ -5,20 +5,25 @@ struct Stdout;
 
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        if print as usize > 0x80800000 {
-            unsafe{
-                asm!("ecall", in("a0") 2333, in("a7") 9);
-            }
-        
+        let mut temp: usize = 0;
+        unsafe{
+            asm!("mv x30, sp", lateout("x30") temp);
         }
-        for c in s.chars() {
-            console_putchar(c as usize);
+        if temp as usize <= 0x80400000{
+            for c in s.chars() {
+                console_putchar(c as usize);
+            }
+        } else {
+            unsafe{
+                asm!("ecall", in("a7")9);
+            }
         }
         Ok(())
     }
 }
 
 pub fn print(args: fmt::Arguments) {
+
     //here accessible
     Stdout.write_fmt(args).unwrap();
 }
@@ -36,7 +41,9 @@ macro_rules! print {
 #[macro_export]
 macro_rules! println {
     ($fmt: literal $(, $($arg: tt)+)?) => {
+
         $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+
         //$crate::fs::_print(format_args!(core::concat!($fmt, "\n") $(, $($arg)+)?));
     }
 }
@@ -44,8 +51,8 @@ macro_rules! println {
 #[macro_export]
 macro_rules! debug_info {
     ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::print(format_args!("\x1b[{}m[info] \x1b[{}m", 32, 37));
-        $crate::console::print(format_args!(concat!($fmt, "\x1b[0m\n") $(, $($arg)+)?));
+        // $crate::console::print(format_args!("\x1b[{}m[info] \x1b[{}m", 32, 37));
+        // $crate::console::print(format_args!(concat!($fmt, "\x1b[0m\n") $(, $($arg)+)?));
         //$crate::fs::_print(format_args!(core::concat!($fmt, "\n") $(, $($arg)+)?));
     }
 }

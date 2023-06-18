@@ -99,7 +99,7 @@ pub fn nk_main(){
     nkapi_alloc_mul(0, VirtAddr(config::NKSPACE_START).into(), 0x600, 
     MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
 
-    nkapi_alloc_mul(0, VirtAddr(config::OKSPACE_START).floor().into(), 0x100, 
+    nkapi_alloc_mul(0, VirtAddr(config::OKSPACE_START).floor().into(), 0x300, 
     MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
 
     //OUTER_KERNEL_SPACE().lock();
