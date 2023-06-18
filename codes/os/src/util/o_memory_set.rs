@@ -19,9 +19,7 @@ extern "C" {
     fn edata();
     fn sbss_with_stack();
     fn ebss();
-    
-    fn sokheap();
-    fn eokheap();
+
     fn ekernel();
 }
 
@@ -211,13 +209,13 @@ impl MemorySet {
             //temporiliy cannot be readonly
         ), None);
 
-        debug_info!("mapping heap");
-        memory_set.push(MapArea::new(
-            (sokheap as usize).into(),
-            (eokheap as usize).into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ), None);
+        // debug_info!("mapping heap");
+        // memory_set.push(MapArea::new(
+        //     (sokheap as usize).into(),
+        //     (eokheap as usize).into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ), None);
 
         debug_info!("mapping outer kernel space");
         memory_set.push(MapArea::new(
@@ -241,7 +239,7 @@ impl MemorySet {
         debug_info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
         debug_info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
         debug_info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
+        //debug_info!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
         memory_set
 
     }
