@@ -74,6 +74,8 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
 #[no_mangle]
 pub fn user_trap_return() -> ! {
 
+    debug_info!("into usr_trap_return");
+        
     // update RUsage of process
     // update_user_clock();
     // let ru_stime = get_kernel_runtime_usec();
@@ -93,18 +95,18 @@ pub fn user_trap_return() -> ! {
     // }
     let trap_cx_ptr = TRAP_CONTEXT;
 
-    // if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
-    //     debug_info!("TRAP_CONTEXT is mapped to {:?}", pa);
-    //     unsafe{
-    //         let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
-    //         //v.sepc = usr_test as usize;
-    //         debug_info!("trap context: {:?}",v);
-    //         debug_info!("trap context sp: {:x}",v.x[2]);
+    if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
+        debug_info!("TRAP_CONTEXT is mapped to {:?}", pa);
+        unsafe{
+            let v: &mut TrapContext = &mut *(trap_cx_ptr as *mut TrapContext);
+            //v.sepc = usr_test as usize;
+            debug_info!("trap context: {:?}",v);
+            debug_info!("trap context sp: {:x}",v.x[2]);
             
-    //     }
-    // }else{
-    //     debug_info!("WARN: TRAP_CONTEXT is not mapped!");
-    // }
+        }
+    }else{
+        debug_info!("WARN: TRAP_CONTEXT is not mapped!");
+    }
 
     // let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();
     // if trap_cx.get_sp() == 0{

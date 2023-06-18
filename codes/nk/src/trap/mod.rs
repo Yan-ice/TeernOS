@@ -22,10 +22,14 @@ pub use trap_handle::nk_trap_handler_impl;
 use super::mm::{MemorySet, KERNEL_SPACE};
 
 
+extern "C"{
+    fn nk_entry();
+}
 pub fn init(){
     unsafe {
         stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
 
+        debug_warn!("NK_GATE: {:x}",nk_entry as usize);
         PROXYCONTEXT().usr_trap_handler = user_trap_handler as usize;
         PROXYCONTEXT().usr_trap_return = user_trap_return as usize;
     }

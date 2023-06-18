@@ -109,7 +109,6 @@ pub fn nk_main(){
     //nkapi_print_pt(0, 0, 0x5000);
 
     unsafe{
-        println!("test: {:x}", *(0x80800000 as *mut usize));
 
         let mut proxy = PROXYCONTEXT();
         proxy.nk_satp = KERNEL_SPACE.lock().token();

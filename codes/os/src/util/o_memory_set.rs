@@ -170,12 +170,12 @@ impl MemorySet {
         // memory_set.map_trampoline();  //映射trampoline
         // map kernel sections
 
-        // debug_os!("mapping nk space (readonly)");
+        debug_os!("mapping nk space (readonly)");
         // memory_set.push(MapArea::new(
         //     (NKSPACE_START as usize).into(),
         //     NKSPACE_END.into(),
         //     MapType::Identical,
-        //     MapPermission::R,
+        //     MapPermission::R | MapPermission::W | MapPermission::X,
         // ), None);
 
 

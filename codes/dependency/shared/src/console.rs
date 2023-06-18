@@ -5,18 +5,8 @@ struct Stdout;
 
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let mut temp: usize = 0;
-        unsafe{
-            asm!("mv x30, sp", lateout("x30") temp);
-        }
-        if temp as usize <= 0x80400000{
-            for c in s.chars() {
-                console_putchar(c as usize);
-            }
-        } else {
-            unsafe{
-                asm!("ecall", in("a7")9);
-            }
+        for c in s.chars() {
+            console_putchar(c as usize);
         }
         Ok(())
     }

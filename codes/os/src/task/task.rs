@@ -14,7 +14,7 @@ use super::info::*;
 use super::{RLimit, TaskContext};
 use super::{PidHandle, pid_alloc, KernelStack, RUsage, ITimerVal};
 use alloc::sync::{Weak, Arc};
-use alloc::vec;
+use alloc::{vec, task};
 use alloc::vec::Vec;
 use alloc::string::String;
 use core::fmt::{self, Debug, Formatter};
@@ -275,7 +275,7 @@ impl TaskControlBlock {
 
     //PCB生成
     pub fn new(elf_data: &[u8]) -> Self {
-        
+       
         // alloc a pid and a kernel stack in kernel space
         let pid_handle = pid_alloc();
         let tgid = pid_handle.0;
@@ -293,6 +293,9 @@ impl TaskControlBlock {
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
         let task_cx_ptr = kernel_stack.push_on_top(TaskContext::goto_trap_return());
+        unsafe{
+            println!("RA is: {:x}",(*(task_cx_ptr)).ra);
+        }
         let task_control_block = Self {
             pid: pid_handle,
             tgid,

@@ -4,7 +4,7 @@ use crate::shared::PROXYCONTEXT;
 #[derive(Debug)]
 #[repr(C)]
 pub struct TaskContext {
-    ra: usize,
+    pub ra: usize,
     s: [usize; 12],
 }
 
