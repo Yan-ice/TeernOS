@@ -13,10 +13,6 @@ pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
     panic!("Heap allocation error, layout = {:?}", layout);
 }
 
-extern "C"{
-    fn sokheap();
-} 
-
 pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR

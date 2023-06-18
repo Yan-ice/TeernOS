@@ -138,9 +138,7 @@ lazy_static! {
 }
 
 extern "C" {
-    fn snkstack();
     fn ekernel();
-    fn eokernel();
 }
 
 pub fn init_frame_allocator() {
@@ -190,8 +188,6 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
     }
     pn
 }
-
-
 
 
 pub fn frame_add_ref(ppn: PhysPageNum) {
