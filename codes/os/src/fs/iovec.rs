@@ -32,7 +32,7 @@ impl IoVecs {
             if iovref.len == 0 {
                 continue;
             }
-            //debug_info!("iov.base = 0x{:X}, iov.len = {}", iovref.base as usize,iovref.len);
+            //debug_os!("iov.base = 0x{:X}, iov.len = {}", iovref.base as usize,iovref.len);
             let mut buf:Vec<&'static mut [u8]> = translated_raw(id, iovref.base, iovref.len);
             iovecs.append(&mut buf);
         }

@@ -25,7 +25,7 @@ use crate::task::{
     perform_signal_handler,
 };
 
-use crate::debug_info;
+use crate::debug_os;
 use super::PROXYCONTEXT;
 
 use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
@@ -48,7 +48,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
     //trap到outer kernel时，切换为kernel trap。
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) =>{
-            //debug_info!{"pinUserEnvCall"}
+            //debug_os!{"pinUserEnvCall"}
             // jump to next instruction anyway
             // let mut cx = current_trap_cx();
             cx.sepc += 4;
@@ -65,7 +65,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             let result = syscall(syscall_id, [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]);
             // cx is changed during sys_exec, so we have to call it again
             //if syscall_id != 64 && syscall_id != 63{
-            //    debug_info!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
+            //    debug_os!("[{}]syscall-({}) = 0x{:X}  ", current_task().unwrap().pid.0, syscall_id, result);
             //} 
             //cx = current_trap_cx();
             cx.x[10] = result as usize;
@@ -73,10 +73,10 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) => {
             let task = current_task().unwrap();
-            debug_info!{"pinInstructionFault"}
-            //debug_info!("prev syscall = {}", G_SATP.lock().get_syscall());
+            debug_os!{"pinInstructionFault"}
+            //debug_os!("prev syscall = {}", G_SATP.lock().get_syscall());
             
-            debug_info!(
+            debug_os!(
                 "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
                 task.pid.0,
@@ -93,10 +93,10 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
         }
         
         Trap::Exception(Exception::IllegalInstruction) => {
-            debug_info!("[kernel] IllegalInstruction in application, continue.");
+            debug_os!("[kernel] IllegalInstruction in application, continue.");
             //let mut cx = current_trap_cx();
             //cx.sepc += 4;
-            debug_info!(
+            debug_os!(
                 "         {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
                 stval,
@@ -112,7 +112,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
         Trap::Exception(Exception::LoadPageFault) =>{
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-                debug_info!("cause: {:?}", scause.cause());
+                debug_os!("cause: {:?}", scause.cause());
                 is_load = true;
             } else {
                 is_load = false;
@@ -130,7 +130,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
                 let current_task = current_task().unwrap();
                 if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
                     // current_task.acquire_inner_lock().memory_set.print_pagetable();
-                    debug_info!(
+                    debug_os!(
                         "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                         scause.cause(),
                         stval,
@@ -141,10 +141,10 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
                 }
             }
         
-            debug_info!{"Trap solved..."}
+            debug_os!{"Trap solved..."}
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            debug_info!{"pinTimer"}
+            debug_os!{"pinTimer"}
             set_next_trigger();
             suspend_current_and_run_next();
             //is_schedule = true;

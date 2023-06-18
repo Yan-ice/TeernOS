@@ -1,3 +1,5 @@
+use crate::println;
+
 use super::{
     BLOCK_SZ,
     BlockDevice,
@@ -26,10 +28,12 @@ impl BlockCache {
     ) -> Self {
         let mut cache = [0u8; BLOCK_SZ];
         //println!("cache new: blk_id = {}", block_id);
+
         block_device.read_block(block_id, &mut cache);
         // TODO: 时间戳
         //let mut time_stamp = time::read();
         let time_stamp = 0;
+
         Self {
             cache,
             block_id,
@@ -118,11 +122,17 @@ impl BlockCacheManager {
         block_id: usize,
         //block_device: Arc<dyn BlockDevice>,
     ) -> Option<Arc<RwLock<BlockCache>>>{
+
         if let Some(pair) = self.queue
             .iter()
             .find(|pair| pair.0 == block_id) {
                 Some(Arc::clone(&pair.1))
         }else{
+
+            // unsafe{
+            //     asm!("ecall", in("a7")9);
+            // }
+
             None
             // substitute
             // if self.queue.len() == BLOCK_CACHE_SIZE {
@@ -156,6 +166,7 @@ impl BlockCacheManager {
             .find(|pair| pair.0 == block_id) {
                 Arc::clone(&pair.1)
         } else {
+
             // substitute
             if self.queue.len() == self.limit/*BLOCK_CACHE_SIZE*/ {
                 // from front to tail
@@ -168,10 +179,13 @@ impl BlockCacheManager {
                     panic!("Run out of BlockCache!");
                 }
             }
+
             // load block into mem and push back
             let block_cache = Arc::new(RwLock::new(
                 BlockCache::new(block_id, Arc::clone(&block_device))
             ));
+
+
             self.queue.push_back((block_id, Arc::clone(&block_cache)));
             //println!("blkcache: {:?}", block_cache.read().cache);
             block_cache
@@ -238,7 +252,8 @@ pub fn get_info_cache(
             return blk
         }
         INFO_CACHE_MANAGER.write().get_block_cache(phy_blk_id, block_device);
-        INFO_CACHE_MANAGER.read().read_block_cache(phy_blk_id).unwrap()
+        let ans = INFO_CACHE_MANAGER.read().read_block_cache(phy_blk_id).unwrap();
+        return ans;
     } else {
         if let Some(blk) = DATA_BLOCK_CACHE_MANAGER.read().read_block_cache(phy_blk_id){
             return blk

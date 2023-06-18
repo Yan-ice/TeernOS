@@ -72,13 +72,13 @@ use crate::gdb_print;
 use crate::monitor::*;
 use crate::shared::sbi::shutdown;
 use crate::timer::get_timeval;
-use crate::debug_info;
+use crate::debug_os;
 //use crate::fs::Dirent;
 
 pub fn test() {
     if sys_getpid() == 1{
         let start = get_timeval();
-        // debug_info!("test: run sys_getppid 1000000 times, start {:?}",start);
+        // debug_os!("test: run sys_getppid 1000000 times, start {:?}",start);
         for _ in 0..1000000{
             syscall(SYSCALL_GETPPID,[0,0,0,0,0,0]);
             // unsafe{
@@ -88,8 +88,8 @@ pub fn test() {
             // }
         }
         let end = get_timeval();
-        // debug_info!("test: run sys_getppid 1000000 times, end {:?}",end);
-        debug_info!("test: run sys_getppid + sfence.vma 1000000 times, spent {:?}",end-start);
+        // debug_os!("test: run sys_getppid 1000000 times, end {:?}",end);
+        debug_os!("test: run sys_getppid + sfence.vma 1000000 times, spent {:?}",end-start);
     }
 }
 
@@ -97,7 +97,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
     //if syscall_id != 64 && syscall_id != 63 && syscall_id != 61 {
     //    gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
-    //    //debug_info!("syscallid-{}", syscall_id);
+    //    //debug_os!("syscallid-{}", syscall_id);
     //} else {
     //    if args[0] != 0 && args[0] != 1 && args[0] != 2{
     //        // gdb_print!(SYSCALL_ENABLE,"syscall-({}) arg0 = {}, arg1 = {}\n",syscall_id, args[0] as isize, args[1] as isize);
@@ -108,7 +108,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     //     test();
     // }
 
-    //debug_info!("SYSCALL [{}] params: {:?}",syscall_id, args);
+    //debug_os!("SYSCALL [{}] params: {:?}",syscall_id, args);
     
     match syscall_id {
         SYSCALL_SIGRETURN => sys_sigreturn(),
@@ -236,7 +236,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_SHUTDOWN => shutdown(),
         SYSCALL_CLEAR => sys_clear(args[0] as *const u8),
         _ => 0
-        //_ => {debug_info!("Unsupported syscall_id:{}, arg0={} arg1={}", syscall_id, args[0], args[1]); 0}
+        //_ => {debug_os!("Unsupported syscall_id:{}, arg0={} arg1={}", syscall_id, args[0], args[1]); 0}
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
 
     }

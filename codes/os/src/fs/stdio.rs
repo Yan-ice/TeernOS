@@ -5,7 +5,7 @@ use crate::task::suspend_current_and_run_next;
 use k210_hal::{clock::Clocks, fpioa, pac, prelude::*};
 use lazy_static::*;
 use spin::Mutex;
-use crate::debug_info;
+use crate::debug_os;
 //use crate::task::get_core_id;
 
 // 这个模块的两个宏应该公开
@@ -170,22 +170,22 @@ pub fn init(){
 #[cfg(feature = "board_k210")]
 pub fn init(){
     //let serial = crate::drivers::Ns16550a::new(0x10000000, 0 /*, 11_059_200, 115200*/);
-    debug_info!("0");
+    debug_os!("0");
     let p = pac::Peripherals::take().unwrap();
-    debug_info!("1");
+    debug_os!("1");
     let mut sysctl = p.SYSCTL.constrain();
-    debug_info!("2");
+    debug_os!("2");
     let fpioa = p.FPIOA.split(&mut sysctl.apb0);
-    debug_info!("3");
+    debug_os!("3");
     let clocks = Clocks::new();
-    debug_info!("4");
+    debug_os!("4");
     let _uarths_tx = fpioa.io5.into_function(fpioa::UARTHS_TX);
     let _uarths_rx = fpioa.io4.into_function(fpioa::UARTHS_RX);
     // Configure UART
-    debug_info!("5");
+    debug_os!("5");
     let serial = p.UARTHS.configure(115_200.bps(), &clocks);
     let (tx, rx) = serial.split();
-    debug_info!("6");
+    debug_os!("6");
     init_legacy_stdio_embedded_hal_fuse(tx, rx);
 }
 

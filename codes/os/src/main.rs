@@ -50,7 +50,7 @@ pub fn test() {
     //     syscall(SYSCALL_GETPPID,[0,0,0,0,0,0]);
     // }
     // let end = get_timeval();
-    // debug_info!("test: run sys_getppid 100000000 times, spent {:?}",end-start);
+    // debug_os!("test: run sys_getppid 100000000 times, spent {:?}",end-start);
 
     
 }
@@ -90,7 +90,7 @@ pub fn outer_kernel_init(){
     nkapi_set_allocator_range(eokernel as usize, OKSPACE_END);
     
     init_heap();
-    //debug_info!("Outer Kernel init: Config success.");
+    debug_os!("Outer Kernel init: Config success.");
     OUTER_KERNEL_SPACE().lock();
     //nkapi_gatetest();
     //mem_access_timecost();
@@ -99,30 +99,31 @@ pub fn outer_kernel_init(){
         fn sokheap();
     }
     
-    //debug_info!("UltraOS: static struct initialized");
+    debug_os!("UltraOS: static struct initialized");
 
     timer::set_next_trigger();
-    //debug_info!("UltraOS: interrupt initialized");
+    debug_os!("UltraOS: interrupt initialized");
 
     // unsafe{
     //     asm!("ecall", in("a7")9);
     // }
 
     fs::init_rootfs();
-    //debug_info!("UltraOS: fs initialized");
+
+    debug_os!("UltraOS: fs initialized");
 
     //unsafe { sie::set_stimer(); }
 
     task::add_initproc();
-    // debug_info!("UltraOS: task initialized");
+    debug_os!("UltraOS: task initialized");
 
-    // debug_info!("UltraOS: wake other cores");
+    debug_os!("UltraOS: wake other cores");
     let mask:usize = 1 << 1;
     sbi_send_ipi(&mask as *const usize as usize);
     // CORE2_FLAG.lock().set_in();
     //test();
     
-    // debug_info!("UltraOS: run tasks");
+    debug_os!("UltraOS: run tasks");
 
     task::run_tasks();
     panic!("Unreachable in rust_main!");

@@ -12,7 +12,7 @@ use crate::fs::{DiskInodeType, FileClass, FileDescripter, OpenFlags, open};
 use crate::config::{PAGE_SIZE, CLOCK_FREQ};
 use crate::gdb_print;
 use crate::gdb_println;
-use crate::debug_info;
+use crate::debug_os;
 use crate::monitor::*;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -284,7 +284,7 @@ pub fn sys_sigreturn() -> isize{
 /// This function only supports sending signal to the calling process
 pub fn sys_kill(pid: isize, signal: isize) -> isize {
     if pid <= 0 {
-        debug_info!("[sys_kill]: pid <= 0 not support");
+        debug_os!("[sys_kill]: pid <= 0 not support");
         return 0;
     }
     if signal == 0{ // currently ignore capability check when signal == 0 
@@ -470,7 +470,7 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
         gdb_println!(SYSCALL_ENABLE, "sys_exec(path: {}, args: {:?}) = {}", path, args_vec_copy, argc);
         0 
     } else {
-        debug_info!("[sys_exec] failed to open file [{}].", path);
+        debug_os!("[sys_exec] failed to open file [{}].", path);
         -1
     }
 }
@@ -487,7 +487,7 @@ pub fn sys_wait4(pid: isize, wstatus: *mut i32, option: isize) -> isize {
             .iter()
             .find(|p| {pid == -1 || pid as usize == p.getpid()})
             .is_none() {
-                debug_info!("syscall_wait4: unknwon pid.");
+                debug_os!("syscall_wait4: unknwon pid.");
                 return -1;
             // ---- release current PCB lock
             }
@@ -502,7 +502,7 @@ pub fn sys_wait4(pid: isize, wstatus: *mut i32, option: isize) -> isize {
         if let Some((idx,_)) = waited {
             let waited_child = inner.children.remove(idx);
             // confirm that child will be deallocated after being removed from children list
-            // debug_info!("[wait4]:pid {} child_pid {} ", task.pid.0, waited_child.getpid());
+            // debug_os!("[wait4]:pid {} child_pid {} ", task.pid.0, waited_child.getpid());
             assert_eq!(Arc::strong_count(&waited_child), 1);
             let found_pid = waited_child.getpid();
             // ++++ temporarily hold child lock
@@ -511,8 +511,8 @@ pub fn sys_wait4(pid: isize, wstatus: *mut i32, option: isize) -> isize {
             if (wstatus as usize) != 0{
                 *translated_refmut(inner.memory_set.id(), wstatus) = ret_status;
             }
-            // debug_info!("=============The pid being waited is {}===================", pid);
-            // debug_info!("=============The exit code of waiting_pid is {}===========", exit_code);
+            // debug_os!("=============The pid being waited is {}===================", pid);
+            // debug_os!("=============The exit code of waiting_pid is {}===========", exit_code);
             gdb_println!(SYSCALL_ENABLE, "sys_wait4(pid: {}, wstatus: {}, option: {}) = {}", pid, ret_status, option, found_pid);
             return found_pid as isize;
         } else {
@@ -589,7 +589,7 @@ pub fn sys_munmap(start: usize, len: usize) -> isize {
 
 pub fn sys_mprotect(addr: usize, len: usize, prot: isize) -> isize{
     if (addr % PAGE_SIZE != 0) || (len % PAGE_SIZE != 0){ // Not align
-        debug_info!("sys_mprotect: not align");
+        debug_os!("sys_mprotect: not align");
         return -1
     }
     let task = current_task().unwrap();

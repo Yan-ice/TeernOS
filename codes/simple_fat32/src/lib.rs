@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(llvm_asm)]
+#![feature(asm)]
 extern crate alloc;
-
 
 mod block_dev;
 mod layout;

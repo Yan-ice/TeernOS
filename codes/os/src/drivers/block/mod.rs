@@ -1,6 +1,6 @@
 mod virtio_blk;
 mod sdcard;
-use crate::debug_info;
+use crate::debug_os;
 use lazy_static::*;
 use alloc::sync::Arc;
 use simple_fat32::BlockDevice;
@@ -27,5 +27,5 @@ pub fn block_device_test() {
         block_device.read_block(i as usize, &mut read_buffer);
         assert_eq!(write_buffer, read_buffer);
     }
-    debug_info!("block device test passed!");
+    debug_os!("block device test passed!");
 }

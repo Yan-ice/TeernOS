@@ -51,6 +51,20 @@ macro_rules! println {
 #[macro_export]
 macro_rules! debug_info {
     ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!("\x1b[{}m[info] \x1b[{}m", 32, 37));
+        $crate::console::print(format_args!(concat!($fmt, "\x1b[0m\n") $(, $($arg)+)?));
+        //$crate::fs::_print(format_args!(core::concat!($fmt, "\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! debug_os {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+
+        for c in $fmt.chars() {
+            $crate::sbi::console_putchar(c as usize);
+        }
+        $crate::sbi::console_putchar('\n' as usize);
         // $crate::console::print(format_args!("\x1b[{}m[info] \x1b[{}m", 32, 37));
         // $crate::console::print(format_args!(concat!($fmt, "\x1b[0m\n") $(, $($arg)+)?));
         //$crate::fs::_print(format_args!(core::concat!($fmt, "\n") $(, $($arg)+)?));

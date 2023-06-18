@@ -44,7 +44,7 @@ pub struct PidHandle(pub usize);
 
 impl Drop for PidHandle {
     fn drop(&mut self) {
-        //debug_info!("drop pid {}", self.0);
+        //debug_os!("drop pid {}", self.0);
         PID_ALLOCATOR().lock().dealloc(self.0);
     }
 }

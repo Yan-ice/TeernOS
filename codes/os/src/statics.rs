@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use crate::config::KMMAP_BASE;
 use crate::shared::*;
 use crate::task::TaskManager;
-use crate::debug_info;
+use crate::debug_os;
 use crate::task::{TaskControlBlock, Processor};
 use crate::fs::{open, OpenFlags, DiskInodeType, File};
 use crate::util::*;
@@ -91,7 +91,7 @@ pub fn INITPROC() -> &'static Arc<TaskControlBlock>{
     if sf.INITPROC.is_none() {
         let inode = open("/","initproc", OpenFlags::RDONLY, DiskInodeType::File).unwrap();
         let v = inode.read_all();
-        debug_info!("read initproc file success.");
+        debug_os!("read initproc file success.");
         sf.INITPROC = Some(
             Arc::new(
                 TaskControlBlock::new(v.as_slice())

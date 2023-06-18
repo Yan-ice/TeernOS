@@ -16,7 +16,7 @@ use k210_soc::{
 use spin::Mutex;
 use lazy_static::*;
 use crate::{println, timer::get_time};
-use crate::debug_info;
+use crate::debug_os;
 use super::BlockDevice;
 use core::convert::TryInto;
 
@@ -734,7 +734,7 @@ fn init_sdcard() -> SDCard<SPIImpl<SPI0>> {
     let num_sectors = info.CardCapacity / 512;
     assert!(num_sectors > 0);
 
-    debug_info!("init sdcard!");
+    debug_os!("init sdcard!");
     sd
 }
 
@@ -753,11 +753,11 @@ impl SDCardWrapper {
         self.read_block(0, &mut buf);
         let start = get_time();
         for i in 1..1000 {
-            //debug_info!("wtest");
+            //debug_os!("wtest");
             self.write_block(0, &buf);
         }
         let end = get_time();
-        debug_info!("[SD_Card writing test]: {}", end - start);
+        debug_os!("[SD_Card writing test]: {}", end - start);
     }
 }
 
@@ -766,12 +766,12 @@ impl BlockDevice for SDCardWrapper {
         if self.0.lock().read_sector(buf,block_id as u32).is_ok() {
             return
         } else {
-            debug_info!("block id = {}", block_id);
+            debug_os!("block id = {}", block_id);
             panic!("SD_Card read blk failed");
         }
     }
     fn write_block(&self, block_id: usize, buf: &[u8]) {
-        //debug_info!("blk_id = {}", block_id);
+        //debug_os!("blk_id = {}", block_id);
         self.0.lock().write_sector(buf,block_id as u32).unwrap();
     }
 }

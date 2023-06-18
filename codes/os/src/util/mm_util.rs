@@ -13,21 +13,21 @@ pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'sta
         while start < end {
             let start_va = VirtAddr::from(start);
             let mut vpn = start_va.floor();
-            //debug_info!("tbb vpn = 0x{:X}", vpn.0);
+            //debug_os!("tbb vpn = 0x{:X}", vpn.0);
             // let ppn: PhysPageNum;
             let ppno = nkapi_translate(pt_handle,vpn, true);
             if ppno.is_none() {
-                // debug_info!{"preparing into checking lazy..."}
-                //debug_info!("check_lazy 3");
+                // debug_os!{"preparing into checking lazy..."}
+                //debug_os!("check_lazy 3");
                 current_task().unwrap().check_lazy(start_va, true);
                 unsafe {
                     // llvm_asm!("sfence.vma" :::: "volatile");
                     llvm_asm!("fence.i" :::: "volatile");
                 }
-                //debug_info!{"preparing into checking lazy..."}
+                //debug_os!{"preparing into checking lazy..."}
             }
             let ppn = ppno.unwrap();
-            //debug_info!("vpn = {} ppn = {}", vpn.0, ppn.0);
+            //debug_os!("vpn = {} ppn = {}", vpn.0, ppn.0);
             vpn.step();
             let mut end_va: VirtAddr = vpn.into();
             end_va = end_va.min(VirtAddr::from(end));
@@ -71,8 +71,8 @@ pub fn translated_refmut<T>(pt_handle: usize, ptr: *mut T) -> &'static mut T {
     let vaddr = VirtAddr::from(va);
     let pa = nkapi_translate_va(pt_handle, VirtAddr::from(vaddr));
     if pa.is_none() {
-        // debug_info!{"preparing into checking lazy..."}
-        //debug_info!("check_lazy 2");
+        // debug_os!{"preparing into checking lazy..."}
+        //debug_os!("check_lazy 2");
         current_task().unwrap().check_lazy(vaddr,true);
         unsafe {
             // llvm_asm!("sfence.vma" :::: "volatile");
@@ -88,12 +88,12 @@ pub fn translated_refmut<T>(pt_handle: usize, ptr: *mut T) -> &'static mut T {
 pub fn translated_refcopy<T>(pt_handle: usize, ptr: *mut T) -> T where T:Copy {
     let mut va = ptr as usize;
         let size = core::mem::size_of::<T>();
-        //debug_info!("step = {}, len = {}", step, len);
+        //debug_os!("step = {}, len = {}", step, len);
         
         let u_buf = UserBuffer::new( translated_raw(pt_handle, va as *const u8, size) );
         let mut bytes_vec:Vec<u8> = Vec::new();
         u_buf.read_as_vec(&mut bytes_vec, size);
-        //debug_info!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
+        //debug_os!("loop, va = 0x{:X}, vec = {:?}", va, bytes_vec);
         unsafe{
             return *(bytes_vec.as_slice() as *const [u8] as *const u8 as usize as *const T);
         }

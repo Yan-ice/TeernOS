@@ -1,4 +1,6 @@
+
 use alloc::sync::Arc;
+use riscv::asm;
 use super::{
     BlockDevice,
     get_info_cache,
@@ -13,6 +15,7 @@ use super::{
     println,
 };
 //#[macro_use]
+
 use crate::{ layout::*, VFile};
 use alloc::vec::Vec;
 use alloc::string::String;
@@ -69,14 +72,18 @@ impl FAT32Manager {
 
     /* 打开现有的FAT32  */
     pub fn open(block_device: Arc<dyn BlockDevice>) -> Arc<RwLock<Self>>{
+        // unsafe{
+        //     asm!("ecall", in("a7")9);
+        // }
         // 读入分区偏移
-        println!("[fs] Load FAT32");
-        let start_sector:u32 = get_info_cache(
+        let temp = get_info_cache(
             0, 
             Arc::clone(&block_device),
-            CacheMode::READ )
-        .read()
-        .read(0x1c6, |ssec_bytes:&[u8;4]|{
+            CacheMode::READ );
+        // unsafe{
+        //     asm!("ecall", in("a7")9);
+        // }
+        let start_sector = temp.read().read(0x1c6, |ssec_bytes:&[u8;4]|{
             // DEBUG
             let mut start_sec:u32 = 0;
             for i in 0..4 {
@@ -86,16 +93,21 @@ impl FAT32Manager {
             }
             start_sec
         });
+
         
         set_start_sec(start_sector as usize);
         
         // 读入 Boot Sector
-        let boot_sec:FatBS = get_info_cache(
+        let temp = get_info_cache(
             0, 
             Arc::clone(&block_device),
-            CacheMode::READ )
-        .read()
-        .read(0, |bs:&FatBS|{
+            CacheMode::READ );
+
+        // unsafe{
+        //     asm!("ecall", in("a7")9);
+        // }
+
+        let boot_sec = temp.read().read(0, |bs:&FatBS|{
             // DEBUG
             *bs
         });

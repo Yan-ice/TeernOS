@@ -3,7 +3,7 @@ use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
 use crate::shared::*;
 
-use crate::debug_info;
+use crate::debug_os;
 use super::BlockDevice;
 use spin::Mutex;
 use alloc::vec::Vec;
@@ -20,7 +20,7 @@ lazy_static! {
 
 impl BlockDevice for VirtIOBlock {
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {
-        // debug_info!("{}",block_id);
+        // debug_os!("{}",block_id);
         self.0.lock().read_block(block_id, buf).expect("Error when reading VirtIOBlk");
     }
     fn write_block(&self, block_id: usize, buf: &[u8]) {
@@ -45,11 +45,11 @@ impl VirtIOBlock {
         self.read_block(0, &mut buf);
         let start = get_time();
         for i in 1..1000 {
-            //debug_info!("wtest");
+            //debug_os!("wtest");
             self.write_block(0, &buf);
         }
         let end = get_time();
-        debug_info!("[vblk writing test]: {}", end - start);
+        debug_os!("[vblk writing test]: {}", end - start);
     }
 }
 
