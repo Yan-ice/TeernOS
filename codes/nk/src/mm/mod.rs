@@ -380,9 +380,15 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
 }
 
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
+    if va.0 == config::TRAP_CONTEXT {
+        debug_info!("trap context translating.");
+    }
     pt_operate! (pt_handle, target_pt, {
         let pa = target_pt.translate_va(va);
-        //debug_info!("VA->PA: {:?} {:?}", va, pa);
+        if va.0 == config::TRAP_CONTEXT {
+            debug_info!("VA->PA: {:?} {:?}", va, pa);
+        }
+        
         return pa;
     });
     None

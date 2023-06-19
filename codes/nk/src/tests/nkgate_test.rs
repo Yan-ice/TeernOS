@@ -22,7 +22,7 @@ pub fn nkapi_gatetest(){
         }
         
         nkapi_dealloc(test_pt, va_test.into());
-        if let Some(pa) = nkapi_translate_va(test_pt, va_test.into()) {
+        if let Some(_) = nkapi_translate_va(test_pt, va_test.into()) {
             panic!("nkapi: identical dealloc test failed.")
         }else{
             debug_info!("nkapi: dealloc test passed.");

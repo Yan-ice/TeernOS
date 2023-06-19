@@ -73,9 +73,7 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
 
 #[no_mangle]
 pub fn user_trap_return() -> ! {
-
     debug_info!("into usr_trap_return");
-        
     // update RUsage of process
     // update_user_clock();
     // let ru_stime = get_kernel_runtime_usec();
@@ -93,8 +91,9 @@ pub fn user_trap_return() -> ! {
     // unsafe {
     //     stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
     // }
+    
     let trap_cx_ptr = TRAP_CONTEXT;
-
+    debug_info!("check_va");
     if let Some(pa) = nkapi_translate_va(1, trap_cx_ptr.into()){
         debug_info!("TRAP_CONTEXT is mapped to {:?}", pa);
         unsafe{
@@ -102,10 +101,9 @@ pub fn user_trap_return() -> ! {
             //v.sepc = usr_test as usize;
             debug_info!("trap context: {:?}",v);
             debug_info!("trap context sp: {:x}",v.x[2]);
-            
         }
     }else{
-        debug_info!("WARN: TRAP_CONTEXT is not mapped!");
+        debug_warn!("WARN: TRAP_CONTEXT is not mapped!");
     }
 
     // let trap_cx = current_task().unwrap().acquire_inner_lock().get_trap_cx();

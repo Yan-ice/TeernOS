@@ -6,7 +6,8 @@ syscall::FD_LIMIT, task::RLIMIT_NOFILE};
 use crate::shared::*;
 use crate::util::*;
 use crate::util::log2;
-use crate::{config::*, OUTER_KERNEL_SPACE, OUTER_MMAP_AREA};
+use crate::{config::*};
+use crate::util::{KERNEL_SPACE, KERNEL_MMAP_AREA};
 use crate::gdb_println;
 use crate::monitor::*;
 use crate::timer::get_timeval;
@@ -733,8 +734,8 @@ impl TaskControlBlock {
     // create mmap in kernel space, used for elf file only
     pub fn kmmap(&self, start: usize, len: usize, prot: usize, flags: usize, fd: isize, off: usize) -> usize {
         gdb_println!(SYSCALL_ENABLE,"kmap(0x{:X},{},{},{},{},{})",start, len, prot, flags, fd, off);
-        let mut ks_lock = OUTER_KERNEL_SPACE().lock();
-        let mut kma_lock = OUTER_MMAP_AREA().lock();
+        let mut ks_lock = KERNEL_SPACE.lock();
+        let mut kma_lock = KERNEL_MMAP_AREA.lock();
         let mut inner = self.acquire_inner_lock();
         let fd_table = inner.fd_table.clone();
         let token = ks_lock.id();
@@ -745,8 +746,8 @@ impl TaskControlBlock {
     }
 
     pub fn kmunmap(&self, start: usize, len: usize) -> isize {
-        let mut ks_lock = OUTER_KERNEL_SPACE().lock();
-        let mut kma_lock = OUTER_MMAP_AREA().lock();
+        let mut ks_lock = KERNEL_SPACE.lock();
+        let mut kma_lock = KERNEL_MMAP_AREA.lock();
         ks_lock.remove_area_with_start_vpn(VirtAddr::from(start).into());
         kma_lock.remove(start, len)
     }

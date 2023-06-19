@@ -20,7 +20,6 @@ mod fs;
 mod util;
 mod os_trap;
 mod syscall;
-mod statics;
 mod drivers;
 mod task;
 
@@ -29,12 +28,11 @@ mod heap_allocator;
 
 use crate::{config::*};
 use lazy_static::lazy_static;
-use riscv::register::sie;
 use sbi::sbi_send_ipi;
 use spin::*;
 use alloc::sync::Arc;
-pub use statics::*;
 use shared::*;
+use util::*;
 
 
 global_asm!(include_str!("entry.asm"));
@@ -83,15 +81,16 @@ extern "C"{
 
 #[no_mangle]
 pub fn outer_kernel_init(){
+    debug_os!("Outer Kernel init.");
     
     //temoraily have to add to make program run. only for test.
     nkapi_set_delegate_handler(os_trap::trap_handler_delegate as usize);
     nkapi_set_signal_handler(crate::task::perform_signal_handler as usize);
     nkapi_set_allocator_range(eokernel as usize, OKSPACE_END);
-    
+    debug_os!("UltraOS: Config success.");
     init_heap();
-    debug_os!("Outer Kernel init: Config success.");
-    OUTER_KERNEL_SPACE().lock();
+    debug_os!("Heap init success.");
+    KERNEL_SPACE.lock();
     //nkapi_gatetest();
     //mem_access_timecost();
     

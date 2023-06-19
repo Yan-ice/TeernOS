@@ -96,11 +96,17 @@ pub fn nk_main(){
     //init page for outer kernel.
     
     nkapi_pt_init(0, false);
-    nkapi_alloc_mul(0, VirtAddr(config::NKSPACE_START).into(), 0x600, 
-    MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
+    nkapi_alloc_mul(0, 
+        VirtAddr(config::NKSPACE_START).into(), 
+        VirtAddr(config::NKSPACE_END).into(), 
+        MapType::Identical, 
+        MapPermission::R | MapPermission::W | MapPermission::X);
 
-    nkapi_alloc_mul(0, VirtAddr(config::OKSPACE_START).floor().into(), 0x300, 
-    MapType::Identical, MapPermission::R | MapPermission::W | MapPermission::X);
+    nkapi_alloc_mul(0, 
+        VirtAddr(config::OKSPACE_START).into(), 
+        VirtAddr(config::OKSPACE_START+0x300000).into(), 
+        MapType::Identical, 
+        MapPermission::R | MapPermission::W | MapPermission::X);
 
     //OUTER_KERNEL_SPACE().lock();
     debug_info!("outer kernel pagetable init success.");
@@ -108,15 +114,12 @@ pub fn nk_main(){
     nkapi_gatetest();
     //nkapi_print_pt(0, 0, 0x5000);
 
-    unsafe{
-
-        let mut proxy = PROXYCONTEXT();
-        proxy.nk_satp = KERNEL_SPACE.lock().token();
-        proxy.outer_satp = nkapi_vun_getpt(0).token();
-        proxy.outer_register[1] = config::OKSPACE_START as usize; //let ra be outer kernel init
-        proxy.outer_register[2] = 0x80812000 as usize; // 初始化 outer kernel的栈指针 
-    }
-
+    let mut proxy = PROXYCONTEXT();
+    proxy.nk_satp = KERNEL_SPACE.lock().token();
+    proxy.outer_satp = nkapi_vun_getpt(0).token();
+    proxy.outer_register[1] = config::OKSPACE_START as usize; //let ra be outer kernel init
+    proxy.outer_register[2] = 0x80812000 as usize; // 初始化 outer kernel的栈指针 
+    
 
     debug_info!("Ready to outer kernel.");
     unsafe{

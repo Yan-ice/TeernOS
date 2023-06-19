@@ -9,7 +9,7 @@ use super::__switch;
 use crate::timer::get_time_us;
 
 use crate::shared::*;
-use crate::util::o_memory_set::*;
+use crate::util::memory_set::*;
 
 use crate::task::manager::add_task;
 use crate::monitor::*;
@@ -37,6 +37,9 @@ struct ProcessorInner {
 }
 
 
+lazy_static! {
+    pub static ref PROCESSOR_LIST: [Processor; 2] = [Processor::new(),Processor::new()];
+}
 
 
 impl Processor {
@@ -168,17 +171,17 @@ impl Processor {
 
 pub fn run_tasks() {
     let core_id: usize = get_core_id();
-    crate::PROCESSOR_LIST()[core_id].run();
+    PROCESSOR_LIST[core_id].run();
 }
 
 pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
     let core_id: usize = get_core_id();
-    crate::PROCESSOR_LIST()[core_id].take_current()
+    PROCESSOR_LIST[core_id].take_current()
 }
 
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     let core_id: usize = get_core_id();
-    crate::PROCESSOR_LIST()[core_id].current()
+    PROCESSOR_LIST[core_id].current()
 }
 
 
@@ -203,39 +206,39 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 }
 
 pub fn print_core_info(){
-    debug_os!( "[core{}] pid = {}", 0, crate::PROCESSOR_LIST()[0].current().unwrap().getpid() );
-    debug_os!( "[core{}] pid = {}", 1, crate::PROCESSOR_LIST()[1].current().unwrap().getpid() );
+    debug_os!( "[core{}] pid = {}", 0, PROCESSOR_LIST[0].current().unwrap().getpid() );
+    debug_os!( "[core{}] pid = {}", 1, PROCESSOR_LIST[1].current().unwrap().getpid() );
 }
 
 // when trap return to user program, use this func to update user clock
 pub fn update_user_clock(){
     let core_id: usize = get_core_id();
-    crate::PROCESSOR_LIST()[core_id].update_user_clock();
+    PROCESSOR_LIST[core_id].update_user_clock();
 }
 
 // when trap into kernel, use this func to update kernel clock
 pub fn update_kernel_clock(){
     let core_id: usize = get_core_id();
-    crate::PROCESSOR_LIST()[core_id].update_kernel_clock();
+    PROCESSOR_LIST[core_id].update_kernel_clock();
 }
 
 // when trap into kernel, use this func to get time spent in user (it is duration not accurate time)
 pub fn get_user_runtime_usec() -> usize{
     let core_id: usize = get_core_id();
-    return get_time_us() - crate::PROCESSOR_LIST()[core_id].get_user_clock();
+    return get_time_us() - PROCESSOR_LIST[core_id].get_user_clock();
 }
 
 // when trap return to user program, use this func to get time spent in kernel (it is duration not accurate time)
 pub fn get_kernel_runtime_usec() -> usize{
     let core_id: usize = get_core_id();
-    return get_time_us() - crate::PROCESSOR_LIST()[core_id].get_kernel_clock();
+    return get_time_us() - PROCESSOR_LIST[core_id].get_kernel_clock();
 }
 
 
 //上下文切换，需要移入NestedKernel。
 pub fn schedule(switched_task_cx_ptr2: *const usize) {
     let core_id: usize = get_core_id();
-    let idle_task_cx_ptr2 = crate::PROCESSOR_LIST()[core_id].get_idle_task_cx_ptr2();
+    let idle_task_cx_ptr2 = PROCESSOR_LIST[core_id].get_idle_task_cx_ptr2();
     unsafe {
         __switch(
             switched_task_cx_ptr2, 

@@ -1,12 +1,15 @@
 
 use crate::debug_os;
 use crate::eokernel;
-use crate::shared::*;   
+use crate::shared::*;
+use crate::util::MmapArea;   
 
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 //use alloc::string::ToString;
 use alloc::vec::Vec;
-use crate::config::*; 
+use spin::Mutex;
+use crate::lazy_static; 
 use crate::task::AuxHeader;
 use crate::shared::*;
 
@@ -25,6 +28,16 @@ extern "C" {
 }
 
 
+lazy_static! {
+    pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> = Arc::new(Mutex::new(
+        MemorySet::new_kernel()
+    ));
+
+    pub static ref KERNEL_MMAP_AREA: Arc<Mutex<MmapArea>> = Arc::new(Mutex::new(
+        MmapArea::new(VirtAddr::from(KMMAP_BASE), VirtAddr::from(KMMAP_BASE))
+    ));
+
+}
 
 pub struct MemorySet {
     id: usize,   // 这个也找不到
@@ -161,7 +174,7 @@ impl MemorySet {
         self.areas.push(map_area);
     }
     
-    pub fn new_outer_kernel() -> Self {
+    pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
         // debug_os!("mapping outer kernel");
@@ -758,9 +771,13 @@ impl MapArea {
     
     // Alloc and map all pages
     pub fn map(&mut self, pt_handle: usize) {
-        for vpn in self.vpn_range {
-            self.map_one(pt_handle, vpn);
-        }
+        nkapi_alloc_mul(pt_handle, 
+            self.vpn_range.get_start(), 
+            self.vpn_range.get_end(), 
+            self.map_type, self.map_perm);
+        // for vpn in self.vpn_range {
+        //     self.map_one(pt_handle, vpn);
+        // }
     }
     pub fn unmap(&mut self, pt_handle: usize) {
         for vpn in self.vpn_range {

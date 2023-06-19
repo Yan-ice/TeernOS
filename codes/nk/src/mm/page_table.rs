@@ -289,9 +289,6 @@ impl PageTableRecord {
         let pte = &mut ppn.get_pte_array()[idxs[0]];
         *pte = *pte_kernel.unwrap();
 
-        let kernel_vpn:VirtPageNum = 0xb0000.into();
-        let idxs = kernel_vpn.indexes();
-
         // Yan_ice: TODO: problems about MMIO mapping.
         // It maps level 1 PTE (0x0 ~ 0x2000000) instead of level 3, which cause mistake.
 

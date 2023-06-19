@@ -304,7 +304,7 @@ pub fn sys_kill(pid: isize, signal: isize) -> isize {
     // send to child
     // ATTENTION: May cause deadlock, so hold initproc to avoid.(just as what func "exit" does)
     unsafe{
-        let initproc = crate::INITPROC();
+        let initproc = crate::task::INITPROC.clone();
         let mut initproc_inner = initproc.acquire_inner_lock();
         let mut inner = current_task.acquire_inner_lock();
         for child in inner.children.iter() {

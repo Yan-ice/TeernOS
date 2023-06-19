@@ -7,6 +7,7 @@ pub(crate) mod pid;
 mod info;
 mod resource;
 use crate::debug_os;
+use crate::lazy_static;
 use crate::fs::{open, OpenFlags, DiskInodeType, File};
 use crate::util::mm_util::{UserBuffer};
 use crate::gdb_print;
@@ -43,6 +44,14 @@ pub use pid::{PidHandle, pid_alloc, KernelStack};
 pub use task::AuxHeader;
 
 
+lazy_static! {
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new({
+        let inode = open("/","initproc", OpenFlags::RDONLY, DiskInodeType::File).unwrap();
+        let v = inode.read_all();
+        TaskControlBlock::new(v.as_slice())
+    });
+}
+
 pub fn suspend_current_and_run_next() -> isize{
     // There must be an application running.
     let task = current_task().unwrap();
@@ -68,7 +77,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     // debug_os!("exit 1");
     // Forbid more than one process exit (by acquiring lock of INITPROC)
     unsafe{
-        let initproc = crate::INITPROC();
+        let initproc = crate::task::INITPROC.clone();
         let mut initproc_inner = initproc.acquire_inner_lock();
         let task = take_current_task().unwrap();
         // debug_os!("strong count of pid{} = {}", task.pid.0, Arc::strong_count(&task));
@@ -93,7 +102,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
         // Change status to Zombie
         inner.task_status = TaskStatus::Zombie;
         inner.exit_code = exit_code;
-        let initproc = crate::INITPROC();
+        let initproc = crate::task::INITPROC.clone();
         for child in inner.children.iter() {
         
             child.acquire_inner_lock().parent = Some(Arc::downgrade(&initproc));
@@ -223,7 +232,7 @@ pub fn add_initproc_into_fs() {
 pub fn add_initproc() {
     add_initproc_into_fs();
     unsafe{
-        let initproc = crate::INITPROC();
+        let initproc = crate::task::INITPROC.clone();
         debug_os!("ready to clone initproc");
         let proc = initproc.clone();
         debug_os!("ready to add task");

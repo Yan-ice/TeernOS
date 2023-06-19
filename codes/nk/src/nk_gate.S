@@ -49,7 +49,7 @@ nk_entry:
     addi sp,sp,-30*8
     # store all registers
     .set n, 1
-    .rept 28
+    .rept 29
         SAVE_REGISTER %n
         .set n, n+1
     .endr
@@ -59,9 +59,25 @@ nk_entry:
     li x17, 9
     ecall
 
+    # #############################
+    # the code below is used to test. 
+    #
+    
+    # ###### Yan_ice: here stucked!
+    ld x11, 11*8(sp)
+    # ##### Yan_ice: cannot reach here!
+
+    ld x10, 64*8(x28)
+    li x17, 9
+    ecall
+
+    #
+    # test end.
+    # ##############################
+
     # load all registers
     .set n, 1
-    .rept 28
+    .rept 29
         LOAD_REGISTER %n
         .set n, n+1
     .endr

@@ -19,9 +19,6 @@ use trap::{user_trap_handler, user_trap_return};
 
 pub use trap_handle::nk_trap_handler_impl;
 
-use super::mm::{MemorySet, KERNEL_SPACE};
-
-
 extern "C"{
     fn nk_entry();
 }
