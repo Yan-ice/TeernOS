@@ -45,47 +45,12 @@ nk_entry:
     addi x30, x30, 1
     sd x30, 91*8(x28) # api level add 1 when entry
 
+    ld x29, 64*8(x28)
+    csrw satp, x29
 
-    addi sp,sp,-30*8
-    # store all registers
-    .set n, 1
-    .rept 29
-        SAVE_REGISTER %n
-        .set n, n+1
-    .endr
-
-    # WARN: Here actually context may harmed by ecall. (Potential bug)
-    ld x10, 64*8(x28)
-    li x17, 9
-    ecall
-
-    # #############################
-    # the code below is used to test. 
-    #
-    
-    # ###### Yan_ice: here stucked!
-    ld x11, 11*8(sp)
-    # ##### Yan_ice: cannot reach here!
-
-    ld x10, 64*8(x28)
-    li x17, 9
-    ecall
-
-    #
-    # test end.
-    # ##############################
-
-    # load all registers
-    .set n, 1
-    .rept 29
-        LOAD_REGISTER %n
-        .set n, n+1
-    .endr
-    addi sp,sp,30*8
-
-    li x28, 0
-    li x30, 0x3000
-    sub x28, x28, x30
+    # li x28, 0
+    # li x30, 0x3000
+    # sub x28, x28, x30
 
     # store all outer kernel registers to proxy, 包括栈指针
     .set n, 1
@@ -204,12 +169,8 @@ nk_exit:
     csrsi sstatus, 2
 
     # change satp  
-    ld x10, 65*8(x28)
-    li x17, 9
-    ecall
-    li x28, 0
-    li x30, 0x3000
-    sub x28, x28, x30
+    ld x29, 65*8(x28)
+    csrw satp, x29
 
     .set n, 1
     .rept 27

@@ -158,6 +158,14 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ));
 
+        debug_info!("mapping kernel stack space");
+        memory_set.push(MapArea::new(
+            (config::TRAP_CONTEXT/2).into(),
+            config::TRAP_CONTEXT.into(),
+            MapType::Identical,
+            MapPermission::R | MapPermission::W,
+        ));
+
         debug_info!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
             memory_set.push(MapArea::new(
