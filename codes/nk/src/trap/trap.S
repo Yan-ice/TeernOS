@@ -83,7 +83,7 @@ __delegate:
 
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
-    li x30, 0x1000
+    li x30, 0x3000
     sub x28, x28, x30
 
     # x10 is delegate target

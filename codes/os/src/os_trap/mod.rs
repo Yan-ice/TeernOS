@@ -34,7 +34,6 @@ use crate::config::{TRAP_CONTEXT, TRAMPOLINE};
 /// Main trap delegate handler in Outer Kernel.
 /// 
 pub fn trap_handler_delegate(ctx: *mut TrapContext){
-    debug_info!("Handling trap.");
     let scause: scause::Scause = scause::read();
     let stval = stval::read();
     unsafe{
