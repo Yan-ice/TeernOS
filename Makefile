@@ -28,6 +28,9 @@ all:
 build_sbi:
 	cd opensbi_nk && make
 	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
+	
+build_fs:
+	cd codes/os && make fat32
 
 env:
 	rustup update
@@ -36,12 +39,9 @@ env:
 	cd codes/os && make env
 	cd codes/nk && make env
 
-build_kernel:
+build_os: elf
 	cd codes/os && make build
 	cd codes/nk && make build
-
-build_os: build_kernel
-	cd codes/user && make elf
 
 gdb:
 	cd codes/os && make gdb
@@ -58,7 +58,7 @@ run_qemu: build_os
                 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
                 -device loader,file=$(OKERNEL_BIN),addr=$(OKERNEL_ENTRY_PA) \
                 -drive file=$(U_FAT32),if=none,format=raw,id=x0 \
-        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
+        	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
                 -smp threads=2
 
 
