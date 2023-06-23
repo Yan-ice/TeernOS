@@ -9,6 +9,8 @@ $(IMG_NAME):
 
 mnt:
 	mkdir mnt
+	
+content:
 	mkdir content
 
 mount: mnt $(IMG_NAME)
@@ -23,6 +25,7 @@ add_file:
 	make umount
 
 commit_file:
+	rm -f $(IMG_NAME)
 	make mount
 	sudo rm -rf ./mnt/*
 	sudo cp ./content/* ./mnt -r

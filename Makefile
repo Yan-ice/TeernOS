@@ -61,6 +61,16 @@ run_qemu: build_os
         	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
                 -smp threads=2
 
+run_myfs: build_os
+	@$(QEMU_SYSTEM) \
+                -machine virt \
+                -nographic \
+                -bios $(BOOTLOADER) \
+                -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
+                -device loader,file=$(OKERNEL_BIN),addr=$(OKERNEL_ENTRY_PA) \
+                -drive file=./fs_tool/fat.img,if=none,format=raw,id=x0 \
+        	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
+                -smp threads=2
 
 elf:
 	cd codes/user && make elf
