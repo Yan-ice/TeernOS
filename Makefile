@@ -31,11 +31,11 @@ build_sbi:
 	
 build_fs:
 	cd codes/os && make fat32
+	cd codes/fat32-fuse && sh qemu_fs.sh
 
 env:
 	rustup update
 	cargo install cargo-binutils
-	cd codes/fat32-fuse && sh qemu_fs.sh
 	cd codes/os && make env
 	cd codes/nk && make env
 

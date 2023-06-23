@@ -283,6 +283,7 @@ impl MemorySet {
         // let comment_sec = elf.find_section_by_name(".comment").unwrap();
         // debug_os!(".comment offset: {}", comment_sec.offset());
         
+        debug_info!("entry_point: {}",elf.header.pt2.entry_point());
 
         let magic = elf_header.pt1.magic;
         assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
