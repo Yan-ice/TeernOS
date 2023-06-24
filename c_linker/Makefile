@@ -1,12 +1,13 @@
-# GCC := riscv64-unknown-elf-gcc
-GCC := riscv64-unknown-linux-musl-gcc
+# GCCI := riscv64-unknown-elf-gcc
+GCC := riscv64-linux-gnu-gcc
 # FLAGS := -nostdlib -nostdinc ./cross/crt.S
-FLAGS := 
-TARGET ?= fstime.c
+FLAGS := -no-pie # -nostdinc -nostdlib
 
-build_c: $(TARGET)
-	$(GCC) $(FLAGS) ./cross/main.o  $(TARGET) -Ttext 0x1000 -T ./cross/user.ld
+CC_TARGET := test.o
+
+build_c: $(CC_TARGET)
+	$(GCC) $(FLAGS) $(CC_TARGET) -static -o ttst
 
 %.o: %.c
-	$(GCC) -o $@ $^ $(FLAGS)
+	$(GCC) -c -O2 -o $@ $^ $(FLAGS)
     

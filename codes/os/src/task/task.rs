@@ -528,6 +528,7 @@ impl TaskControlBlock {
             //trap_handler as usize,
             //Yan_ice: trap_handler
         );
+        debug_info!("ret address: {:x}", trap_cx.sepc);
         trap_cx.x[10] = args.len();
         trap_cx.x[11] = argv_base;
         trap_cx.x[12] = envp_base;
@@ -661,9 +662,7 @@ impl TaskControlBlock {
         } else {
             //Yan_ice: manage CoW
             // get the PageTableEntry that faults
-            debug_os!("lazy others");
             if let Some(ppn) = self.acquire_inner_lock().enquire_vpn(vpn,true) {
-                debug_os!("lazy_others - find ppn {:?}",ppn);
                 0
             }else{
 

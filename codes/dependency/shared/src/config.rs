@@ -36,7 +36,7 @@ pub const KERNEL_HEAP_SIZE: usize = PAGE_SIZE * 0x200;
 pub const NKSPACE_START: usize = 0x80200000;
 pub const NKSPACE_END: usize = 0x80800000;
 pub const OKSPACE_START: usize = 0x80800000;
-pub const OKSPACE_END: usize = 0x84000000;
+pub const OKSPACE_END: usize = 0x88000000;
 
 pub const KMMAP_BASE: usize = 0x90000000;
 pub const MMAP_BASE: usize = 0x60000000;

@@ -104,10 +104,11 @@ impl MmapArea {
                 self.mmap_top = VirtAddr::from(start);
             }
             self.mmap_set.remove(idx);
-            0
-        } else {
-            panic!{"No matched Mmap Space!"}
+            return 0;
         }
+
+        debug_warn!("No matched Mmap Space for {:x}!", start as usize);
+        return -1;
     }
 }
 

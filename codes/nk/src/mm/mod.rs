@@ -254,7 +254,7 @@ fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
     // find target pagetable
     pt_operate! (pt_handle, target_pt, {
         if target_pt.translate(vpn).is_none() {
-            debug_info!("WARN: entry not valid while setting permission.");
+            debug_warn!("PTE with {:?} not valid while setting permission.", vpn);
         }
         target_pt.set_pte_flags(vpn, flags);
         return;

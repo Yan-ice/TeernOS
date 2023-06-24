@@ -73,10 +73,10 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
         Trap::Exception(Exception::InstructionFault) |
         Trap::Exception(Exception::InstructionPageFault) => {
             let task = current_task().unwrap();
-            debug_os!{"pinInstructionFault"}
+            debug_info!{"pinInstructionFault"}
             //debug_os!("prev syscall = {}", G_SATP.lock().get_syscall());
             
-            debug_os!(
+            debug_info!(
                 "[kernel] {:?} in application-{}, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
                 task.pid.0,
@@ -96,23 +96,35 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             debug_os!("[kernel] IllegalInstruction in application, continue.");
             //let mut cx = current_trap_cx();
             //cx.sepc += 4;
-            debug_os!(
-                "         {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+            debug_info!(
+                "{:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
-                stval,
                 current_trap_cx().sepc,
+                stval
             );
             // illegal instruction exit code
             exit_current_and_run_next(-3);
         }
-        
+        //10011_011_01011_0000011
+        // LD x11, 0(x19)
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) |
         Trap::Exception(Exception::LoadPageFault) =>{
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-                debug_os!("cause: {:?}", scause.cause());
+                unsafe{
+                    if let Some(adr) = nkapi_translate_va(3, current_trap_cx().sepc.into()){
+                        debug_info!(
+                            "[kernel] {:?}, inst: {:x} at {:x}, addr: {:x}",
+                            scause.cause(),
+                            *(adr.0 as *const u32),
+                            adr.0,
+                            stval as usize
+                        );
+                    }
+                }
+                
                 is_load = true;
             } else {
                 is_load = false;
@@ -123,25 +135,39 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             if va > usize::MAX.into() {
                 panic!("VirtAddr out of range!");
             }
-
-            let lazy = current_task().unwrap().check_lazy(va, is_load);
-            if lazy != 0 {
-                // page fault exit code
-                let current_task = current_task().unwrap();
-                if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-                    // current_task.acquire_inner_lock().memory_set.print_pagetable();
-                    debug_os!(
-                        "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-                        scause.cause(),
-                        stval,
-                        current_trap_cx().sepc,
+            
+            unsafe{
+                if let Some(adr) = nkapi_translate_va(3, va){
+                    debug_info!(
+                        "[kernel] dumped. {:} => {:x}",
+                        va.0,
+                        adr.0
                     );
                     drop(current_task);
                     exit_current_and_run_next(-2);
+                }else{
+                    current_task().unwrap().acquire_inner_lock()
+                        .memory_set.insert_framed_area(va, (va.0+PAGE_SIZE*10).into(), 
+                        MapPermission::R | MapPermission::W | MapPermission::U);
+                    current_trap_cx().sepc += 4;
                 }
             }
-        
-            debug_os!{"Trap solved..."}
+            // let lazy = current_task().unwrap().check_lazy(va, is_load);
+            // if lazy != 0 {
+            //     // page fault exit code
+            //     let current_task = current_task().unwrap();
+            //     if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
+            //         // current_task.acquire_inner_lock().memory_set.print_pagetable();
+            //         debug_info!(
+            //             "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+            //             scause.cause(),
+            //             stval,
+            //             current_trap_cx().sepc,
+            //         );
+            //         drop(current_task);
+            //         exit_current_and_run_next(-2);
+            //     }
+            // }
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             debug_os!{"pinTimer"}

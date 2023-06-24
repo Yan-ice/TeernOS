@@ -190,7 +190,7 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
 pub fn nkapi_alloc_mul(pt_handle: usize, vpn_start: VirtPageNum, vpn_end: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{
     let retval0: usize;
     let retval1: usize;
-    let size = vpn_end.0 - vpn_start.0;
+    let size = vpn_end.0 - vpn_start.0 + 1;
     entry_gate!(NKAPI_ALLOC, pt_handle, vpn_start, size, usize::from(map_type), perm, 
     retval0, retval1);
     return retval0.into();

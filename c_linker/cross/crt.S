@@ -1,5 +1,5 @@
 .section .text.entry
-.globl _start
-_start:
+.globl _my_start
+_my_start:
     mv a0, sp
-    tail __start_main
+    j main

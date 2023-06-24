@@ -283,7 +283,7 @@ impl MemorySet {
         // let comment_sec = elf.find_section_by_name(".comment").unwrap();
         // debug_os!(".comment offset: {}", comment_sec.offset());
         
-        debug_info!("entry_point: {}",elf.header.pt2.entry_point());
+        debug_info!("entry_point: 0x{:x}",elf.header.pt2.entry_point());
 
         let magic = elf_header.pt1.magic;
         assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
@@ -312,23 +312,26 @@ impl MemorySet {
 
         for ph in elf.program_iter(){
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
+                debug_info!("[elf] ====================");
+                debug_info!("[elf] source: from 0x{:X} to 0x{:X}", ph.offset(), ph.offset() + ph.file_size());
+                
                 let start_va: VirtAddr = (ph.virtual_addr() as usize).into();
                 let end_va: VirtAddr = ((ph.virtual_addr() + ph.mem_size()) as usize).into();
-                let offset = start_va.0 - start_va.floor().0 * PAGE_SIZE;
-
+                debug_info!("[elf] target: from 0x{:X} to 0x{:X}", start_va.0, end_va.0);
+                
                 if start_va.0 == 0{
                     comment_flag = false;
                 } 
 
-                //debug_os!("[elf] ph={:?}", ph.to_string());
-                let mut map_perm = MapPermission::U;
+                //debug_info!("[elf] ph={:?}", ph);
+                let mut map_perm = MapPermission::U | MapPermission::R | MapPermission::W | MapPermission::X;
                 let ph_flags = ph.flags();
                 if ph_flags.is_read() { map_perm |= MapPermission::R; }
                 if ph_flags.is_write() { map_perm |= MapPermission::W; }
                 if ph_flags.is_execute() { map_perm |= MapPermission::X; }
 
-                //debug_os!("[elf] start_va = 0x{:X}; end_va = 0x{:X}, offset = 0x{:X} perm = {:?}", 
-                //        ph.virtual_addr() as usize, ph.virtual_addr() + ph.mem_size(), offset, map_perm);
+                debug_info!("[elf] start_vpn = 0x{:?}; end_pn = 0x{:?}; perm = {:?}", 
+                        start_va.floor(), end_va.floor(), map_perm);
                 
                 let map_area = MapArea::new(
                     start_va,
@@ -336,20 +339,23 @@ impl MemorySet {
                     MapType::Framed,
                     map_perm,
                 );
-                //debug_os!("[elf] map elfinput:\n    from 0x{:X} to 0x{:X}", ph.offset(), ph.offset() + ph.file_size());
+                debug_info!("[elf] writing datas into memory: from 0x{:X} to 0x{:X}", ph.offset(), ph.offset() + ph.file_size());
                 max_end_vpn = map_area.vpn_range.get_end();
                 
-                if offset == 0 {
+                let page_offset = start_va.0 - start_va.floor().0 * PAGE_SIZE;
+
+                let source_data = Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize]);
+                if page_offset == 0 {
                     head_va = start_va.into();
                     memory_set.push_mmap( 
                         map_area,
-                        Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize])
+                        source_data
                     );
                 } else {
                     memory_set.push_with_offset( 
                         map_area,
-                        offset,
-                        Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize])
+                        page_offset,
+                        source_data
                     );
                 }
             }

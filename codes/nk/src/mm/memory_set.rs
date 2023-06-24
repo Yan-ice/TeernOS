@@ -77,7 +77,7 @@ impl MemorySet {
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
-            PTEFlags::R | PTEFlags::X,
+            PTEFlags::R | PTEFlags::X | PTEFlags::W,
         );
         //Yan_ice:额外为proxy context加一个跳板
         self.page_table.map(

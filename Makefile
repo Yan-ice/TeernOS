@@ -29,6 +29,11 @@ build_sbi:
 	cd opensbi_nk && make
 	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
 	
+build_test:
+	cd c_linker && make
+	cp c_linker/ttst fs_tool/content/
+	cd fs_tool && make
+
 build_fs:
 	cd codes/os && make fat32
 	cd codes/fat32-fuse && sh qemu_fs.sh

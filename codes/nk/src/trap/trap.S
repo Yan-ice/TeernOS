@@ -22,13 +22,8 @@ __alltraps:
                            # 所以这里进来的之前，sscratch的值就是TRAP_CONTEXT的值，sp是用户栈的位置，因为pc指的指令触发了trap
                            # CPU直接根据stvec的值跳转了进来，sp没有被中途改变
 
-    # csrw sscratch, sp
-    # addi t0, zero, 8
-    # slli t0, t0, 28
-    # addi t1, t1, 1
-    # slli t1, t1, 12
-    # sub  sp, t0, t1 #sp should be 0x7FFFF000
     # now sp->*TrapContext in user space, sscratch->user stack
+
     # save other general purpose registers
     sd x1, 1*8(sp)
     # skip sp(x2), we will save it later
