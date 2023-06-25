@@ -76,15 +76,7 @@ $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 #	@$(OBJDUMP) -S $(KERNEL_ELF) > $(KERNEL_ELF).S
 
-$(APPS):
-
-fat32: 
-	./buildfs.sh
-
-fsimg-format:
-	sudo mkfs.vfat -F 32 ${U_FAT32}
-
-kernel: fat32
+kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
 	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"

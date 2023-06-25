@@ -35,8 +35,9 @@ build_test:
 	cd fs_tool && make
 
 build_fs:
-	cd codes/os && make fat32
-	cd codes/fat32-fuse && sh qemu_fs.sh
+	# cd codes/os && make fat32
+	# cd codes/fat32-fuse && sh qemu_fs.sh
+	cd fs_tool && make
 
 env:
 	rustup update
@@ -55,16 +56,16 @@ monitor:
 	cd codes/os && make monitor
 
 
-run_qemu: build_os
-	@$(QEMU_SYSTEM) \
-                -machine virt \
-                -nographic \
-                -bios $(BOOTLOADER) \
-                -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
-                -device loader,file=$(OKERNEL_BIN),addr=$(OKERNEL_ENTRY_PA) \
-                -drive file=$(U_FAT32),if=none,format=raw,id=x0 \
-        	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
-                -smp threads=2
+run_qemu: run_myfs
+	# @$(QEMU_SYSTEM) \
+        #        -machine virt \
+        #        -nographic \
+        #        -bios $(BOOTLOADER) \
+        #        -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
+        #        -device loader,file=$(OKERNEL_BIN),addr=$(OKERNEL_ENTRY_PA) \
+        #        -drive file=$(U_FAT32),if=none,format=raw,id=x0 \
+        #	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
+        #        -smp threads=2
 
 run_myfs: build_os
 	@$(QEMU_SYSTEM) \
