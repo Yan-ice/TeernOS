@@ -141,8 +141,6 @@ fn nkapi_time() -> usize {
 }
 
 fn check_valid(ppn: PhysPageNum) -> bool{
-    return true;
-    
     if ppn.0 >= 0x80000 && ppn.0 < 0x80800{
         debug_error!("No permission to access {:?}", ppn);
         return false;

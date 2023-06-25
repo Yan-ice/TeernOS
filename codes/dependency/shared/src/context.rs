@@ -36,7 +36,7 @@ impl TrapContext {
                 sstatus,
                 sepc: entry,
                 kernel_sp,
-                trap_handler: PROXYCONTEXT().usr_trap_handler
+                trap_handler: TRAMPOLINE
             };
             cx.set_sp(sp);
             cx
@@ -66,7 +66,7 @@ pub struct ProxyContext{
     pub nkapi_enable: usize,
 
     //_+92*8
-    pub usr_trap_handler: usize,
+    pub usr_trap_handler_ABANDONED: usize,
     pub usr_trap_return: usize,
 
     //94*8

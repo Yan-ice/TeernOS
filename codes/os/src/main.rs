@@ -125,13 +125,13 @@ pub fn outer_kernel_init(){
     
     debug_os!("Outer Kernel: attack test.");
     
-    // satp::write(0);
+    satp::write(0);
 
-    // nkapi_alloc(0, 0x80201.into(), 
-    // MapType::Identical, MapPermission::W);
+    nkapi_alloc(0, 0x80201.into(), 
+    MapType::Identical, MapPermission::W);
 
-    // nkapi_alloc(0, 0x80600.into(), 
-    // MapType::Specified(0x80202.into()), MapPermission::W);
+    nkapi_alloc(0, 0x80600.into(), 
+    MapType::Specified(0x80202.into()), MapPermission::W);
     
     debug_os!("UltraOS: run tasks");
 

@@ -96,11 +96,6 @@ pub fn nk_main(){
     //init page for outer kernel.
     
     nkapi_pt_init(0, false);
-    nkapi_alloc_mul(0, 
-        VirtAddr(config::NKSPACE_START).into(), 
-        VirtAddr(config::NKSPACE_END).into(), 
-        MapType::Identical, 
-        MapPermission::R | MapPermission::W | MapPermission::X);
 
     nkapi_alloc_mul(0, 
         VirtAddr(config::OKSPACE_START).into(), 
