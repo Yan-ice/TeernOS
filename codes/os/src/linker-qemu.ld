@@ -44,9 +44,6 @@ SECTIONS
         *(.eh_frame)
     }
 
-    outer_static = .;
-    . = .+4K;
-
     eokernel = .;
 
     /* . = 0x88000000; */

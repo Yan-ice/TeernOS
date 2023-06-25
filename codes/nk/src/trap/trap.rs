@@ -48,7 +48,7 @@ pub fn user_trap_handler(trap_ctx: *mut TrapContext) -> ! {
         }
 
         Trap::Exception(Exception::UserEnvCall) => {
-
+            //println!("syscall is {:x}",scause.bits());
             if ctx.x[17] == usize::MAX {
 
                 //some special syscall can be designed, for let NK handle user's requirement instead of OS.

@@ -129,9 +129,6 @@ pub fn init_vec(){
 
 }
 
-
-
-
 fn nkapi_time() -> usize {
     let mut time:usize = 0;
     unsafe{
@@ -143,7 +140,15 @@ fn nkapi_time() -> usize {
     time
 }
 
-
+fn check_valid(ppn: PhysPageNum) -> bool{
+    return true;
+    
+    if ppn.0 >= 0x80000 && ppn.0 < 0x80800{
+        debug_error!("No permission to access {:?}", ppn);
+        return false;
+    }
+    return true;
+}
 
 pub fn pt_current() -> usize {
     CURRENT_PT.lock().as_ref().clone()
@@ -247,7 +252,6 @@ fn nkapi_pt_init(pt_handle: usize, re_generate: bool){
 //             parent = Some(i);
 //         }
 //     }
-
 // }
 
 fn nkapi_set_permission(pt_handle: usize, vpn: VirtPageNum, flags: usize){
@@ -309,11 +313,16 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
                     target_ppn = ppn;
                 }
             }
+            
             if i == 0{
                 first_ppn = target_ppn;
             }
+
             // get target ppn
-        
+            if !check_valid(target_ppn) {
+                return PhysPageNum(0);
+            }
+
             //clean the page frame
             if map_type == MapType::Framed{
                 let bytes_array = target_ppn.get_bytes_array();

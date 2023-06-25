@@ -48,7 +48,6 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
     //trap到outer kernel时，切换为kernel trap。
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) =>{
-            //debug_os!{"pinUserEnvCall"}
             // jump to next instruction anyway
             // let mut cx = current_trap_cx();
             cx.sepc += 4;

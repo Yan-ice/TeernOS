@@ -28,6 +28,7 @@ mod heap_allocator;
 
 use crate::{config::*};
 use lazy_static::lazy_static;
+use riscv::register::satp;
 use sbi::sbi_send_ipi;
 use spin::*;
 use alloc::sync::Arc;
@@ -121,6 +122,16 @@ pub fn outer_kernel_init(){
     sbi_send_ipi(&mask as *const usize as usize);
     // CORE2_FLAG.lock().set_in();
     //test();
+    
+    debug_os!("Outer Kernel: attack test.");
+    
+    // satp::write(0);
+
+    // nkapi_alloc(0, 0x80201.into(), 
+    // MapType::Identical, MapPermission::W);
+
+    // nkapi_alloc(0, 0x80600.into(), 
+    // MapType::Specified(0x80202.into()), MapPermission::W);
     
     debug_os!("UltraOS: run tasks");
 

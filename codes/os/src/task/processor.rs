@@ -90,7 +90,7 @@ impl Processor {
                 // True: switch
                 // False: return to current task, don't switch
                 if let Some(task) = fetch_task() {
-                    //debug_os!("[processor] switch to next task.");
+                    debug_os!("[processor] switch to next task.");
                     let mut next_task_inner = task.acquire_inner_lock();
                     // task_inner.memory_set.activate();// change satp
                     let next_task_cx_ptr2 = next_task_inner.get_task_cx_ptr2();
@@ -123,7 +123,7 @@ impl Processor {
                     }
                 }
                 else{
-                    //debug_os!("[processor] keep the same task.");  //想主动切换但是没有可换的
+                    debug_os!("[processor] keep the same task.");  //想主动切换但是没有可换的
                     drop(current_task_inner);
                     self.inner.borrow_mut().current = Some(current_task);
                     unsafe {
@@ -137,7 +137,7 @@ impl Processor {
             // False: First time to fetch a task
             } else {
                 // Keep fetching
-                //debug_os!("[processor] First fetch (kernel trick).");  
+                debug_os!("[processor] First fetch (kernel trick).");  
  
                 if let Some(task) = fetch_task() {
                     // acquire

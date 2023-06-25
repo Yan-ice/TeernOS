@@ -177,36 +177,23 @@ impl MemorySet {
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare(0);
 
-        // debug_os!("mapping outer kernel");
+        debug_info!("mapping outer kernel");
 
-        // map trampoline
-        // memory_set.map_trampoline();  //映射trampoline
-        // map kernel sections
-
-        debug_os!("mapping nk space (readonly)");
-        // memory_set.push(MapArea::new(
-        //     (NKSPACE_START as usize).into(),
-        //     NKSPACE_END.into(),
-        //     MapType::Identical,
-        //     MapPermission::R | MapPermission::W | MapPermission::X,
-        // ), None);
-
-
-        //debug_os!("mapping .text section");
+        debug_info!("mapping .text section");
         memory_set.push(MapArea::new(
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::X,
         ), None);
-        // debug_os!("mapping .rodata section");
+        debug_info!("mapping .rodata section");
         memory_set.push(MapArea::new(
             (srodata as usize).into(),
             (erodata as usize).into(),
             MapType::Identical,
             MapPermission::R,
         ), None);
-        // debug_os!("mapping .data section");
+        debug_info!("mapping .data section");
         memory_set.push(MapArea::new(
             (sdata as usize).into(),
             (edata as usize).into(),
@@ -214,13 +201,12 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ), None);
 
-        // debug_os!("mapping .bss section");
+        debug_info!("mapping .bss section");
         memory_set.push(MapArea::new(
             (sbss_with_stack as usize).into(),
             (ebss as usize).into(),
             MapType::Identical,
             MapPermission::R | MapPermission::W, 
-            //temporiliy cannot be readonly
         ), None);
 
         // debug_os!("mapping heap");
@@ -249,11 +235,6 @@ impl MemorySet {
             ), None);
         }
 
-        // debug_os!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        // debug_os!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        // debug_os!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        // debug_os!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        //debug_os!("okheap [{:#x}, {:#x})", sokheap as usize, eokheap as usize);
         memory_set
 
     }
