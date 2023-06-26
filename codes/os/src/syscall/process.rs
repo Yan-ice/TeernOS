@@ -62,6 +62,7 @@ pub fn sys_get_time_of_day(time: *mut u64) -> isize {
     let usec = ((ticks%CLOCK_FREQ) * USEC_PER_SEC / CLOCK_FREQ) as u64;
     *translated_refmut(token, time) = sec ;
     *translated_refmut(token, unsafe { time.add(1) }) = usec;
+    //debug_info!("get time success.");
     0
 
 }

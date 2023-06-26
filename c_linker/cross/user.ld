@@ -2,12 +2,15 @@ OUTPUT_ARCH(riscv)
 ENTRY(_my_start)
 
 SECTIONS {
-    
+    .init :{
+    	KEEP (*(SORT_NONE(.init)))
+    }
     .text : { 
         *(.text.entry)
         *(.text .text.*)
     }
 
+    
     .bss : { 
         *(.bss .bss.*)
         *(.sbss .sbss.*)

@@ -30,3 +30,5 @@ shared = { path = "../dependency/shared"}
 [features]
 board_qemu = []
 board_k210 = []
+gnu = []
+musl = []

@@ -7,14 +7,26 @@
 
 #[macro_use]
 pub mod console;
-mod syscall;
 mod lang_items;
+
+
+#[cfg(feature = "musl")]
+mod sys_musl;
+
+#[cfg(feature = "musl")]
+pub use sys_musl::*;
+
+#[cfg(feature = "gnu")]
+mod sys_gnu;
+
+#[cfg(feature = "gnu")]
+pub use sys_gnu::*;
+
 
 extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 
-use syscall::*;
 use buddy_system_allocator::LockedHeap;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Formatter};

@@ -79,7 +79,7 @@ $(KERNEL_BIN): kernel
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"
+	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)" --features "$(C_TARGET)"
 	@rm src/linker.ld 
 
 clean:

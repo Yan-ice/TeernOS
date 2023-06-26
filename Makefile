@@ -2,6 +2,7 @@ export cwd := $(shell pwd)
 export TARGET := riscv64imac-unknown-none-elf
 export MODE ?= release
 
+export C_TARGET ?= musl
 
 export QEMU_SYSTEM := $(cwd)/qemu_old/qemu-system-riscv64
 export BOOTLOADER := $(cwd)/codes/bootloader/fw_jump.bin
@@ -30,7 +31,7 @@ build_sbi:
 	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
 	
 build_test:
-	rm -f c_linker/fstime.o
+	rm -f c_linker/*.o
 	cd c_linker && make
 	cp c_linker/ttst fs_tool/content/
 	cd fs_tool && make
@@ -44,7 +45,7 @@ env:
 	cd codes/os && make env
 	cd codes/nk && make env
 
-build_os: elf
+build_os: elf build_fs
 	cd codes/os && make build
 	cd codes/nk && make build
 
