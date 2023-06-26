@@ -10,7 +10,7 @@ use riscv::{register::{
     stvec, hpmcounter21::read, sstatus::Sstatus, sie
 }, addr::BitField};
 
-use crate::shared::*;
+use crate::{shared::*, task::current_user_id};
 use crate::config::*;
 use crate::timer::set_next_trigger;
 
@@ -113,7 +113,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
                 unsafe{
-                    if let Some(adr) = nkapi_translate_va(3, current_trap_cx().sepc.into()){
+                    if let Some(adr) = nkapi_translate_va(current_user_id(), current_trap_cx().sepc.into()){
                         debug_info!(
                             "[kernel] {:?}, inst: {:x} at {:x}, addr: {:x}",
                             scause.cause(),
@@ -136,7 +136,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             }
             
             unsafe{
-                if let Some(adr) = nkapi_translate_va(3, va){
+                if let Some(adr) = nkapi_translate_va(current_user_id(), va){
                     debug_info!(
                         "[kernel] dumped. {:x} => {:x}",
                         va.0,

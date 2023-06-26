@@ -6,7 +6,7 @@ export MODE ?= release
 export QEMU_SYSTEM := $(cwd)/qemu_old/qemu-system-riscv64
 export BOOTLOADER := $(cwd)/codes/bootloader/fw_jump.bin
 
-export U_FAT32 := $(cwd)/codes/fat32-fuse/fat32.img
+export U_FAT32 := $(cwd)/fs_tool/fat.img
 
 export OS_PATH := $(cwd)/codes/os
 export NK_PATH := $(cwd)/codes/nk
@@ -30,13 +30,12 @@ build_sbi:
 	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
 	
 build_test:
+	rm -f c_linker/fstime.o
 	cd c_linker && make
 	cp c_linker/ttst fs_tool/content/
 	cd fs_tool && make
 
 build_fs:
-	# cd codes/os && make fat32
-	# cd codes/fat32-fuse && sh qemu_fs.sh
 	cd fs_tool && make
 
 env:
@@ -74,7 +73,7 @@ run_myfs: build_os
                 -bios $(BOOTLOADER) \
                 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA) \
                 -device loader,file=$(OKERNEL_BIN),addr=$(OKERNEL_ENTRY_PA) \
-                -drive file=./fs_tool/fat.img,if=none,format=raw,id=x0 \
+                -drive file=$(U_FAT32),if=none,format=raw,id=x0 \
         	-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0\
                 -smp threads=2
 

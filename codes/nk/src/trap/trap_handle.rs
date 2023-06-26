@@ -1,3 +1,5 @@
+const SYSCALL_GETKEY: usize = 401;
+
 use riscv::register::{
     mtvec::TrapMode,
     scause::{
