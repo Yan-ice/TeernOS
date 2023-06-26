@@ -16,11 +16,13 @@ use crate::config::*;
 ///
 /// trap in NK would be handled here.
 /// 
-pub fn nk_trap_handler_impl(ctx: &TrapContext) {
-    let scause: scause::Scause = scause::read();
-    let stval = stval::read();
+pub fn nk_trap_handler_impl(ctx: &TrapContext) -> usize {
+    let call_id: usize = ctx.x[17];
+    // let scause: scause::Scause = scause::read();
+    // let stval = stval::read();
 
-    panic!{"Nothing need to handle now..."}
+    debug_warn!("Nothing need to handle now... for syscall id [{}]", call_id);
+    return 0;
 }
 
 

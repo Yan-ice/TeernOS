@@ -43,7 +43,7 @@ pub fn trap_handler_delegate(ctx: *mut TrapContext){
 }
 
 fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize){
-
+    
     //TODO: entry gate
     //trap到outer kernel时，切换为kernel trap。
     match scause.cause() {
@@ -98,7 +98,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             debug_info!(
                 "{:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
                 scause.cause(),
-                current_trap_cx().sepc,
+                cx.sepc,
                 stval
             );
             // illegal instruction exit code
@@ -138,7 +138,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             unsafe{
                 if let Some(adr) = nkapi_translate_va(3, va){
                     debug_info!(
-                        "[kernel] dumped. {:} => {:x}",
+                        "[kernel] dumped. {:x} => {:x}",
                         va.0,
                         adr.0
                     );
@@ -148,7 +148,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
                     current_task().unwrap().acquire_inner_lock()
                         .memory_set.insert_framed_area(va, (va.0+PAGE_SIZE*10).into(), 
                         MapPermission::R | MapPermission::W | MapPermission::U);
-                    current_trap_cx().sepc += 4;
+                    cx.sepc += 4;
                 }
             }
             // let lazy = current_task().unwrap().check_lazy(va, is_load);

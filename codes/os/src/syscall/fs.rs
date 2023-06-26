@@ -68,7 +68,7 @@ pub fn sys_writev(fd:usize, iov_ptr: usize, iov_num:usize)->isize{
     let iov_head = iov_ptr as *mut IoVec;
     
     let token = current_user_token();
-    debug_os!("[debug] current pagetable id: {}",token);
+  
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
     if fd >= inner.fd_table.len() {

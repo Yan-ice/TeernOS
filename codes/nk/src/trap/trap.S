@@ -67,10 +67,10 @@ __alltraps:
     li t4, 8
     bne t3, t4, __delegate
     
-    # here if syscall id is not a specified number, delegate.
+    # here if syscall id is smaller than 400, delegate.
     ld t3, 17*8(a0)
-    li t4, 0xffff
-    bne t3, t4, __delegate
+    li t4, 400
+    blt t3, t4, __delegate
 
     # nkapi call.
     mv a1, a0 # param0: ctx: *TrapContext
