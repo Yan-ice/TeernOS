@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(llvm_asm)]
 #![feature(asm)]
 #![feature(global_asm)]
 

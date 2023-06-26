@@ -107,6 +107,13 @@ char    *argv[];
     /* The type of test to run. */
     char test = 'c';
 
+
+    char *my_c = "here\n\0";
+
+    unsigned long long my_a = (unsigned long long)my_c;
+
+    asm("li a7, 64 \n\t li a0, 1 \n\t mv a1, %0 \n\t li a2, 4 \n\t ecall"::"r"(my_a));
+
     int status;
     int i;
 

@@ -2,20 +2,13 @@ mod trap_handle;
 
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{
-        self,
-        Trap,
-        Exception,
-        Interrupt,
-    },
     sie,
-    stval,
     stvec
 };
-use crate::config::*;
 use crate::shared::*;
 
 pub use trap_handle::nk_trap_handler_impl;
+use core::arch::global_asm;
 
 global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));

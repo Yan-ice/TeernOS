@@ -62,7 +62,7 @@ const SYSCALL_RENAMEAT2: usize = 276;
 const SYSCALL_LS: usize = 500;
 const SYSCALL_SHUTDOWN: usize = 501;
 const SYSCALL_CLEAR: usize = 502;
-
+// use core::arch::asm;
 use alloc::string::String;
 use super::TimeVal;
 
@@ -74,11 +74,12 @@ use super::TimeVal;
 fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
     unsafe {
-        llvm_asm!("ecall"
-            : "={x10}" (ret)
-            : "{x10}" (args[0]), "{x11}" (args[1]), "{x12}" (args[2]), "{x17}" (id)
-            : "memory"
-            : "volatile"
+        core::arch::asm!(
+            "ecall",
+            inlateout("x10") args[0] => ret,
+            in("x11") args[1],
+            in("x12") args[2],
+            in("x17") id
         );
     }
     ret
@@ -132,9 +133,7 @@ pub fn sys_yield() -> isize {
 }
 
 pub fn sys_get_time(time:&mut TimeVal) -> isize {
-    unsafe{
-        syscall(SYSCALL_GET_TIME_OF_DAY, [time as *mut TimeVal as usize, 0, 0])
-    }    
+    syscall(SYSCALL_GET_TIME_OF_DAY, [time as *mut TimeVal as usize, 0, 0])
 }
 
 pub fn sys_getpid() -> isize {

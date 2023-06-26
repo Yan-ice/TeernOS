@@ -1,7 +1,7 @@
 # Building
 
 QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
-TARGET := riscv64imac-unknown-none-elf
+TARGET := riscv64gc-unknown-none-elf
 MODE ?= release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/TeernOS_nk
 KERNEL_BIN := $(KERNEL_ELF).bin
@@ -57,13 +57,11 @@ DISASM ?= -x
 build: $(KERNEL_BIN)
 
 env:
-	rustup override set nightly-2021-05-09
-	(rustup target list | grep "riscv64imac-unknown-none-elf (installed)") || rustup target add $(TARGET)
+	rustup override set nightly-2023-06-25
+	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
 	rustup component add rust-src
 	rustup component add llvm-tools-preview
 
-#(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
-#cargo install cargo-binutils
 	
 
 # dev/zero永远输出0
@@ -80,7 +78,8 @@ $(KERNEL_BIN): kernel
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"
+# @cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)"
+	@cargo build $(FLAG) --features "board_$(BOARD)"
 	@echo kernel build over
 	@rm src/linker.ld 
 

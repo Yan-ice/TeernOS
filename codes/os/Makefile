@@ -1,7 +1,7 @@
 # Building
 
 QEMU_SYSTEM ?= ../../qemu_old/qemu-system-riscv64 
-TARGET := riscv64imac-unknown-none-elf
+TARGET := riscv64gc-unknown-none-elf
 MODE ?= release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/UltraOS
 KERNEL_BIN := $(KERNEL_ELF).bin
@@ -57,8 +57,8 @@ DISASM ?= -x
 build: $(KERNEL_BIN)
 
 env:
-	rustup override set nightly-2021-05-09
-	(rustup target list | grep "riscv64imac-unknown-none-elf (installed)") || rustup target add $(TARGET)
+	rustup override set nightly-2023-06-25
+	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
 	rustup component add rust-src
 	rustup component add llvm-tools-preview
 
@@ -79,7 +79,8 @@ $(KERNEL_BIN): kernel
 kernel:
 	@echo Platform: $(BOARD)
 	@cp src/linker-$(BOARD).ld src/linker.ld
-	@cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)" --features "$(C_TARGET)"
+# @cargo build $(FLAG) -Z namespaced-features --features "board_$(BOARD)" --features "$(C_TARGET)"
+	@cargo build $(FLAG) --features "board_$(BOARD)" --features "$(C_TARGET)"
 	@rm src/linker.ld 
 
 clean:
@@ -109,7 +110,7 @@ endif
 
 
 monitor:
-	riscv64-unknown-elf-gdb -ex 'file target/riscv64imac-unknown-none-elf/release/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+	riscv64-unknown-elf-gdb -ex 'file target/riscv64gc-unknown-none-elf/release/UltraOS' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
 gdb: build
 	@$(QEMU_SYSTEM) -machine virt -nographic -bios $(BOOTLOADER) -device loader,\

@@ -8,13 +8,14 @@ use riscv::{register::{
     },
     stval,
     stvec, hpmcounter21::read, sstatus::Sstatus, sie
-}, addr::BitField};
+}};
 
 use crate::{shared::*, task::current_user_id};
 use crate::config::*;
 use crate::timer::set_next_trigger;
 
-use crate::syscall::{syscall};
+use crate::syscall::sys_musl::syscall;
+
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,

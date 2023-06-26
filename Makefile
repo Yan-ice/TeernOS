@@ -1,5 +1,5 @@
 export cwd := $(shell pwd)
-export TARGET := riscv64imac-unknown-none-elf
+export TARGET := riscv64gc-unknown-none-elf
 export MODE ?= release
 
 export C_TARGET ?= musl
@@ -26,9 +26,6 @@ all:
 	cd codes/user && make elf
 	cd codes/os && make release BOARD=k210
 
-build_sbi:
-	cd opensbi_nk && make
-	cp opensbi_nk/build/platform/generic/firmware/fw_jump.bin codes/bootloader/
 	
 build_test:
 	rm -f c_linker/*.o
@@ -83,3 +80,8 @@ elf:
 
 os:
 	cd codes/os && make run
+
+clean:
+	cd codes/os && make clean
+	cd codes/user && make clean
+	cd codes/nk && make clean

@@ -22,7 +22,8 @@ pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'sta
                 current_task().unwrap().check_lazy(start_va, true);
                 unsafe {
                     // llvm_asm!("sfence.vma" :::: "volatile");
-                    llvm_asm!("fence.i" :::: "volatile");
+                    // llvm_asm!("fence.i" :::: "volatile");
+                    core::arch::asm!("fence.i", options(nostack, nomem, preserves_flags));
                 }
                 //debug_os!{"preparing into checking lazy..."}
             }
@@ -76,7 +77,7 @@ pub fn translated_refmut<T>(pt_handle: usize, ptr: *mut T) -> &'static mut T {
         current_task().unwrap().check_lazy(vaddr,true);
         unsafe {
             // llvm_asm!("sfence.vma" :::: "volatile");
-            llvm_asm!("fence.i" :::: "volatile");
+            core::arch::asm!("fence.i", options(nostack, nomem, preserves_flags));
         }
     }
     // print!("[translated_refmut pa:{:?}]",pa);

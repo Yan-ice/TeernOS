@@ -18,13 +18,13 @@ spin = "0.7.0"
 bitflags = "1.2.1"
 xmas-elf = "0.7.0"
 simple-fat32 = { path = "../simple_fat32" }
-embedded-hal = "=1.0.0-alpha.1"
-nb = "1"
-riscv = { path = "../dependency/riscv", features = ["inline-asm"] }
+# embedded-hal = "=1.0.0-alpha.1"
+# nb = "1"
+riscv = { git = "https://github.com/rust-embedded/riscv.git" }
 virtio-drivers = { path = "../dependency/virtio-drivers" }
-k210-pac = { path = "../dependency/k210-pac" }
-k210-hal = { path = "../dependency/k210-hal" }
-k210-soc = { path = "../dependency/k210-soc" }
+# k210-pac = { path = "../dependency/k210-pac" }
+# k210-hal = { path = "../dependency/k210-hal" }
+# k210-soc = { path = "../dependency/k210-soc" }
 shared = { path = "../dependency/shared"}
 
 [features]

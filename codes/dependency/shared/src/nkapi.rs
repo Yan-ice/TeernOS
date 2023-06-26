@@ -2,7 +2,7 @@ use crate::address::*;
 use crate::config::*;
 use crate::context::*;
 use crate::flags::*;
-
+use core::arch::asm;
 macro_rules! return_void {
     () => {
         return;

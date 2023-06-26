@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(global_asm)]
-#![feature(llvm_asm)]
+// #![feature(global_asm)]
 #![feature(asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
@@ -26,7 +25,7 @@ mod task;
 mod timer;
 mod heap_allocator;
 
-use crate::{config::*};
+use core::arch::global_asm;
 use lazy_static::lazy_static;
 use riscv::register::satp;
 use sbi::sbi_send_ipi;

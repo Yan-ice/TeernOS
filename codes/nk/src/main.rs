@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(global_asm)]
-#![feature(llvm_asm)]
+// #![feature(global_asm)]
 #![feature(asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
@@ -19,6 +18,7 @@ extern crate shared;
 mod mm;   
 mod trap;
 mod tests;
+use core::arch::global_asm;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
@@ -40,7 +40,8 @@ use crate::shared::sbi::shutdown;
 pub fn id() -> usize {
     let cpu_id;
     unsafe {
-        llvm_asm!("mv $0, tp" : "=r"(cpu_id));
+        core::arch::asm!("mv {0}, tp", 
+                        out(reg) cpu_id);
     }
     cpu_id
 }
@@ -119,7 +120,7 @@ pub fn nk_main(){
     debug_info!("Ready to outer kernel.");
     unsafe{
         //nk_exit(0);
-        asm!("jr x31", 
+        core::arch::asm!("jr x31", 
         //in("x31") nk_exit as usize,
         in("x31") config::NK_TRAMPOLINE + nk_exit as usize - nk_entry as usize,
         in("x10") 0 );
@@ -131,7 +132,7 @@ pub fn nk_main(){
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
-        debug_error!("[kernel] Panicked at {}:{} {}", location.file(), location.line(), info.message().unwrap());
+        debug_error!("[kernel] Panicked at {}: {} {}", location.file(), location.line(), info.message().unwrap());
     } else {
         debug_error!("[kernel] Panicked: {}", info.message().unwrap());
     }

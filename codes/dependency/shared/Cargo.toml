@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 bitflags = "1.2.1"
-riscv = { path = "../riscv", features = ["inline-asm"] }
+riscv = { git = "https://github.com/rust-embedded/riscv.git"}

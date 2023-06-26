@@ -1,26 +1,22 @@
 #![no_std]
-#![feature(llvm_asm)]
 #![feature(linkage)]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
-
-
+#![allow(dead_code)]
 #[macro_use]
 pub mod console;
 mod lang_items;
 
 
-#[cfg(feature = "musl")]
 mod sys_musl;
 
-#[cfg(feature = "musl")]
 pub use sys_musl::*;
 
-#[cfg(feature = "gnu")]
-mod sys_gnu;
+// #[cfg(feature = "gnu")]
+// mod sys_gnu;
 
-#[cfg(feature = "gnu")]
-pub use sys_gnu::*;
+// #[cfg(feature = "gnu")]
+// pub use sys_gnu::*;
 
 
 extern crate alloc;

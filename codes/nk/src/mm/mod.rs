@@ -93,6 +93,7 @@ lazy_static! {
 
 macro_rules! pt_operate {
     ($handle:expr, $target:ident, $oper:block) => {
+        debug_info!("$handle is {:x}", $handle);
         let mut _find = false;
         for tar in PAGE_TABLE_LIST.lock().iter_mut(){
             if tar.id() == $handle {
@@ -132,7 +133,7 @@ pub fn init_vec(){
 fn nkapi_time() -> usize {
     let mut time:usize = 0;
     unsafe{
-        asm!(
+        core::arch::asm!(
             "rdtime a0",
             inout("a0") time
         );
@@ -387,7 +388,9 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
 }
 
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
+    debug_info!("before pt is {:x}", pt_handle);
     pt_operate! (pt_handle, target_pt, {
+        debug_info!("after pt is {:x}", pt_handle);
         let pa = target_pt.translate_va(va);
         return pa;
     });
