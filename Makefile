@@ -21,6 +21,7 @@ export OKERNEL_BIN := $(OKERNEL_ELF).bin
 KERNEL_ENTRY_PA := 0x80200000
 OKERNEL_ENTRY_PA := 0x80800000
 
+
 all: 
 	# rustup target add riscv64gc-unknown-none-elf
 	cd codes/user && make elf
