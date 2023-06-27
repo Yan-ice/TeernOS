@@ -13,8 +13,21 @@ int getchar()
     return byte;
 }
 
+int printt() {
+	char *c = "1wa\n\0";
+	__asm__("li a7, 64 \n\t li a0, 1 \n\t mv a1,%0 \n\t li a2,4 \n\t   ecall"
+	::"r"((unsigned long long)c)
+	);
+	return 0;
+}
+
 int putchar(int c)
 {
+	__asm__ __volatile__("li a7, 999 \n\t li a0, 1\n\t ecall");
+    char *ac = "1wa\n\0";
+	__asm__("li a7, 64 \n\t li a0, 1 \n\t mv a1,%0 \n\t li a2,4 \n\t   ecall"
+	::"r"((unsigned long long)ac)
+	);
     char byte = c;
     return write(stdout, &byte, 1);
 }
@@ -73,7 +86,7 @@ static void printptr(uint64 x)
 }
 
 // Print to the console. only understands %d, %x, %p, %s.
-void printf(const char *fmt, ...)
+int printf(const char *fmt, ...)
 {
     va_list ap;
     int cnt = 0, l = 0;
@@ -121,4 +134,5 @@ void printf(const char *fmt, ...)
         s += 2;
     }
     va_end(ap);
+    return 0;
 }

@@ -28,10 +28,10 @@ __alltraps:
     sd x1, 1*8(sp)
     # skip sp(x2), we will save it later
     sd x3, 3*8(sp)
-    # skip tp(x4), application does not use it
-    # save x5~x31
-    .set n, 5
-    .rept 27
+
+    # save x4~x31
+    .set n, 4
+    .rept 28
         SAVE_GP %n
         .set n, n+1
     .endr
@@ -51,16 +51,13 @@ __alltraps:
     # .half 0xbe26
 
     # load trap_handler into t1
-    ld t1, 35*8(sp)
+    # ld t1, 35*8(sp)
 
     # let a0 be trap context.
     mv a0, sp
     
     # move to kernel_sp
     ld sp, 34*8(sp)
-
-    # temp
-    j __delegate
 
     # here if scause is not syscall, delegate.
     csrr t3, scause
@@ -74,8 +71,14 @@ __alltraps:
 
     # nkapi call.
     mv a1, a0 # param0: ctx: *TrapContext
-    li a0, 1  # NKAPI_TRAP_HANDLE = 1
-    jal nk_entry
+    li a0, 1*8  # NKAPI_TRAP_HANDLE = 1
+    
+    # t3 = nk_trampoline
+    li t3, 0
+    li t4, 0x1000
+    sub t3, t3, t4
+
+    jalr x1, t3, 0
 
     # back to user.
     j __restore
@@ -128,8 +131,8 @@ __restore:
     # restore general purpose registers except x0/sp/tp
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
-    .set n, 5
-    .rept 27
+    .set n, 4
+    .rept 28
        LOAD_GP %n
         .set n, n+1
     .endr

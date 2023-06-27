@@ -48,8 +48,16 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
             return -1;
         }
         drop(inner);
-        let size = f.write(
-            UserBuffer::new(translated_raw(token, buf, len))
+
+        // if fd == 1 && token > 2{
+        //     let str = str::replace(translated_str(token, buf).as_str(), "\n", "\\n");
+        //     debug_info!("printf 1 (buf: \"{}\", len: {})", str, len);
+        // }
+        let size = f.write({
+            let m = translated_raw(token, buf, len);
+            let r = UserBuffer::new(m);
+            r
+            }
         );
         if fd == 2{
             let str = str::replace(translated_str(token, buf).as_str(), "\n", "\\n");

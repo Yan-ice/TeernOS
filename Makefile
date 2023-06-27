@@ -45,7 +45,7 @@ env:
 	cd codes/os && make env
 	cd codes/nk && make env
 
-build_os: elf build_fs
+build_os: elf build_test
 	cd codes/os && make build
 	cd codes/nk && make build
 

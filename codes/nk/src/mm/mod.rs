@@ -27,7 +27,7 @@ use alloc::vec::Vec;
 
 use page_table::*;
 
-use super::trap::nk_trap_handler_impl;
+use super::trap::nk_trap_handler;
 use crate::shared::*;
 use crate::config::*;
 
@@ -112,7 +112,7 @@ pub fn init_vec(){
     let proxy = PROXYCONTEXT();
 
     proxy.nkapi_enable = 1;
-    proxy.nkapi_vec[NKAPI_TRAP_HANDLE] = nk_trap_handler_impl as usize;
+    proxy.nkapi_vec[NKAPI_TRAP_HANDLE] = nk_trap_handler as usize;
     proxy.nkapi_vec[NKAPI_CONFIG] = nkapi_config as usize;
     proxy.nkapi_vec[NKAPI_PT_INIT] = nkapi_pt_init as usize;
     proxy.nkapi_vec[NKAPI_ALLOC] = nkapi_alloc as usize;
@@ -389,6 +389,9 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     pt_operate! (pt_handle, target_pt, {
         let pa = target_pt.translate_va(va);
+        if va.0 == 0x7ffff000 {
+            debug_info!("Translating va3");
+        }
         return pa;
     });
     None

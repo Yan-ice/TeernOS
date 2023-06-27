@@ -104,8 +104,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             // illegal instruction exit code
             exit_current_and_run_next(-3);
         }
-        //10011_011_01011_0000011
-        // LD x11, 0(x19)
+
         Trap::Exception(Exception::LoadFault) |
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) |
@@ -136,6 +135,13 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             }
             
             unsafe{
+                debug_info!(
+                    "[kernel] dumped."
+                );
+                drop(current_task);
+                exit_current_and_run_next(-2);
+                return;
+
                 if let Some(adr) = nkapi_translate_va(current_user_id(), va){
                     debug_info!(
                         "[kernel] dumped. {:x} => {:x}",

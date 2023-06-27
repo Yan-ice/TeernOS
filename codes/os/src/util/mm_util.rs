@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 /// 直接读取指定长度的字节串数据。
 pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
-    let mut start = ptr as usize;
+        let mut start = ptr as usize;
         let end = start + len;
         let mut v = Vec::new();
         while start < end {
@@ -15,22 +15,25 @@ pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'sta
             let mut vpn = start_va.floor();
             //debug_os!("tbb vpn = 0x{:X}", vpn.0);
             // let ppn: PhysPageNum;
-            let ppno = nkapi_translate(pt_handle,vpn, true);
+            let ppno = nkapi_translate(pt_handle, vpn, true);
             if ppno.is_none() {
-                // debug_os!{"preparing into checking lazy..."}
+                //debug_warn!("preparing into checking lazy... {:?}", vpn);
                 //debug_os!("check_lazy 3");
                 current_task().unwrap().check_lazy(start_va, true);
                 unsafe {
                     // llvm_asm!("sfence.vma" :::: "volatile");
                     llvm_asm!("fence.i" :::: "volatile");
                 }
-                //debug_os!{"preparing into checking lazy..."}
+                
             }
             let ppn = ppno.unwrap();
             //debug_os!("vpn = {} ppn = {}", vpn.0, ppn.0);
+
             vpn.step();
             let mut end_va: VirtAddr = vpn.into();
+
             end_va = end_va.min(VirtAddr::from(end));
+            
             if end_va.page_offset() == 0 {
                 v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
             } else {

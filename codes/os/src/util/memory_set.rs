@@ -360,7 +360,8 @@ impl MemorySet {
             MapType::Framed,
             MapPermission::R | MapPermission::W | MapPermission::U,
         ), None);
-
+        debug_info!("[elf] heap: {:x} ~ {:x}",user_heap_bottom, user_heap_top);
+                
         // maparea2: TrapContext
         memory_set.push_mmap(MapArea::new(
             TRAP_CONTEXT.into(),
@@ -381,7 +382,8 @@ impl MemorySet {
             MapType::Framed,
             MapPermission::R | MapPermission::W | MapPermission::U,
         ), None);
-
+        debug_info!("[elf] stack: {:x} ~ {:x}",user_stack_bottom, user_stack_top);
+                
         // map signal user stack with U flags
         // maparea4: signal_user_stack
         let mut signal_stack_top: usize = USER_SIGNAL_STACK;

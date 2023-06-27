@@ -36,5 +36,7 @@ SECTIONS {
     	__init_array_end = .;
     }
     
-    /DISCARD/ : { *(.eh_*) }
+    .eh_frame : {
+    	*(.eh_*)
+    }
 }

@@ -15,7 +15,7 @@ use riscv::register::{
 use crate::config::*;
 use crate::shared::*;
 
-pub use trap_handle::nk_trap_handler_impl;
+pub use trap_handle::nk_trap_handler;
 
 global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("trap_signal.S"));
@@ -29,7 +29,6 @@ extern "C"{
 pub fn init(){
     unsafe {
         stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
-        //PROXYCONTEXT().usr_trap_handler = TRAMPOLINE as usize;
         PROXYCONTEXT().usr_trap_return = TRAMPOLINE + __restore as usize - __alltraps as usize;
     }
 
