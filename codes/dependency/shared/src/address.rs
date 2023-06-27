@@ -224,7 +224,16 @@ pub struct PageTableEntry {
     pub bits: usize,
 }
 
-
+impl From<usize> for PageTableEntry{
+    fn from(a: usize) -> Self{
+        PageTableEntry { bits: a }
+    }
+}
+impl From<PageTableEntry> for usize{
+    fn from(a: PageTableEntry) -> Self{
+        a.bits
+    }
+}
 
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNum, flags: PTEFlags) -> Self {
@@ -241,7 +250,7 @@ impl PageTableEntry {
         (self.bits >> 10 & ((1usize << 44) - 1)).into()
     }
     pub fn flags(&self) -> PTEFlags {
-        PTEFlags::from_bits(self.bits as u8).unwrap()
+        PTEFlags::from_bits((self.bits & 0x3FF) as u16).unwrap()
     }
     pub fn is_valid(&self) -> bool {
         (self.flags() & PTEFlags::V) != PTEFlags::empty()
@@ -256,7 +265,7 @@ impl PageTableEntry {
         (self.flags() & PTEFlags::X) != PTEFlags::empty()
     }
     pub fn set_flags(&mut self, flags: PTEFlags) {
-        let new_flags: u8 = flags.bits().clone();
+        let new_flags: u16 = flags.bits().clone();
         self.bits = (self.bits & 0xFFFF_FFFF_FFFF_FF00) | (new_flags as usize);
     }
 

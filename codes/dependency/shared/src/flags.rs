@@ -1,18 +1,19 @@
 use crate::address::*;
 
 bitflags! {
-    pub struct MapPermission: u8 {
+    pub struct MapPermission: u16 {
         const R = 1 << 1;  // read
         const W = 1 << 2;  // write
         const X = 1 << 3;  // execute
         const U = 1 << 4;
+        const O = 1 << 9; //copy on write
     }
     
 }
 
 
 bitflags! {
-    pub struct PTEFlags: u8 {
+    pub struct PTEFlags: u16 {
         const V = 1 << 0;
         const R = 1 << 1;
         const W = 1 << 2;
@@ -21,16 +22,17 @@ bitflags! {
         const G = 1 << 5;
         const A = 1 << 6;
         const D = 1 << 7;
+        const O = 1 << 9; //copy on write
     }
 }
 
 impl MapPermission{
-    pub fn get_bits(&self) -> u8{
+    pub fn get_bits(&self) -> u16{
         self.bits
     }
 }
 impl PTEFlags{
-    pub fn get_bits(&self) -> u8{
+    pub fn get_bits(&self) -> u16{
         self.bits
     }
 }
@@ -85,7 +87,7 @@ impl From<MapPermission> for usize{
 
 impl From<usize> for MapPermission{
     fn from(v: usize) -> Self{
-        MapPermission { bits: v as u8}
+        MapPermission { bits: v as u16}
     }
 }
 

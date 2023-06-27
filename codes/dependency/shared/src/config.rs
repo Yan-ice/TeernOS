@@ -65,10 +65,11 @@ pub const NKAPI_DEALLOC: usize = 4;
 pub const NKAPI_ACTIVATE: usize = 5;
 pub const NKAPI_COPY_TO: usize = 6;
 pub const NKAPI_TRANSLATE: usize = 7;
-pub const NKAPI_TRANSLATE_VA: usize = 8;
-pub const NKAPI_SET_PERM: usize = 9;
-pub const NKAPI_TIME: usize = 10;
-pub const NKAPI_DEBUG: usize = 11;
+pub const NKAPI_GET_PTE: usize = 8;
+pub const NKAPI_FORK_PTE: usize = 9;
+pub const NKAPI_SET_PERM: usize = 10;
+pub const NKAPI_TIME: usize = 11;
+pub const NKAPI_DEBUG: usize = 12;
 ///
 ///////////////////////////////////
 

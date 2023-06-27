@@ -109,70 +109,40 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) |
         Trap::Exception(Exception::LoadPageFault) =>{
+            
             let is_load: bool;
             if scause.cause() == Trap::Exception(Exception::LoadFault) || scause.cause() == Trap::Exception(Exception::LoadPageFault) {
-                unsafe{
-                    if let Some(adr) = nkapi_translate_va(current_user_id(), current_trap_cx().sepc.into()){
-                        debug_info!(
-                            "[kernel] {:?}, inst: {:x} at {:x}, addr: {:x}",
-                            scause.cause(),
-                            *(adr.0 as *const u32),
-                            adr.0,
-                            stval as usize
-                        );
-                    }
-                }
-                
                 is_load = true;
             } else {
                 is_load = false;
             }
             let va: VirtAddr = (stval as usize).into();
-        
             // The boundary decision
-            if va > usize::MAX.into() {
+            if va > TRAMPOLINE.into() {
                 panic!("VirtAddr out of range!");
             }
             
-            unsafe{
-                debug_info!(
-                    "[kernel] dumped."
-                );
-                drop(current_task);
-                exit_current_and_run_next(-2);
-                return;
-
-                if let Some(adr) = nkapi_translate_va(current_user_id(), va){
-                    debug_info!(
-                        "[kernel] dumped. {:x} => {:x}",
-                        va.0,
-                        adr.0
+            //println!("check_lazy 1");
+            let lazy = current_task().unwrap().check_lazy(va, is_load);
+            if lazy != 0 {
+                // page fault exit code
+                let current_task = current_task().unwrap();
+                if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
+                    
+                    println!(
+                        "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                        scause.cause(),
+                        stval,
+                        current_trap_cx().sepc,
                     );
                     drop(current_task);
                     exit_current_and_run_next(-2);
-                }else{
-                    current_task().unwrap().acquire_inner_lock()
-                        .memory_set.insert_framed_area(va, (va.0+PAGE_SIZE*10).into(), 
-                        MapPermission::R | MapPermission::W | MapPermission::U);
-                    cx.sepc += 4;
                 }
             }
-            // let lazy = current_task().unwrap().check_lazy(va, is_load);
-            // if lazy != 0 {
-            //     // page fault exit code
-            //     let current_task = current_task().unwrap();
-            //     if current_task.is_signal_execute() || !current_task.check_signal_handler(Signals::SIGSEGV){
-            //         // current_task.acquire_inner_lock().memory_set.print_pagetable();
-            //         debug_info!(
-            //             "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
-            //             scause.cause(),
-            //             stval,
-            //             current_trap_cx().sepc,
-            //         );
-            //         drop(current_task);
-            //         exit_current_and_run_next(-2);
-            //     }
-            // }
+            unsafe {
+                //llvm_asm!("sfence.vma" :::: "volatile");
+                llvm_asm!("fence.i" :::: "volatile");
+            }
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             debug_os!{"pinTimer"}

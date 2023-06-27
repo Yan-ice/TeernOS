@@ -1,8 +1,9 @@
 use buddy_system_allocator::LockedHeap;
-use crate::config::KERNEL_HEAP_SIZE;
+
 use shared::debug_error;
 
-static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+const NK_HEAP_SIZE: usize = 0x50000;
+static mut HEAP_SPACE: [u8; NK_HEAP_SIZE] = [0; NK_HEAP_SIZE];
 
 #[global_allocator]
 pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -10,14 +11,14 @@ pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 #[alloc_error_handler]
 pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
     debug_error!("[handle_alloc_error]: May have no enough heap memory!");
-    panic!("Heap allocation error, layout = {:?}", layout);
+    panic!("NK Heap allocation error, layout = {:?}", layout);
 }
 
 pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR
             .lock()
-            .init(HEAP_SPACE.as_ptr() as usize, KERNEL_HEAP_SIZE);
+            .init(HEAP_SPACE.as_ptr() as usize, NK_HEAP_SIZE);
     }
 }
 

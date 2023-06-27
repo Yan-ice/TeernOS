@@ -36,7 +36,7 @@ pub use frame_allocator::{
     FrameAllocator,
     add_free, 
     print_free_pages, 
-    frame_add_ref, 
+    outer_frame_add_ref, 
     enquire_refcount,
 
     frame_alloc,
@@ -120,7 +120,8 @@ pub fn init_vec(){
     proxy.nkapi_vec[NKAPI_ACTIVATE] = nkapi_activate as usize;
     proxy.nkapi_vec[NKAPI_COPY_TO] = nkapi_copy_to as usize;
     proxy.nkapi_vec[NKAPI_TRANSLATE] = nkapi_translate as usize;
-    proxy.nkapi_vec[NKAPI_TRANSLATE_VA] = nkapi_translate_va as usize;
+    proxy.nkapi_vec[NKAPI_GET_PTE] = nkapi_get_pte as usize;
+    proxy.nkapi_vec[NKAPI_FORK_PTE] = nkapi_fork_pte as usize;
     proxy.nkapi_vec[NKAPI_SET_PERM] = nkapi_set_permission as usize;
     proxy.nkapi_vec[NKAPI_TIME] = nkapi_time as usize;
     proxy.nkapi_vec[NKAPI_DEBUG] = nkapi_print_pt as usize;
@@ -190,9 +191,39 @@ fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
     
 }
 
-// fn current_pt() -> usize {
-    
-// }
+fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option<PhysPageNum> {
+    let mut flag: PTEFlags = PTEFlags::V;
+    pt_operate! (pt_handle, target_pt, {
+        let src_pte = target_pt.find_pte(vpn);
+        if src_pte.is_none() {
+            debug_warn!("fork_pte: source pte is invalid!");
+            return None;
+        }
+        flag = src_pte.unwrap().flags();
+    });
+    pt_operate! (pt_child, target_pt, {
+        let dst_pte = target_pt.find_pte(vpn);
+        if dst_pte.is_some() {
+            debug_warn!("fork_pte: target pte already exists!");
+            return None;
+        }
+    });
+    flag = flag & !PTEFlags::W | PTEFlags::O;
+
+    let mut src_pte = None;
+    pt_operate! (pt_handle, target_pt, {
+        target_pt.set_flags(vpn, flag);
+        src_pte = Some(target_pt.find_pte(vpn).unwrap().clone());
+    });
+    //debug_info!("forking pte: {:?} -> {:?}",vpn, src_pte.unwrap().ppn());
+    pt_operate! (pt_child, target_pt, {
+        target_pt.map(vpn, src_pte.unwrap().ppn(), src_pte.unwrap().flags());
+    });
+
+    outer_frame_add_ref(src_pte.unwrap().ppn());
+    return Some(src_pte.unwrap().ppn());
+}
+
 fn nkapi_pt_init(pt_handle: usize, re_generate: bool){
     
     if re_generate && pt_handle != 0{
@@ -299,7 +330,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
                         target_ppn = ppn;
                     }else{
                         print_free_pages();
-                        panic!("No more memory in Nested Kernel!");
+                        panic!("No more memory in Outer Kernel!");
                     }
                     target_pt.map(VirtPageNum(target_ppn.0), target_ppn, pte_flags);
                     return target_ppn;
@@ -355,31 +386,24 @@ fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
 // while translating COW with write==True, it would start alloc and copy.
 fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
 
-    pt_operate! (pt_handle, pt, {
-        if let Some(pte) = pt.translate(vpn){
-            if pte.is_valid() {
+    pt_operate! (pt_handle, target_pt, {
+        if let Some(pte) = target_pt.translate(vpn){
+            
+            if write && pte.is_valid() && pte.is_cow(){
                 let former_ppn = pte.ppn();
-
-                if pte.is_cow() & write{
-
-                    //the code copy from memoryset::cow_alloc
-                    if enquire_refcount(former_ppn) == 1 {
-                        pt.reset_cow(vpn);
-                        // change the flags of the src_pte
-                        pt.set_flags(
-                            vpn, pt.translate(vpn).unwrap().flags() | PTEFlags::W
-                        );
-                    }
-
-                    let ppn = frame_alloc().unwrap();
-                    pt.remap_cow(vpn, ppn, former_ppn);
-                    return Some(ppn);
-
+                if enquire_refcount(former_ppn) == 1 {
+                    // change the flags of the src_pte
+                    target_pt.set_flags(
+                        vpn, pte.flags() & !PTEFlags::O | PTEFlags::W
+                    );
                 }else{
-                    return Some(former_ppn);
+                    let ppn = outer_frame_alloc().unwrap();
+                    target_pt.remap_cow(vpn, ppn, former_ppn);
                 }
-                
+
             }
+            return Some(pte.ppn());
+            
         }
         debug_info!("WARN: cannot translate {:?}", vpn);
     });
@@ -397,6 +421,17 @@ fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     None
 }
 
+fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntry>{
+    pt_operate! (pt_handle, target_pt, {
+        if let Some(pte) = target_pt.find_pte(vpn) {
+            return Some(pte.clone());
+        }else{
+            return None
+        }
+    });
+    None
+}
+
 
 fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
     unsafe{
@@ -407,11 +442,25 @@ fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usi
             //debug_info!("nk_copy: copying data from {:x}", former_pa.0);
             let data = &*(former_pa.0 as *const usize as *mut [u8; PAGE_SIZE]);
 
-            let mut ppn = &mut target_pt.translate(vpn).unwrap().ppn();
+            let mut pte = &mut target_pt.translate(vpn).unwrap();
             //debug_info!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset, ppn);
 
+            if pte.is_valid() && pte.is_cow(){
+                let former_ppn = pte.ppn();
+
+                if enquire_refcount(former_ppn) == 1 {
+                    // change the flags of the src_pte
+                    target_pt.set_flags(
+                        vpn, pte.flags() & !PTEFlags::O | PTEFlags::W
+                    );
+                }else{
+                    let ppn = outer_frame_alloc().unwrap();
+                    target_pt.remap_cow(vpn, ppn, former_ppn);
+                }
+            }
+            
             let src = &data[0..(PAGE_SIZE - offset)];
-            let dst = &mut ppn.get_bytes_array()[offset..PAGE_SIZE];
+            let dst = &mut pte.ppn().get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);
 
         });

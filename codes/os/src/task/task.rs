@@ -118,8 +118,8 @@ impl TaskControlBlockInner {
     pub fn get_work_path(&self)->String{
         self.current_path.clone()
     }
-    pub fn enquire_vpn(&self, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum> {
-        return self.memory_set.translate(vpn, write);
+    pub fn enquire_vpn(&self, vpn: VirtPageNum) -> Option<PhysPageNum> {
+        return self.memory_set.translate(vpn);
     }
 
     // pub fn cow_alloc(&mut self, vpn: VirtPageNum, former_ppn: PhysPageNum) -> usize {
@@ -289,7 +289,7 @@ impl TaskControlBlock {
         // entry_point = test_in_usr as usize; // Yan_ice: temporarily modify it to test
 
         let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into(),false).unwrap();
+            .translate(VirtAddr::from(TRAP_CONTEXT).into()).unwrap();
 
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
@@ -385,7 +385,7 @@ impl TaskControlBlock {
         
         // debug_os!("user_sp {:X}", user_sp);
         let trap_cx_ppn = memory_set
-            .translate(VirtAddr::from(TRAP_CONTEXT).into(),false)
+            .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap();
 
         ////////////// envp[] ///////////////////
@@ -662,12 +662,14 @@ impl TaskControlBlock {
         } else {
             //Yan_ice: manage CoW
             // get the PageTableEntry that faults
-            if let Some(ppn) = self.acquire_inner_lock().enquire_vpn(vpn,true) {
-                0
-            }else{
-
-                -1
+            if let Some(pte) = nkapi_get_pte(self.getpid(), vpn) {
+                if pte.is_cow() && !is_load {
+                    //debug_info!("ready copy on write.");
+                    nkapi_translate(self.getpid(), vpn, true);
+                    return 0;
+                }
             }
+            -1
         }
         //}
     }
@@ -698,7 +700,7 @@ impl TaskControlBlock {
         let mut va_top = inner.mmap_area.get_mmap_top();
         let mut end_va = VirtAddr::from(va_top.0 + len);
         // "prot<<1" is equal to  meaning of "MapPermission"
-        let map_flags = (((prot & 0b111)<<1) + (1<<4))  as u8; // "1<<4" means user
+        let map_flags = (((prot & 0b111)<<1) + (1<<4))  as u16; // "1<<4" means user
     
         let mut startvpn = start/PAGE_SIZE;
         

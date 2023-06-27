@@ -80,30 +80,32 @@ impl FrameAllocator for StackFrameAllocator {
     fn alloc(&mut self) -> Option<PhysPageNum> {
         
         if let Some(ppn) = self.recycled.pop() {
-            // debug_info!{"alloced recycled ppn: {:X}", ppn}
+            //debug_info!{"alloced recycled ppn: {:X}", ppn}
             self.refcounter.insert(ppn, 1);
             Some(ppn.into())
         } else {
             if self.current == self.end {
                 None
             } else {
-                // debug_info!{"alloced ppn: {:X}", self.current}
+                //debug_info!{"alloced ppn: {:X}", self.current}
                 self.current += 1;
                 self.refcounter.insert(self.current - 1, 1);
                 Some((self.current - 1).into())
             }
         }
     }
+
     fn dealloc(&mut self, ppn: PhysPageNum) {
         let ppn = ppn.0; 
         // if self.refcounter.contains_key(&ppn) {
         // let no_ref = false;
         if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
             *ref_times -= 1;
+            //debug_info!{"dealloced ppn: {:X}", ppn}
+                
             // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
             if *ref_times == 0 {
                 self.refcounter.remove(&ppn);
-                // debug_info!{"dealloced ppn: {:X}", ppn}
                 // validity check
                 if ppn >= self.current || self.recycled
                     .iter()
@@ -117,6 +119,7 @@ impl FrameAllocator for StackFrameAllocator {
         }      
     }
     fn add_ref(&mut self, ppn: PhysPageNum) {
+        //debug_info!("adding ref: {:x}",ppn.0);
         let ppn = ppn.0; 
         let ref_times = self.refcounter.get_mut(&ppn).unwrap();
         *ref_times += 1;
@@ -151,13 +154,15 @@ pub fn init_frame_allocator() {
 
 
 pub fn outer_frame_alloc() -> Option<PhysPageNum> {
-    let st = PROXYCONTEXT().allocator_start as usize;
-    let ed = PROXYCONTEXT().allocator_end as usize;
+    
     let mut outer_allocator = OUTER_FRAME_ALLOCATOR.lock();
+    
     if outer_allocator.current == 0 {
+        let st = PROXYCONTEXT().allocator_start as usize;
+        let ed = PROXYCONTEXT().allocator_end as usize;
         outer_allocator
         .init(PhysAddr::from(st).ceil(), PhysAddr::from(ed).floor());
-        debug_warn!("Allocator config: {:x} - {:x}", st, ed);
+        //debug_warn!("Allocator config: {:x} - {:x}", st, ed);
     }
 
     let pn = outer_allocator.alloc();
@@ -185,13 +190,15 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
         for i in bytes_array {
             *i = 0;
         }
+    }else{
+        debug_error!("No enough space for Page Table!");
     }
     pn
 }
 
 
-pub fn frame_add_ref(ppn: PhysPageNum) {
-    FRAME_ALLOCATOR
+pub fn outer_frame_add_ref(ppn: PhysPageNum) {
+    OUTER_FRAME_ALLOCATOR
         .lock()
         .add_ref(ppn)
 }
@@ -203,7 +210,7 @@ pub fn frame_dealloc(ppn: PhysPageNum) {
 }
 
 pub fn enquire_refcount(ppn: PhysPageNum) -> usize {
-    FRAME_ALLOCATOR
+    OUTER_FRAME_ALLOCATOR
         .lock()
         .enquire_ref(ppn)
 }

@@ -166,7 +166,14 @@ pub fn nkapi_translate(pt_handle: usize, vpn:VirtPageNum, write: bool) -> Option
     return_some!(PhysPageNum,retval0,retval1);
 }
 
-pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
+pub fn nkapi_translate_va(pt_handle: usize, va:VirtAddr) -> Option<PhysAddr>{
+    if let Some(ppn) = nkapi_translate(pt_handle, va.floor(), true) {
+        return Some(PhysAddr((ppn.0<<12) + va.page_offset()));
+    }
+    None
+}
+
+pub fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntry>{
     // if let Some(ppn) = nkapi_translate(pt_handle,va.clone().floor(),false) {
     //     let pa: PhysAddr = PhysAddr{0: ppn.0*crate::config::PAGE_SIZE + va.page_offset()};
     //     return Some(pa);
@@ -174,9 +181,16 @@ pub fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     // None
     let retval0: usize;
     let retval1: usize;
-    entry_gate!(NKAPI_TRANSLATE_VA,pt_handle,va, retval0, retval1);
-    return_some!(PhysAddr,retval0,retval1);
+    entry_gate!(NKAPI_GET_PTE,pt_handle,vpn, retval0, retval1);
+    return_some!(PageTableEntry,retval0,retval1);
 
+}
+
+pub fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option<PhysPageNum> {
+    let retval0: usize;
+    let retval1: usize;
+    entry_gate!(NKAPI_FORK_PTE, pt_handle, pt_child, vpn, retval0, retval1);
+    return_some!(PhysPageNum,retval0,retval1);
 }
 
 pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: MapPermission)-> PhysPageNum{

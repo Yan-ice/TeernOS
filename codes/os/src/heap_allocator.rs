@@ -10,7 +10,7 @@ pub static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 #[alloc_error_handler]
 pub fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
     debug_os!("[handle_alloc_error]: May have no enough heap memory!");
-    panic!("Heap allocation error, layout = {:?}", layout);
+    panic!("OS Heap allocation error, layout = {:?}", layout);
 }
 
 pub fn init_heap() {

@@ -15,7 +15,7 @@ pub fn translated_raw(pt_handle: usize, ptr: *const u8, len: usize) -> Vec<&'sta
             let mut vpn = start_va.floor();
             //debug_os!("tbb vpn = 0x{:X}", vpn.0);
             // let ppn: PhysPageNum;
-            let ppno = nkapi_translate(pt_handle, vpn, true);
+            let ppno = nkapi_translate(pt_handle, vpn, false);
             if ppno.is_none() {
                 //debug_warn!("preparing into checking lazy... {:?}", vpn);
                 //debug_os!("check_lazy 3");
