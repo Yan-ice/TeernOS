@@ -1,5 +1,6 @@
 
 use super::page_table::PageTableRecord;
+use riscv::register::satp;
 use shared::*;
 
 use alloc::collections::BTreeMap;
@@ -158,13 +159,13 @@ impl MemorySet {
             MapPermission::R | MapPermission::W,
         ));
 
-        debug_info!("mapping kernel stack space");
-        memory_set.push(MapArea::new(
-            (config::TRAP_CONTEXT/2).into(),
-            config::TRAP_CONTEXT.into(),
-            MapType::Identical,
-            MapPermission::R | MapPermission::W,
-        ));
+        // debug_info!("mapping kernel stack space");
+        // memory_set.push(MapArea::new(
+        //     (config::TRAP_CONTEXT/2).into(),
+        //     config::TRAP_CONTEXT.into(),
+        //     MapType::Identical,
+        //     MapPermission::R | MapPermission::W,
+        // ));
 
         debug_info!("mapping memory-mapped registers");
         for pair in MMIO {  // 这里是config硬编码的管脚地址
@@ -180,9 +181,11 @@ impl MemorySet {
 
     ///修改satp，切换到该页表
     pub fn activate(&self) {
-        println!("Special satp change.");
+        println!("NK page table activated.");
         let satp = self.page_table.token();
-        crate::sbi::sbi_satp(satp);
+        satp::write(satp);
+        println!("current satp: {:?}", satp::read());
+        //crate::sbi::sbi_satp(satp);
     }
 
     // pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {

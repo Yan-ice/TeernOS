@@ -61,25 +61,4 @@ SECTIONS
         *(.eh_frame)
     }
 
-    /* 新加一段outer kernel space，暂时命名为okernel */
-    /* . = 0x80800000;
-    sokernel = .;
-    outer_allocator = .;
-    . = .+1K;
-    outer_static = .;
-    . = .+3K;
-
-    sokernelstack = .;
-    . = .+8K;
-    eokernelstack = .;
-
-    sokheap = .;
-    . = . + 1024*4K;
-    eokheap = .;
-
-    . = .+8K;
-    eokernel = .; */
-
-    /* . = 0x88000000; */
-    /* OUTER SPACE END */
 }

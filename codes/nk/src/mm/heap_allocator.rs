@@ -1,8 +1,8 @@
 use buddy_system_allocator::LockedHeap;
 
 use shared::debug_error;
+use shared::config::*;
 
-const NK_HEAP_SIZE: usize = 0x50000;
 static mut HEAP_SPACE: [u8; NK_HEAP_SIZE] = [0; NK_HEAP_SIZE];
 
 #[global_allocator]

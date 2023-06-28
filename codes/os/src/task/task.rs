@@ -294,9 +294,7 @@ impl TaskControlBlock {
         //Yan_ice: 这里在进程栈里给进程上下文分配了位置
         // push a task context which goes to trap_return to the top of kernel stack
         let task_cx_ptr = kernel_stack.push_on_top(TaskContext::goto_trap_return());
-        unsafe{
-            println!("RA is: {:x}",(*(task_cx_ptr)).ra);
-        }
+
         let task_control_block = Self {
             pid: pid_handle,
             tgid,

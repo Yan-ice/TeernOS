@@ -1,9 +1,11 @@
     .section .text.entry
     .globl _start
 _start:
+    li a0, 0
     # tp:hart_id 
     # mv a0,tp # RustSBI
     mv tp, a0 # OpenSBI
+    
     la a1, boot_stack_top
     slli a0, a0, 15 # hart_id* stacksize
     add a0, a0, a1

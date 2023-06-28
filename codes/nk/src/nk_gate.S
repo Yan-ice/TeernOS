@@ -33,7 +33,7 @@
     # 低地址
     # #####################################
 nk_entry:
-
+    
     # let x28 to be ProxyContext (NK_TRAMPOLINE)
     li x28, 0
     li x30, 0x3000

@@ -97,6 +97,8 @@ pub fn nk_main(){
     
     nkapi_pt_init(0, false);
 
+    debug_info!("outer kernel page init.");
+
     nkapi_alloc_mul(0, 
         VirtAddr(config::OKSPACE_START).into(), 
         VirtAddr(config::OKSPACE_START+0x300000).into(), 
@@ -113,8 +115,6 @@ pub fn nk_main(){
     proxy.nk_satp = KERNEL_SPACE.lock().token();
     proxy.outer_satp = nkapi_vun_getpt(0).token();
     proxy.outer_register[1] = config::OKSPACE_START as usize; //let ra be outer kernel init
-    proxy.outer_register[2] = 0x80812000 as usize; // 初始化 outer kernel的栈指针 
-    
 
     debug_info!("Ready to outer kernel.");
     unsafe{

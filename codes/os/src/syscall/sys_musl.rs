@@ -101,9 +101,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     // if sys_getpid() == 1{
     //     test();
     // }
-    // if current_user_id() > 2 {
-    //     debug_info!("SYSCALL[{}] {:?}",syscall_id, args);
-    // }
+    if current_user_id() > 2 {
+        debug_info!("SYSCALL[{}] {:?}",syscall_id, args);
+    }
     
     
     match syscall_id {

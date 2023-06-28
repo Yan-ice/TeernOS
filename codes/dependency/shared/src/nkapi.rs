@@ -62,11 +62,6 @@ macro_rules! entry_gate {
                 lateout("a0") $retval0,
                 lateout("a1") $retval1,
             );
-
-            if usize::from($t1) > 2000 {
-                println!("t1: {}",usize::from($t1));
-            }
-
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$retval0: expr, $retval1: expr) => {
@@ -80,11 +75,6 @@ macro_rules! entry_gate {
                 lateout("a0") $retval0,
                 lateout("a1") $retval1,
             );
-
-            if usize::from($t1) > 2000 {
-                println!("t1: {}",usize::from($t1));
-            }
-
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$retval0: expr, $retval1: expr) => {
@@ -99,11 +89,6 @@ macro_rules! entry_gate {
                 lateout("a0") $retval0,
                 lateout("a1") $retval1,
             );
-
-            if usize::from($t1) > 2000 {
-                println!("t1: {}",usize::from($t1));
-            }
-
         }
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$t4:expr,$retval0: expr, $retval1: expr) => {
@@ -213,6 +198,7 @@ pub fn nkapi_alloc_mul(pt_handle: usize, vpn_start: VirtPageNum, vpn_end: VirtPa
 pub fn nkapi_pt_init(pt_handle: usize, regenerate: bool){
     let retval0: usize;
     let retval1: usize;
+
     entry_gate!(NKAPI_PT_INIT,pt_handle, regenerate,retval0, retval1);
 }
 
