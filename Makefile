@@ -12,7 +12,7 @@ export U_FAT32 := $(cwd)/fs_tool/fat.img
 
 export OS_PATH := $(cwd)/codes/os
 export NK_PATH := $(cwd)/codes/nk
-export SBI_PATH := $(cwd)/opensbi_nk
+export SBI_PATH := $(cwd)/opensbi-0.9
 export K210_PATH := $(cwd)/k210
 
 export KERNEL_ELF := $(NK_PATH)/target/$(TARGET)/$(MODE)/TeernOS_nk

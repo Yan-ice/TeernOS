@@ -1,5 +1,3 @@
-
-
 musl := 1
 
 ifdef musl
@@ -8,6 +6,8 @@ ifdef musl
 # INCLUDE := /opt/riscv/riscv64-unknown-linux-musl/include -I/opt/riscv/sysroot/include
 
 	GCC := riscv64-unknown-linux-musl-gcc
+# LIB := /home/wind/riscv/sysroot/lib
+# INCLUDE := /home/wind/riscv/sysroot/include
 	LIB := /home/wind/Desktop/riscv/sysroot/lib
 	INCLUDE := /home/wind/Desktop/riscv/sysroot/include
 	FLAGS := -no-pie -nostdinc

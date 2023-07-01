@@ -10,17 +10,17 @@ pub mod console;
 mod lang_items;
 
 
-#[cfg(feature = "musl")]
+// #[cfg(feature = "musl")]
 mod sys_musl;
 
-#[cfg(feature = "musl")]
+// #[cfg(feature = "musl")]
 pub use sys_musl::*;
 
-#[cfg(feature = "gnu")]
-mod sys_gnu;
+// #[cfg(feature = "gnu")]
+// mod sys_gnu;
 
-#[cfg(feature = "gnu")]
-pub use sys_gnu::*;
+// #[cfg(feature = "gnu")]
+// pub use sys_gnu::*;
 
 
 extern crate alloc;
