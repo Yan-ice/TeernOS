@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use lazy_static::*;
 use spin::Mutex;
 use crate::util::KERNEL_SPACE;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 use crate::config::{
     PAGE_SIZE,

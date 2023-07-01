@@ -35,7 +35,17 @@ pub fn nk_trap_handler(mut ctx_addr: usize) -> usize {
 pub fn nk_syscall_impl(ctx: &mut TrapContext) -> usize {
     // let stval = stval::read();
     let call_id: usize = ctx.x[17];
-    
+    if call_id == 401{
+        // let mut hasher = XxHash64::default();
+        unsafe{
+            // let start = 0x80800000;
+            // let end = 0x840000001;
+            // for i in start..end{
+            //     let temp = *(i as usize as *const usize);
+            // }
+            // ctx.x[10] = 1;
+        }
+    }
     debug_warn!("Nothing need to handle now... for syscall id [{}]", call_id);
     return 0;
 }

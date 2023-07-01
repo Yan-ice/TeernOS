@@ -1,4 +1,3 @@
-use crate::monitor::SYSCALL_ENABLE;
 use crate::{drivers::BLOCK_DEVICE, println};
 use crate::color_text;
 use _core::usize;

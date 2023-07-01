@@ -1,7 +1,7 @@
 use buddy_system_allocator::LockedHeap;
 
 use shared::debug_error;
-use shared::config::*;
+use crate::config::*;
 
 static mut HEAP_SPACE: [u8; NK_HEAP_SIZE] = [0; NK_HEAP_SIZE];
 

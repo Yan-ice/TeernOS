@@ -1,6 +1,6 @@
 use crate::{begin_test};
 use crate::debug_info;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 const valA: usize = 66666;
 const test_pt: usize = 2333;

@@ -12,7 +12,7 @@ export U_FAT32 := $(cwd)/fs_tool/fat.img
 
 export OS_PATH := $(cwd)/codes/os
 export NK_PATH := $(cwd)/codes/nk
-export SBI_PATH := $(cwd)/opensbi-0.4
+export SBI_PATH := $(cwd)/opensbi_nk
 export K210_PATH := $(cwd)/k210
 
 export KERNEL_ELF := $(NK_PATH)/target/$(TARGET)/$(MODE)/TeernOS_nk
@@ -43,7 +43,7 @@ export FW_JUMP_ADDR=$(KERNEL_ENTRY_PA)
 all: run
 
 build:
-	# rustup target add riscv64gc-unknown-none-elf
+# rustup target add riscv64gc-unknown-none-elf
 	cd codes/os && make build
 	cd codes/nk && make build
 	cd codes/user && make elf
@@ -54,7 +54,7 @@ else ifeq ($(BOARD), k210)
 endif
 	
 
-run: build
+run: build build_sbi
 	
 ifeq ($(BOARD), qemu)
 	@$(QEMU_SYSTEM) \

@@ -1,7 +1,7 @@
 
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 use crate::debug_os;
 use super::BlockDevice;

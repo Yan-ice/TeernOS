@@ -1,7 +1,8 @@
 
 use super::page_table::PageTableRecord;
 use riscv::register::satp;
-use shared::*;
+use crate::shared::*;
+use crate::config::*;
 
 use alloc::collections::BTreeMap;
 //use alloc::string::ToString;
@@ -181,9 +182,14 @@ impl MemorySet {
 
     ///修改satp，切换到该页表
     pub fn activate(&self) {
-        println!("NK page table activated.");
         let satp = self.page_table.token();
-        satp::write(satp);
+        println!("NK page table activated: {:?}", satp);
+        
+        // satp::write(satp);
+        unsafe{
+            asm!("csrw satp, x30",
+            in("x30") satp);
+        }
         println!("current satp: {:?}", satp::read());
         //crate::sbi::sbi_satp(satp);
     }

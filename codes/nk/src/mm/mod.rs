@@ -4,20 +4,9 @@ mod page_table;
 mod memory_set;
 
 use crate::{debug_info};
-use riscv::register::{
-    mtvec::TrapMode,
-    scause::{
-        self,
-        Trap,
-        Exception,
-        Interrupt,
-    },
-    stval,
-    stvec,
-};
 
 
-use alloc::{sync::Arc, boxed::Box};
+use alloc::{boxed::Box};
 use lazy_static::*;
 use spin::Mutex;
 
@@ -29,7 +18,6 @@ use page_table::*;
 
 use super::trap::nk_trap_handler;
 use crate::shared::*;
-use crate::config::*;
 
 pub use frame_allocator::{
     StackFrameAllocator, 

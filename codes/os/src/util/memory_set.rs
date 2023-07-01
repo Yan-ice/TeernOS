@@ -1,7 +1,7 @@
 
 use crate::debug_os;
 use crate::eokernel;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 use crate::util::MmapArea;   
 
 use alloc::collections::BTreeMap;
@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use spin::Mutex;
 use crate::lazy_static; 
 use crate::task::AuxHeader;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 extern "C" {
     fn stext();
