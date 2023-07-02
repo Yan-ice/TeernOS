@@ -1,9 +1,10 @@
 mod heap_allocator;
+#[macro_use]
 mod frame_allocator;
 mod page_table;
 mod memory_set;
 
-use crate::{debug_info};
+use crate::{debug_info, mm::frame_allocator::{OUTER_FRAME_ALLOCATOR, outer_fork}};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{
@@ -37,7 +38,7 @@ pub use frame_allocator::{
     add_free, 
     print_free_pages, 
     outer_frame_add_ref, 
-    enquire_refcount,
+    enquire_ref,
 
     frame_alloc,
     frame_dealloc,
@@ -141,12 +142,30 @@ fn nkapi_time() -> usize {
     time
 }
 
-fn check_valid(ppn: PhysPageNum) -> bool{
-    if ppn.0 >= 0x80000 && ppn.0 < 0x80800{
-        debug_error!("No permission to access {:?}", ppn);
+fn check_valid(owner: u8, ppn: PhysPageNum, perm: MapPermission) -> bool{
+    //NK SPACE can never be access.
+    if ppn.0 >= NKSPACE_START<<12 && ppn.0 < NKSPACE_END<<12{
+        debug_error!("No permission to access nk space {:?}", ppn);
         return false;
+
     }
-    return true;
+
+    //only owner can access with write perm.
+    if perm.contains(MapPermission::W){
+        if enquire_ref(ppn)[0] != owner {
+            debug_error!("Only owner can have write permission {:?}", ppn);
+            return false;
+        }
+    }
+
+    //only user can operate it.
+    for usr in enquire_ref(ppn){
+        if usr == owner {
+            return true;
+        }
+    }
+    debug_error!("Only page user can operate this {:?}", ppn);
+    return false;
 }
 
 pub fn pt_current() -> usize {
@@ -219,8 +238,7 @@ fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option
     pt_operate! (pt_child, target_pt, {
         target_pt.map(vpn, src_pte.unwrap().ppn(), src_pte.unwrap().flags());
     });
-
-    outer_frame_add_ref(src_pte.unwrap().ppn());
+    outer_fork(src_pte.unwrap().ppn(), pt_handle as u8, pt_child as u8);
     return Some(src_pte.unwrap().ppn());
 }
 
@@ -318,7 +336,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
             let target_ppn;
             match map_type{
                 MapType::Framed => {
-                    if let Some(ppn) = outer_frame_alloc(){
+                    if let Some(ppn) = outer_frame_alloc(pt_handle as u8){
                         //debug_info!("outer allocating: {:?}", ppn);
                         target_ppn = ppn;
                     }else{
@@ -326,7 +344,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
                     }
                 }
                 MapType::Raw => {
-                    if let Some(ppn) = outer_frame_alloc(){
+                    if let Some(ppn) = outer_frame_alloc(pt_handle as u8){
                         target_ppn = ppn;
                     }else{
                         print_free_pages();
@@ -347,8 +365,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
                 first_ppn = target_ppn;
             }
 
-            // get target ppn
-            if !check_valid(target_ppn) {
+            if !check_valid(pt_handle as u8, target_ppn, perm) {
                 return PhysPageNum(0);
             }
 
@@ -374,8 +391,13 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
 fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
     pt_operate! (pt_handle, target_pt, {
         if let Some(pte) = target_pt.translate(vpn){
+
+            if !check_valid(pt_handle as u8, pte.ppn(), MapPermission::R) {
+                return;
+            }
+
             target_pt.unmap(vpn);
-            outer_frame_dealloc(pte.ppn())
+            outer_frame_dealloc(pte.ppn(),pt_handle as u8);
         }
         
         return;
@@ -391,17 +413,18 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
             
             if write && pte.is_valid() && pte.is_cow(){
                 let former_ppn = pte.ppn();
-                if enquire_refcount(former_ppn) == 1 {
+                let usrs = enquire_ref(former_ppn);
+                if usrs.len() == 1 && usrs[0] == pt_handle as u8{
                     // change the flags of the src_pte
                     target_pt.set_flags(
                         vpn, pte.flags() & !PTEFlags::O | PTEFlags::W
                     );
                 }else{
-                    let ppn = outer_frame_alloc().unwrap();
+                    let ppn = outer_frame_alloc(pt_handle as u8).unwrap();
                     target_pt.remap_cow(vpn, ppn, former_ppn);
                 }
-
             }
+
             return Some(pte.ppn());
             
         }
@@ -413,15 +436,13 @@ fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<Ph
 fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     pt_operate! (pt_handle, target_pt, {
         let pa = target_pt.translate_va(va);
-        if va.0 == 0x7ffff000 {
-            debug_info!("Translating va3");
-        }
         return pa;
     });
     None
 }
 
 fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntry>{
+    
     pt_operate! (pt_handle, target_pt, {
         if let Some(pte) = target_pt.find_pte(vpn) {
             return Some(pte.clone());
@@ -434,6 +455,7 @@ fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntry>{
 
 
 fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usize) {
+
     unsafe{
         let former_pa = nkapi_translate_va(pt_current(), data_ptr.into()).unwrap();
 
@@ -442,23 +464,23 @@ fn nkapi_copy_to(pt_handle: usize, vpn: VirtPageNum, data_ptr: usize, offset:usi
             //debug_info!("nk_copy: copying data from {:x}", former_pa.0);
             let data = &*(former_pa.0 as *const usize as *mut [u8; PAGE_SIZE]);
 
-            let mut pte = &mut target_pt.translate(vpn).unwrap();
+            let pte = &mut target_pt.translate(vpn).unwrap();
             //debug_info!("nkapi_copy: copying {} datas to {:?}",PAGE_SIZE - offset, ppn);
 
             if pte.is_valid() && pte.is_cow(){
                 let former_ppn = pte.ppn();
-
-                if enquire_refcount(former_ppn) == 1 {
+                let usrs = enquire_ref(former_ppn);
+                if usrs.len() == 1 && usrs[0] == pt_handle as u8{
                     // change the flags of the src_pte
                     target_pt.set_flags(
                         vpn, pte.flags() & !PTEFlags::O | PTEFlags::W
                     );
                 }else{
-                    let ppn = outer_frame_alloc().unwrap();
+                    let ppn = outer_frame_alloc(pt_handle as u8).unwrap();
                     target_pt.remap_cow(vpn, ppn, former_ppn);
                 }
             }
-            
+
             let src = &data[0..(PAGE_SIZE - offset)];
             let dst = &mut pte.ppn().get_bytes_array()[offset..PAGE_SIZE];
             dst.copy_from_slice(src);

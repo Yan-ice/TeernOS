@@ -31,23 +31,23 @@ pub const SIGNAL_STACK_SIZE: usize = PAGE_SIZE;
 ///////////////////////////////////////
 //// QEMU config
 
-pub const USER_STACK_SIZE_MIN: usize = PAGE_SIZE * 8;
-pub const USER_STACK_SIZE: usize = PAGE_SIZE * 35;
-pub const USER_HEAP_SIZE: usize = PAGE_SIZE * 64;
-pub const NK_STACK_SIZE: usize = PAGE_SIZE * 2;
-pub const NK_HEAP_SIZE: usize = PAGE_SIZE * 0x50;
-pub const KERNEL_STACK_SIZE: usize = PAGE_SIZE * 2;
-pub const KERNEL_HEAP_SIZE: usize = PAGE_SIZE * 0x200;
-pub const NKSPACE_START: usize = 0x80200000;
-pub const NKSPACE_END: usize = 0x80800000;
-pub const OKSPACE_START: usize = 0x80800000;
-pub const OKSPACE_END: usize = 0x88000000;
+// pub const USER_STACK_SIZE_MIN: usize = PAGE_SIZE * 8;
+// pub const USER_STACK_SIZE: usize = PAGE_SIZE * 35;
+// pub const USER_HEAP_SIZE: usize = PAGE_SIZE * 64;
+// pub const NK_STACK_SIZE: usize = PAGE_SIZE * 2;
+// pub const NK_HEAP_SIZE: usize = PAGE_SIZE * 0x50;
+// pub const KERNEL_STACK_SIZE: usize = PAGE_SIZE * 2;
+// pub const KERNEL_HEAP_SIZE: usize = PAGE_SIZE * 0x200;
+// pub const NKSPACE_START: usize = 0x80200000;
+// pub const NKSPACE_END: usize = 0x80800000;
+// pub const OKSPACE_START: usize = 0x80800000;
+// pub const OKSPACE_END: usize = 0x88000000;
 
-pub const CLOCK_FREQ: usize = 12500000;
-pub const MMIO: &[(usize, usize)] = &[
-    (0x10001000, 0x1000),
-    (0x10000000, 0x1000),
-];
+// pub const CLOCK_FREQ: usize = 12500000;
+// pub const MMIO: &[(usize, usize)] = &[
+//     (0x10001000, 0x1000),
+//     (0x10000000, 0x1000),
+// ];
 
 ///////
 /////////////////////////////////
@@ -55,40 +55,40 @@ pub const MMIO: &[(usize, usize)] = &[
 ///////////////////////////////////
 //// K210 config
 
-// pub const USER_STACK_SIZE_MIN: usize = PAGE_SIZE * 4;
-// pub const USER_STACK_SIZE: usize = PAGE_SIZE * 16;
-// pub const USER_HEAP_SIZE: usize = PAGE_SIZE * 32;
-// pub const NK_STACK_SIZE: usize = PAGE_SIZE * 2;
-// pub const NK_HEAP_SIZE: usize = PAGE_SIZE * 0x30;
-// pub const KERNEL_STACK_SIZE: usize = PAGE_SIZE * 2;
-// pub const KERNEL_HEAP_SIZE: usize = PAGE_SIZE * 0x200;
-// pub const NKSPACE_START: usize = 0x80020000;
-// pub const NKSPACE_END: usize = 0x80200000;
-// pub const OKSPACE_START: usize = 0x80200000;
-// pub const OKSPACE_END: usize = 0x80500000;
+pub const USER_STACK_SIZE_MIN: usize = PAGE_SIZE * 4;
+pub const USER_STACK_SIZE: usize = PAGE_SIZE * 16;
+pub const USER_HEAP_SIZE: usize = PAGE_SIZE * 32;
+pub const NK_STACK_SIZE: usize = PAGE_SIZE * 2;
+pub const NK_HEAP_SIZE: usize = PAGE_SIZE * 0x30;
+pub const KERNEL_STACK_SIZE: usize = PAGE_SIZE * 2;
+pub const KERNEL_HEAP_SIZE: usize = PAGE_SIZE * 0x200;
+pub const NKSPACE_START: usize = 0x80020000;
+pub const NKSPACE_END: usize = 0x80200000;
+pub const OKSPACE_START: usize = 0x80200000;
+pub const OKSPACE_END: usize = 0x80500000;
 
-// pub const CLOCK_FREQ: usize = 403000000 / 62;
-// pub const MMIO: &[(usize, usize)] = &[
-//     // we don't need clint in S priv when running
-//     // we only need claim/complete for target0 after initializing
-//     // (0x0C00_0000, 0x3000),      /* PLIC      */
-//     (0x0C00_0000, 0x1000),      /* PLIC      */
-//     (0x0C00_1000, 0x1000),      /* PLIC      */
-//     (0x0C00_2000, 0x1000),      /* PLIC      */
-//     (0x0C20_0000, 0x1000),      /* PLIC      */
-//     (0x3800_0000, 0x1000),      /* UARTHS    */
-//     (0x3800_1000, 0x1000),      /* GPIOHS    */
-//     (0x5020_0000, 0x1000),      /* GPIO      */
-//     (0x5024_0000, 0x1000),      /* SPI_SLAVE */
-//     (0x502B_0000, 0x1000),      /* FPIOA     */
-//     (0x502D_0000, 0x1000),      /* TIMER0    */
-//     (0x502E_0000, 0x1000),      /* TIMER1    */
-//     (0x502F_0000, 0x1000),      /* TIMER2    */
-//     (0x5044_0000, 0x1000),      /* SYSCTL    */
-//     (0x5200_0000, 0x1000),      /* SPI0      */
-//     (0x5300_0000, 0x1000),      /* SPI1      */
-//     (0x5400_0000, 0x1000),      /* SPI2      */
-// ];
+pub const CLOCK_FREQ: usize = 403000000 / 62;
+pub const MMIO: &[(usize, usize)] = &[
+    // we don't need clint in S priv when running
+    // we only need claim/complete for target0 after initializing
+    // (0x0C00_0000, 0x3000),      /* PLIC      */
+    (0x0C00_0000, 0x1000),      /* PLIC      */
+    (0x0C00_1000, 0x1000),      /* PLIC      */
+    (0x0C00_2000, 0x1000),      /* PLIC      */
+    (0x0C20_0000, 0x1000),      /* PLIC      */
+    (0x3800_0000, 0x1000),      /* UARTHS    */
+    (0x3800_1000, 0x1000),      /* GPIOHS    */
+    (0x5020_0000, 0x1000),      /* GPIO      */
+    (0x5024_0000, 0x1000),      /* SPI_SLAVE */
+    (0x502B_0000, 0x1000),      /* FPIOA     */
+    (0x502D_0000, 0x1000),      /* TIMER0    */
+    (0x502E_0000, 0x1000),      /* TIMER1    */
+    (0x502F_0000, 0x1000),      /* TIMER2    */
+    (0x5044_0000, 0x1000),      /* SYSCTL    */
+    (0x5200_0000, 0x1000),      /* SPI0      */
+    (0x5300_0000, 0x1000),      /* SPI1      */
+    (0x5400_0000, 0x1000),      /* SPI2      */
+];
 
 /////
 ///////////////////////////////////

@@ -1,55 +1,27 @@
 use super::{PhysAddr, PhysPageNum};
-use alloc::vec::Vec;
+use alloc::vec::{self, Vec};
 use spin::Mutex;
 use crate::shared::*;
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;
 use crate::debug_info;
-#[derive(Clone)]
-pub struct FrameTracker {
-    pub ppn: PhysPageNum,
-}
 
-impl FrameTracker {
-    pub fn new(ppn: PhysPageNum) -> Self {
-        // page cleaning
-        let bytes_array = ppn.get_bytes_array();
-        for i in bytes_array {
-            *i = 0;
-        }
-        Self { ppn }
-    }
-    pub fn from_ppn(ppn: PhysPageNum) -> Self {
-        Self { ppn }
-    }
-}
-
-impl Debug for FrameTracker {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("FrameTracker:PPN={:#x}", self.ppn.0))
-    }
-}
-
-impl Drop for FrameTracker {
-    fn drop(&mut self) {
-        frame_dealloc(self.ppn);
-    }
-}
 
 pub trait FrameAllocator {
     fn new() -> Self;
-    fn alloc(&mut self) -> Option<PhysPageNum>;
-    fn dealloc(&mut self, ppn: PhysPageNum);
-    fn add_ref(&mut self, ppn: PhysPageNum);
-    fn enquire_ref(&self, ppn: PhysPageNum) -> usize;
+    fn alloc(&mut self, src: u8) -> Option<PhysPageNum>;
+    fn dealloc(&mut self, ppn: PhysPageNum, src: u8);
+    fn add_ref(&mut self, ppn: PhysPageNum, src: u8);
+    fn fork(&mut self, ppn: PhysPageNum, src: u8, dst: u8);
+    fn enquire_ref(&mut self, ppn: PhysPageNum) -> Vec<u8>;
 }
 
 pub struct StackFrameAllocator {
     current: usize,
     end: usize,
     recycled: Vec<usize>,
-    refcounter: BTreeMap<usize, u8>,
+    refcounter: BTreeMap<usize, Vec<u8>>,
 }
 
 impl StackFrameAllocator {
@@ -77,11 +49,12 @@ impl FrameAllocator for StackFrameAllocator {
             refcounter: BTreeMap::new(),
         }
     }
-    fn alloc(&mut self) -> Option<PhysPageNum> {
+    fn alloc(&mut self, owner: u8) -> Option<PhysPageNum> {
         
         if let Some(ppn) = self.recycled.pop() {
             //debug_info!{"alloced recycled ppn: {:X}", ppn}
-            self.refcounter.insert(ppn, 1);
+            self.refcounter.insert(ppn, alloc::vec![owner]);
+
             Some(ppn.into())
         } else {
             if self.current == self.end {
@@ -89,46 +62,74 @@ impl FrameAllocator for StackFrameAllocator {
             } else {
                 //debug_info!{"alloced ppn: {:X}", self.current}
                 self.current += 1;
-                self.refcounter.insert(self.current - 1, 1);
+                self.refcounter.insert(self.current - 1, alloc::vec![owner]);
+
                 Some((self.current - 1).into())
             }
         }
     }
 
-    fn dealloc(&mut self, ppn: PhysPageNum) {
+    fn dealloc(&mut self, ppn: PhysPageNum, user: u8) {
         let ppn = ppn.0; 
         // if self.refcounter.contains_key(&ppn) {
         // let no_ref = false;
         if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
-            *ref_times -= 1;
+            ref_times.retain(|x|{*x != user});
+
+            if ref_times[0] == 0 && ref_times.len() == 2 {
+                ref_times.remove(0);
+            }
+
             //debug_info!{"dealloced ppn: {:X}", ppn}
                 
             // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
-            if *ref_times == 0 {
+            if ref_times.is_empty() {
                 self.refcounter.remove(&ppn);
                 // validity check
-                if ppn >= self.current || self.recycled
-                    .iter()
-                    .find(|&v| {*v == ppn})
-                    .is_some() {
-                    // panic!("Frame ppn={:#x} has not been allocated!", ppn);
-                }
+                // if ppn >= self.current || self.recycled
+                //     .iter()
+                //     .find(|&v| {*v == ppn})
+                //     .is_some() {
+                //     // panic!("Frame ppn={:#x} has not been allocated!", ppn);
+                // }
                 // recycle
                 self.recycled.push(ppn);
             }
         }      
     }
-    fn add_ref(&mut self, ppn: PhysPageNum) {
+
+    fn fork(&mut self, ppn: PhysPageNum, src: u8, dst: u8){
+        let ppn = ppn.0; 
+        if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
+            if ref_times[0] == 0 || ref_times[0] == src{
+                if ref_times[0] != 0 {
+                    ref_times.insert(0, 0);
+                }
+                ref_times.push(dst);
+            }else{
+                debug_info!{"only the owner can fork pages! {:X}", ppn}
+            }
+        }      
+    }
+
+    fn add_ref(&mut self, ppn: PhysPageNum, src: u8) {
         //debug_info!("adding ref: {:x}",ppn.0);
         let ppn = ppn.0; 
-        let ref_times = self.refcounter.get_mut(&ppn).unwrap();
-        *ref_times += 1;
+        let ref_user = self.refcounter.get_mut(&ppn).unwrap();
+        ref_user.push(src);
     }
-    fn enquire_ref(&self, ppn: PhysPageNum) -> usize{
+
+
+    fn enquire_ref(&mut self, ppn: PhysPageNum) -> Vec<u8>{
         let ppn = ppn.0; 
-        let ref_times = self.refcounter.get(&ppn).unwrap();
-        (*ref_times).clone() as usize
+        let ref_times = self.refcounter.get_mut(&ppn).unwrap();
+        if ref_times[0] == 0 && ref_times.len() == 2 {
+            ref_times.remove(0);
+        }
+
+        return (*ref_times).to_vec().clone();
     }
+
 }
 
 type FrameAllocatorImpl = StackFrameAllocator;
@@ -153,7 +154,7 @@ pub fn init_frame_allocator() {
 }
 
 
-pub fn outer_frame_alloc() -> Option<PhysPageNum> {
+pub fn outer_frame_alloc(owner: u8) -> Option<PhysPageNum> {
     
     let mut outer_allocator = OUTER_FRAME_ALLOCATOR.lock();
     
@@ -165,7 +166,7 @@ pub fn outer_frame_alloc() -> Option<PhysPageNum> {
         //debug_warn!("Allocator config: {:x} - {:x}", st, ed);
     }
 
-    let pn = outer_allocator.alloc();
+    let pn = outer_allocator.alloc(owner);
     
     if let Some(ppn) = pn{
         let bytes_array = ppn.get_bytes_array();
@@ -176,14 +177,14 @@ pub fn outer_frame_alloc() -> Option<PhysPageNum> {
     pn
     
 }
-pub fn outer_frame_dealloc(ppn: PhysPageNum) {
-    OUTER_FRAME_ALLOCATOR.lock().dealloc(ppn);
+pub fn outer_frame_dealloc(ppn: PhysPageNum, user: u8) {
+    OUTER_FRAME_ALLOCATOR.lock().dealloc(ppn, user);
 }
 
 pub fn frame_alloc() -> Option<PhysPageNum> {
     let pn = FRAME_ALLOCATOR
         .lock()
-        .alloc();
+        .alloc(0);
     
     if let Some(ppn) = pn{
         let bytes_array = ppn.get_bytes_array();
@@ -196,24 +197,30 @@ pub fn frame_alloc() -> Option<PhysPageNum> {
     pn
 }
 
-
-pub fn outer_frame_add_ref(ppn: PhysPageNum) {
+pub fn outer_fork(ppn: PhysPageNum, user: u8, target: u8) {
     OUTER_FRAME_ALLOCATOR
         .lock()
-        .add_ref(ppn)
+        .fork(ppn, user, target);
+}
+
+pub fn outer_frame_add_ref(ppn: PhysPageNum, user: u8) {
+    OUTER_FRAME_ALLOCATOR
+        .lock()
+        .add_ref(ppn, user);
 }
 
 pub fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR
         .lock()
-        .dealloc(ppn);
+        .dealloc(ppn, 0);
 }
 
-pub fn enquire_refcount(ppn: PhysPageNum) -> usize {
+pub fn enquire_ref(ppn: PhysPageNum) -> Vec<u8> {
     OUTER_FRAME_ALLOCATOR
         .lock()
         .enquire_ref(ppn)
 }
+
 pub fn add_free(ppn: usize){
     FRAME_ALLOCATOR.lock().recycled.push(ppn);
 }

@@ -233,10 +233,9 @@ impl PageTableRecord {
     }
     #[allow(unused)]
     pub fn remap_cow(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, former_ppn: PhysPageNum) {
-        let pte = self.find_pte_create(vpn).unwrap();
+        let pte = self.find_pte_create(vpn).unwrap(); // former ppn
         // debug_info!{"remapping {:?}", 
-        *pte = PageTableEntry::new(ppn, pte.flags() | PTEFlags::W);
-        pte.set_cow();
+        *pte = PageTableEntry::new(ppn, pte.flags() & !PTEFlags::O | PTEFlags::W );
         ppn.get_bytes_array().copy_from_slice(former_ppn.get_bytes_array());
     }
     #[allow(unused)]
