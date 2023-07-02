@@ -1,4 +1,4 @@
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 use crate::debug_info;
 pub fn mem_access_timecost(){
     return;

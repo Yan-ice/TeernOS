@@ -13,7 +13,7 @@ use riscv::register::{
     stvec
 };
 use crate::config::*;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 pub use trap_handle::nk_trap_handler;
 

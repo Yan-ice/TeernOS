@@ -19,6 +19,7 @@ extern crate shared;
 mod mm;   
 mod trap;
 mod tests;
+mod config;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
@@ -26,7 +27,7 @@ global_asm!(include_str!("nk_gate.S"));
 
 use tests::{nkapi_gatetest};
 
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 
 use mm::{
             KERNEL_SPACE as KERNEL_SPACE, 

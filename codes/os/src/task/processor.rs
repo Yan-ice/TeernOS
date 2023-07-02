@@ -8,7 +8,7 @@ use super::{fetch_task, TaskStatus};
 use super::__switch;
 use crate::timer::get_time_us;
 
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 use crate::util::memory_set::*;
 
 use crate::task::manager::add_task;

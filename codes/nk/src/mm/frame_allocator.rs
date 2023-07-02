@@ -1,7 +1,7 @@
 use super::{PhysAddr, PhysPageNum};
 use alloc::vec::{self, Vec};
 use spin::Mutex;
-use crate::shared::*;
+use crate::shared::*; use crate::config::*;
 use lazy_static::*;
 use core::fmt::{self, Debug, Formatter};
 use alloc::collections::BTreeMap;

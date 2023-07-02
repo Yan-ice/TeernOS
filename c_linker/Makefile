@@ -1,18 +1,26 @@
-
-
 musl := 1
 
 ifdef musl
+# GCC := riscv64-unknown-linux-musl-gcc
+# LIB := /opt/riscv/riscv64-unknown-linux-musl/lib -L/opt/riscv/sysroot/lib -L.
+# INCLUDE := /opt/riscv/riscv64-unknown-linux-musl/include -I/opt/riscv/sysroot/include
+
 	GCC := riscv64-unknown-linux-musl-gcc
-	LIB := /opt/riscv/riscv64-unknown-linux-musl/lib -L/opt/riscv/sysroot/lib -L.
-	INCLUDE := /opt/riscv/riscv64-unknown-linux-musl/include -I/opt/riscv/sysroot/include
+# LIB := /home/wind/riscv/sysroot/lib
+# INCLUDE := /home/wind/riscv/sysroot/include
+	LIB := /home/wind/Desktop/riscv/sysroot/lib
+	INCLUDE := /home/wind/Desktop/riscv/sysroot/include
 	FLAGS := -no-pie -nostdinc
 endif
 
 ifdef elf
-	GCC := /home/yan_ice/riscv-un/bin/riscv64-unknown-elf-gcc
-	LIB := /home/yan_ice/riscv-un/riscv64-unknown-elf/lib
-	INCLUDE := /home/yan_ice/riscv-un/riscv64-unknown-elf/include
+# GCC := /home/yan_ice/riscv-un/bin/riscv64-unknown-elf-gcc
+# LIB := /home/yan_ice/riscv-un/riscv64-unknown-elf/lib
+# INCLUDE := /home/yan_ice/riscv-un/riscv64-unknown-elf/include
+
+	GCC := /home/wind/Desktop/riscv-tools/bin/riscv64-unknown-elf-gcc
+	LIB := /home/wind/Desktop/riscv-tools/riscv64-unknown-elf/lib
+	INCLUDE := /home/wind/Desktop/riscv-tools/riscv64-unknown-elf/include
 	FLAGS := -no-pie -nostdinc
 endif
 
@@ -29,12 +37,14 @@ all: build_c
 
 
 build_c: $(CC_TARGET)
-	$(GCC) $(FLAGS) -L$(LIB) $(CC_TARGET) -static -o ttst -march=rv64imac -mabi=lp64
+# $(GCC) $(FLAGS) -L$(LIB) $(CC_TARGET) -static -o ttst -march=rv64imac -mabi=lp64
+	$(GCC) $(FLAGS) -L$(LIB) -lc $(CC_TARGET) -static -o ttst
 
 build_s: $(CC_TARGET)
 	$(GCC) $(FLAGS) -L. ./cross/crt.S $(CC_TARGET) -static -o ttst -march=rv64imac -mabi=lp64 -T ./cross/user.ld
 
 
 %.o: %.c
-	$(GCC) -c -O0 -o $@ $^ $(FLAGS) -I$(INCLUDE) -march=rv64imac -mabi=lp64
+# $(GCC) -c -O0 -o $@ $^ $(FLAGS) -I$(INCLUDE) -march=rv64imac -mabi=lp64
+	$(GCC) -c -O2 -o $@ $^ $(FLAGS) -I$(INCLUDE)
     

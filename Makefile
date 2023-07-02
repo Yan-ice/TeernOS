@@ -43,7 +43,7 @@ export FW_JUMP_ADDR=$(KERNEL_ENTRY_PA)
 all: run
 
 build:
-	# rustup target add riscv64gc-unknown-none-elf
+# rustup target add riscv64gc-unknown-none-elf
 	cd codes/os && make build
 	cd codes/nk && make build
 	cd codes/user && make elf
@@ -54,7 +54,7 @@ else ifeq ($(BOARD), k210)
 endif
 	
 
-run: build
+run: build build_sbi
 	
 ifeq ($(BOARD), qemu)
 	@$(QEMU_SYSTEM) \

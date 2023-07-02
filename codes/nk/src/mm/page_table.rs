@@ -5,7 +5,8 @@ use super::{
     nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
 use crate::{debug_warn, debug_info};
-use shared::*;
+use crate::shared::*;
+use crate::config::*;
 
 use alloc::{vec::Vec, boxed::Box};
 use bitflags::*;

@@ -25,6 +25,7 @@ mod task;
 
 mod timer;
 mod heap_allocator;
+mod config;
 
 use crate::{config::*};
 use lazy_static::lazy_static;
