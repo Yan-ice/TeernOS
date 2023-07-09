@@ -109,6 +109,24 @@ macro_rules! pt_operate {
 }
 
 
+macro_rules! error_status {
+    ($err_code:expr) => {
+        asm!("jr x1",
+        in(x17) $err_code,
+        in(x0) 0
+        );
+    };
+}
+
+macro_rules! success_status {
+    ($retval:expr) => {
+        asm!("jr x1",
+        in(x17) 0,
+        in(x0) usize::from($retval)
+        );
+    };
+}
+
 pub fn init_vec(){
     let proxy = PROXYCONTEXT();
 
@@ -212,21 +230,21 @@ fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
     
 }
 
-fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum, cow: bool) -> Option<PhysPageNum> {
+fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum, cow: bool) -> PhysPageNum {
     let mut flag: PTEFlags = PTEFlags::V;
     pt_operate! (pt_handle, target_pt, {
         let src_pte = target_pt.find_pte(vpn);
         if src_pte.is_none() {
-            debug_warn!("fork_pte: source pte is invalid!");
-            return None;
+            error_status!(1,"fork_pte: source pte is invalid!");
+            return PhysPageNum(0);
         }
         flag = src_pte.unwrap().flags();
     });
     pt_operate! (pt_child, target_pt, {
         let dst_pte = target_pt.find_pte(vpn);
         if dst_pte.is_some() {
-            debug_warn!("fork_pte: target pte already exists: {:?}", vpn);
-            return None;
+            debug_error!("fork_pte: target pte already exists: {:?}", vpn);
+            return dst_pte.unwrap().ppn();
         }
     }); 
 
@@ -243,14 +261,14 @@ fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum, cow: bool
             target_pt.map(vpn, src_pte.unwrap().ppn(), src_pte.unwrap().flags());
         });
         outer_fork(src_pte.unwrap().ppn(), pt_handle as u8, pt_child as u8);
-        return Some(src_pte.unwrap().ppn());
+        return src_pte.unwrap().ppn();
         
     }else{
         let dst_ppn = nkapi_alloc(pt_child, vpn, 1, 
             MapType::Framed.into(), (flag.bits() as usize).into());
         let src_ppn = nkapi_translate(pt_handle, vpn, false).unwrap();
         nkapi_copyTo(pt_child, vpn, src_ppn.get_bytes_array(), 0);
-        return Some(dst_ppn);
+        return dst_ppn;
     }
     
     
@@ -380,6 +398,8 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
             }
 
             if !check_valid(pt_handle as u8, target_ppn, perm) {
+                debug_error!("Invalid allocation!");
+                error_status!(1);
                 return PhysPageNum(0);
             }
 
@@ -398,7 +418,7 @@ fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, map_type_u:
         return first_ppn;
     });
     debug_info!("nkapi_alloc: cannot find pagetable!");
-    return PhysPageNum{0: root_vpn.0};
+    return PhysPageNum(root_vpn.0);
 
 }
 
@@ -420,7 +440,7 @@ fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
 }
 
 // while translating COW with write==True, it would start alloc and copy.
-fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> Option<PhysPageNum>{
+fn nkapi_translate(pt_handle: usize, vpn: VirtPageNum, write: bool) -> PhysPageNum{
 
     pt_operate! (pt_handle, target_pt, {
         if let Some(pte) = target_pt.translate(vpn){
@@ -455,16 +475,14 @@ fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> Option<PhysAddr>{
     None
 }
 
-fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntry>{
+fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> PageTableEntry{
     
     pt_operate! (pt_handle, target_pt, {
         if let Some(pte) = target_pt.find_pte(vpn) {
-            return Some(pte.clone());
-        }else{
-            return None
+            return pte.clone();
         }
     });
-    None
+    PageTableEntry { bits: 0 }
 }
 
 

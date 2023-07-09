@@ -63,14 +63,9 @@ nk_entry:
     ld sp, 2*8(x28)
 
     # the handler in nkcall vec:  ProxyContext addr + 66*8 + nk_call_num*8
-    add x29, x28, x10
+    add x29, x28, x17
     ld x29, 66*8(x29)
 
-    mv x10, x11
-    mv x11, x12
-    mv x12, x13
-    mv x13, x14
-    mv x14, x15
     # handler function call
     jalr x1, x29, 0
 
@@ -104,14 +99,8 @@ nk_bypass:
     .endr
 
     # the handler in nkcall vec:  ProxyContext addr + 66*8 + nk_call_num*8
-    add x29, x28, x10
+    add x29, x28, x17
     ld x30, 66*8(x29)
-
-    mv x10, x11
-    mv x11, x12
-    mv x12, x13
-    mv x13, x14
-    mv x14, x15
 
     # handler function call
     jalr x1, x30, 0

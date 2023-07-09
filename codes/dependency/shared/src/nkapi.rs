@@ -31,11 +31,13 @@ macro_rules! return_value {
 macro_rules! return_some {
     ($type:ty, $retval0:expr, $retval1:expr) => {
         unsafe{
-            if $retval0 == 0{
+            if retval1 == 0 {
+                let cast: $type = <$type>::from($retval0);
+                return Some(cast);
+            }else{
                 return None;
             }
-            let cast: $type = <$type>::from($retval1);
-            return Some(cast);
+            
         }
     };
 }
@@ -46,9 +48,9 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
+                in("x17") $tar as usize*8,
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
         }
     };
@@ -57,10 +59,10 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
-                in("a1") usize::from($t1),
+                in("x17") $tar as usize*8,
+                in("a0") usize::from($t1),
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
         }
     };
@@ -69,11 +71,11 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
-                in("a1") usize::from($t1),
-                in("a2") usize::from($t2),
+                in("x17") $tar as usize*8,
+                in("a0") usize::from($t1),
+                in("a1") usize::from($t2),
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
         }
     };
@@ -82,12 +84,12 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
-                in("a1") usize::from($t1),
-                in("a2") usize::from($t2),
-                in("a3") usize::from($t3),
+                in("x17") $tar as usize*8,
+                in("a0") usize::from($t1),
+                in("a1") usize::from($t2),
+                in("a2") usize::from($t3),
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
         }
     };
@@ -97,13 +99,13 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
-                in("a1") usize::from($t1),
-                in("a2") usize::from($t2),
-                in("a3") usize::from($t3),
-                in("a4") usize::from($t4),
+                in("x17") $tar as usize*8,
+                in("a0") usize::from($t1),
+                in("a1") usize::from($t2),
+                in("a2") usize::from($t3),
+                in("a3") usize::from($t4),
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
 
             if usize::from($t1) > 2000 {
@@ -117,14 +119,14 @@ macro_rules! entry_gate {
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
-                in("a0") $tar as usize*8,
-                in("a1") usize::from($t1),
-                in("a2") usize::from($t2),
-                in("a3") usize::from($t3),
-                in("a4") usize::from($t4),
+                in("x17") $tar as usize*8,
+                in("a0") usize::from($t1),
+                in("a1") usize::from($t2),
+                in("a2") usize::from($t3),
+                in("a3") usize::from($t4),
                 in("a5") usize::from($t5),
                 lateout("a0") $retval0,
-                lateout("a1") $retval1,
+                lateout("x17") $retval1,
             );
 
             if usize::from($t1) > 2000 {
