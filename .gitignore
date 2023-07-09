@@ -1,6 +1,7 @@
 .vscode/
 codes/nk/target/
 codes/os/target/
+codes/dependency/shared/target/
 fs_tool/fat.img
 codes/fat32-fuse/fat32.img
 k210/tools
