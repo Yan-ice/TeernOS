@@ -76,10 +76,6 @@ impl FrameAllocator for StackFrameAllocator {
         if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
             ref_times.retain(|x|{*x != user});
 
-            if ref_times[0] == 0 && ref_times.len() == 2 {
-                ref_times.remove(0);
-            }
-
             //debug_info!{"dealloced ppn: {:X}", ppn}
                 
             // debug_info!{"the refcount of {:X} decrease to {}", ppn, ref_times}
@@ -94,7 +90,14 @@ impl FrameAllocator for StackFrameAllocator {
                 // }
                 // recycle
                 self.recycled.push(ppn);
+                return;
             }
+
+            if ref_times[0] == 0 && ref_times.len() == 2 {
+                ref_times.remove(0);
+            }
+
+
         }      
     }
 
@@ -122,12 +125,14 @@ impl FrameAllocator for StackFrameAllocator {
 
     fn enquire_ref(&mut self, ppn: PhysPageNum) -> Vec<u8>{
         let ppn = ppn.0; 
-        let ref_times = self.refcounter.get_mut(&ppn).unwrap();
-        if ref_times[0] == 0 && ref_times.len() == 2 {
-            ref_times.remove(0);
+        if let Some(ref_times) = self.refcounter.get_mut(&ppn) {
+            if ref_times[0] == 0 && ref_times.len() == 2 {
+                ref_times.remove(0);
+            }
+    
+            return (*ref_times).to_vec().clone();
         }
-
-        return (*ref_times).to_vec().clone();
+        return Vec::new();
     }
 
 }

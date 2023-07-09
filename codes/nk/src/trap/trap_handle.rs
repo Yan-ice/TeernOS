@@ -39,25 +39,37 @@ pub fn nk_trap_handler(mut ctx_addr: usize) -> usize {
 pub fn nk_syscall_impl(ctx: &mut TrapContext) -> usize {
     // let stval = stval::read();
     let call_id: usize = ctx.x[17];
-    if call_id == 401{
-        let mut hasher = Sha3::v256();
-        unsafe{
-            let start: usize= 0x80800000;
-            let end: usize = 0x840000001;
-            for i in start..end{
-                let temp = *(i as usize as *const usize);
-                hasher.update((&format!("{}", temp)).as_bytes());
-            }
-            let mut result = [0u8; 32];
-            hasher.finalize(&mut result);
 
-            let mut hash = [0u8; 8];
-            hash.copy_from_slice(&result[..8]);
-            ctx.x[10] = u64::from_le_bytes(hash) as usize;
+    match call_id {
+        401 => {
+            ctx.x[10] = get_measure();
         }
+        402 =>{
+
+        }
+        _=>{debug_warn!("Unsupported syscall id [{}]", call_id);}
     }
-    debug_warn!("Nothing need to handle now... for syscall id [{}]", call_id);
+
+    
     return 0;
+}
+
+fn get_measure() -> usize{
+    let mut hasher = Sha3::v256();
+    unsafe{
+        let start: usize= 0x80800000;
+        let end: usize = 0x840000001;
+        for i in start..end{
+            let temp = *(i as usize as *const usize);
+            hasher.update((&format!("{}", temp)).as_bytes());
+        }
+        let mut result = [0u8; 32];
+        hasher.finalize(&mut result);
+
+        let mut hash = [0u8; 8];
+        hash.copy_from_slice(&result[..8]);
+        return u64::from_le_bytes(hash) as usize;
+    }
 }
 
 

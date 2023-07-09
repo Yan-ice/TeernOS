@@ -4,7 +4,6 @@ mod frame_allocator;
 mod page_table;
 mod memory_set;
 
-<<<<<<< HEAD
 use crate::{debug_info, mm::frame_allocator::{OUTER_FRAME_ALLOCATOR, outer_fork}};
 use riscv::register::{
     mtvec::TrapMode,
@@ -17,9 +16,6 @@ use riscv::register::{
     stval,
     stvec,
 };
-=======
-use crate::{debug_info};
->>>>>>> ab9cb1c658fffaf1966156382eb2df6c46f6a059
 
 
 use alloc::{boxed::Box};
@@ -49,6 +45,7 @@ pub use frame_allocator::{
     outer_frame_dealloc
 };
 
+use crate::config::*;
 
 pub use page_table::{
     PageTable,
@@ -152,7 +149,9 @@ fn check_valid(owner: u8, ppn: PhysPageNum, perm: MapPermission) -> bool{
         return false;
 
     }
-
+    if enquire_ref(ppn).len() == 0 {
+        return true;
+    }
     //only owner can access with write perm.
     if perm.contains(MapPermission::W){
         if enquire_ref(ppn)[0] != owner {
@@ -213,7 +212,7 @@ fn nkapi_print_pt(pt_handle: usize, from: usize, to: usize){
     
 }
 
-fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option<PhysPageNum> {
+fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum, cow: bool) -> Option<PhysPageNum> {
     let mut flag: PTEFlags = PTEFlags::V;
     pt_operate! (pt_handle, target_pt, {
         let src_pte = target_pt.find_pte(vpn);
@@ -226,23 +225,35 @@ fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option
     pt_operate! (pt_child, target_pt, {
         let dst_pte = target_pt.find_pte(vpn);
         if dst_pte.is_some() {
-            debug_warn!("fork_pte: target pte already exists!");
+            debug_warn!("fork_pte: target pte already exists: {:?}", vpn);
             return None;
         }
-    });
-    flag = flag & !PTEFlags::W | PTEFlags::O;
+    }); 
 
-    let mut src_pte = None;
-    pt_operate! (pt_handle, target_pt, {
-        target_pt.set_flags(vpn, flag);
-        src_pte = Some(target_pt.find_pte(vpn).unwrap().clone());
-    });
-    //debug_info!("forking pte: {:?} -> {:?}",vpn, src_pte.unwrap().ppn());
-    pt_operate! (pt_child, target_pt, {
-        target_pt.map(vpn, src_pte.unwrap().ppn(), src_pte.unwrap().flags());
-    });
-    outer_fork(src_pte.unwrap().ppn(), pt_handle as u8, pt_child as u8);
-    return Some(src_pte.unwrap().ppn());
+    if cow {
+        flag = flag & !PTEFlags::W | PTEFlags::O;
+
+        let mut src_pte = None;
+        pt_operate! (pt_handle, target_pt, {
+            target_pt.set_flags(vpn, flag);
+            src_pte = Some(target_pt.find_pte(vpn).unwrap().clone());
+        });
+        //debug_info!("forking pte: {:?} -> {:?}",vpn, src_pte.unwrap().ppn());
+        pt_operate! (pt_child, target_pt, {
+            target_pt.map(vpn, src_pte.unwrap().ppn(), src_pte.unwrap().flags());
+        });
+        outer_fork(src_pte.unwrap().ppn(), pt_handle as u8, pt_child as u8);
+        return Some(src_pte.unwrap().ppn());
+        
+    }else{
+        let dst_ppn = nkapi_alloc(pt_child, vpn, 1, 
+            MapType::Framed.into(), (flag.bits() as usize).into());
+        let src_ppn = nkapi_translate(pt_handle, vpn, false).unwrap();
+        nkapi_copyTo(pt_child, vpn, src_ppn.get_bytes_array(), 0);
+        return Some(dst_ppn);
+    }
+    
+    
 }
 
 fn nkapi_pt_init(pt_handle: usize, re_generate: bool){

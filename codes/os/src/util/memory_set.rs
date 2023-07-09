@@ -11,7 +11,6 @@ use alloc::vec::Vec;
 use spin::Mutex;
 use crate::lazy_static; 
 use crate::task::AuxHeader;
-use crate::shared::*; use crate::config::*;
 
 extern "C" {
     fn stext();
@@ -216,7 +215,7 @@ impl MemorySet {
         //     MapPermission::R | MapPermission::W,
         // ), None);
 
-        // debug_os!("mapping outer kernel space");
+        debug_os!("mapping outer kernel space");
         memory_set.push(MapArea::new(
             (eokernel as usize).into(),
             OKSPACE_END.into(),
@@ -467,7 +466,7 @@ impl MemorySet {
                 for vpn in area.vpn_range {
                     //change the map permission of both pagetable
                     
-                    if let Some(ppn) = nkapi_fork_pte(user_space.id(), memory_set.id(), vpn){
+                    if let Some(ppn) = nkapi_fork_pte(user_space.id(), memory_set.id(), vpn, true){
                         new_area.insert_tracker(vpn, ppn);
 
                         let src_ppn = user_space.translate(vpn).unwrap();
@@ -485,13 +484,16 @@ impl MemorySet {
                 //not COW, directly copy
                 let new_area = MapArea::from_another(area);
 
-                memory_set.push(new_area, None);
                 for vpn in area.vpn_range {
-                    let src_ppn = user_space.translate(vpn).unwrap();
-                    let dst_ppn = memory_set.translate(vpn).unwrap();
-                    //println!{"[not COW] mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
-                    dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+                    if let Some(ppn) = nkapi_fork_pte(user_space.id(), memory_set.id(), vpn, false){
+                    
+                        let src_ppn = user_space.translate(vpn).unwrap();
+                        let dst_ppn = memory_set.translate(vpn).unwrap();
+                        //println!{"[not COW] mapping {:?} --- {:?}, src: {:?}", vpn, dst_ppn, src_ppn};
+                    }
+
                 }
+                memory_set.push_mapped(new_area);
 
             }
             

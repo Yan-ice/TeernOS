@@ -119,7 +119,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             let va: VirtAddr = (stval as usize).into();
             // The boundary decision
             if va > TRAMPOLINE.into() {
-                panic!("VirtAddr out of range!");
+                panic!("VirtAddr out of range: {:?}",va);
             }
             
             //println!("check_lazy 1");

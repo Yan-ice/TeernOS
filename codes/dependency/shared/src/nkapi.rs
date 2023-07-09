@@ -171,10 +171,10 @@ pub fn nkapi_get_pte(pt_handle: usize, vpn: VirtPageNum) -> Option<PageTableEntr
 
 }
 
-pub fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum) -> Option<PhysPageNum> {
+pub fn nkapi_fork_pte(pt_handle: usize, pt_child: usize, vpn: VirtPageNum, cow: bool) -> Option<PhysPageNum> {
     let retval0: usize;
     let retval1: usize;
-    entry_gate!(NKAPI_FORK_PTE, pt_handle, pt_child, vpn, retval0, retval1);
+    entry_gate!(NKAPI_FORK_PTE, pt_handle, pt_child, vpn, cow, retval0, retval1);
     return_some!(PhysPageNum,retval0,retval1);
 }
 

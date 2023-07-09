@@ -12,7 +12,7 @@ export U_FAT32 := $(cwd)/fs_tool/fat.img
 
 export OS_PATH := $(cwd)/codes/os
 export NK_PATH := $(cwd)/codes/nk
-export SBI_PATH := $(cwd)/opensbi-0.9
+export SBI_PATH := $(cwd)/opensbi_nk
 export K210_PATH := $(cwd)/k210
 
 export KERNEL_ELF := $(NK_PATH)/target/$(TARGET)/$(MODE)/TeernOS_nk
@@ -79,9 +79,9 @@ endif
 	
 
 build_fs:
-	rm -f c_linker/*.o
-	cd c_linker && make
-	cp c_linker/ttst fs_tool/content/
+	# rm -f c_linker/*.o
+	# cd c_linker && make
+	# cp c_linker/ttst fs_tool/content/
 	cd fs_tool && make
 	
 concat_k210:
