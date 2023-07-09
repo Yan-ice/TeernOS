@@ -66,6 +66,9 @@ nk_entry:
     add x29, x28, x17
     ld x29, 66*8(x29)
 
+    # x17 would be status code.
+    li x17, 0
+
     # handler function call
     jalr x1, x29, 0
 

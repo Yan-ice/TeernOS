@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(global_asm)]
-#![feature(llvm_asm)]
+// #![feature(global_asm)]
 #![feature(asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
@@ -20,6 +19,8 @@ mod mm;
 mod trap;
 mod tests;
 mod config;
+
+use core::arch::global_asm;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("start_app.S"));
@@ -41,7 +42,8 @@ use crate::shared::sbi::shutdown;
 pub fn id() -> usize {
     let cpu_id;
     unsafe {
-        llvm_asm!("mv $0, tp" : "=r"(cpu_id));
+        core::arch::asm!("mv {0}, tp", 
+                        out(reg) cpu_id);
     }
     cpu_id
 }
@@ -98,6 +100,8 @@ pub fn nk_main(){
     
     nkapi_pt_init(0, false);
 
+    // nkapi_alloc_mul(2, 4.into(), 9.into()
+    // , 8.into(),10.into());
     debug_info!("outer kernel page init.");
 
     nkapi_alloc_mul(0, 
@@ -114,13 +118,13 @@ pub fn nk_main(){
 
     let mut proxy = PROXYCONTEXT();
     proxy.nk_satp = KERNEL_SPACE.lock().token();
-    proxy.outer_satp = nkapi_vun_getpt(0).token();
+    proxy.outer_satp = nkapi_vun_getpt(0).unwrap().token();
     proxy.outer_register[1] = config::OKSPACE_START as usize; //let ra be outer kernel init
 
     debug_info!("Ready to outer kernel.");
     unsafe{
         //nk_exit(0);
-        asm!("jr x31", 
+        core::arch::asm!("jr x31", 
         //in("x31") nk_exit as usize,
         in("x31") config::NK_TRAMPOLINE + nk_exit as usize - nk_entry as usize,
         in("x10") 0 );
@@ -132,7 +136,7 @@ pub fn nk_main(){
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
-        debug_error!("[kernel] Panicked at {}:{} {}", location.file(), location.line(), info.message().unwrap());
+        debug_error!("[kernel] Panicked at {}: {} {}", location.file(), location.line(), info.message().unwrap());
     } else {
         debug_error!("[kernel] Panicked: {}", info.message().unwrap());
     }

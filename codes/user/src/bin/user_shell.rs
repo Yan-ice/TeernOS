@@ -1,11 +1,10 @@
 #![no_std]
 #![no_main]
 
-use core::{convert::TryInto, panic, str};
+use core::{panic, str};
 
 extern crate alloc;
 
-#[macro_use]
 extern crate user_lib;
 
 const LF: u8 = 0x0au8;
@@ -845,7 +844,7 @@ pub fn main() -> i32 {
 
     loop{
         let c = getchar();
-        if(c==255){
+        if c==255 {
             continue;
         }
         //println!("getchar: {}", c);

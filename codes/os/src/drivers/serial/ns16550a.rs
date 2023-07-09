@@ -1,9 +1,6 @@
 /*  In this file, we ported codes from RustSBI.
     Thus we can handle serial in S mode.
 */
-use core::convert::Infallible;
-use core::ptr::{read_volatile, write_volatile};
-use embedded_hal::serial::{Read, Write};
 
 pub struct Ns16550a {
     base: usize,
@@ -17,45 +14,7 @@ impl Ns16550a {
     }
 }
 
-impl Read<u8> for Ns16550a {
-    type Error = Infallible;
 
-    fn try_read(&mut self) -> nb::Result<u8, Self::Error> {
-        let pending =
-            unsafe { read_volatile((self.base + (offsets::LSR << self.shift)) as *const u8) }
-                & masks::DR;
-        if pending != 0 {
-            let word =
-                unsafe { read_volatile((self.base + (offsets::RBR << self.shift)) as *const u8) };
-            Ok(word)
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
-
-impl Write<u8> for Ns16550a {
-    type Error = Infallible;
-
-    fn try_write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        // 写，但是不刷新
-        unsafe { write_volatile((self.base + (offsets::THR << self.shift)) as *mut u8, word) };
-        Ok(())
-    }
-
-    fn try_flush(&mut self) -> nb::Result<(), Self::Error> {
-        let pending =
-            unsafe { read_volatile((self.base + (offsets::LSR << self.shift)) as *const u8) }
-                & masks::THRE;
-        if pending != 0 {
-            // 发送已经结束了
-            Ok(())
-        } else {
-            // 发送还没有结束，继续等
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
 
 mod offsets {
     pub const RBR: usize = 0x0;

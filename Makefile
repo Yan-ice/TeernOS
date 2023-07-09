@@ -1,5 +1,7 @@
 export cwd := $(shell pwd)
-export TARGET := riscv64imac-unknown-none-elf
+#export TARGET := riscv64imac-unknown-none-elf
+export TARGET := riscv64gc-unknown-none-elf
+
 
 export MODE ?= release
 export BOARD ?= k210
@@ -53,7 +55,6 @@ else ifeq ($(BOARD), k210)
 	cd k210 && make build
 endif
 	
-
 run: build build_sbi
 	
 ifeq ($(BOARD), qemu)
@@ -76,7 +77,6 @@ ifeq ($(BOARD), qemu)
 else ifeq ($(BOARD), k210)
 	cd $(SBI_PATH) && make PLATFORM=kendryte/k210
 endif
-	
 
 build_fs:
 	# rm -f c_linker/*.o
@@ -99,5 +99,11 @@ gdb:
 monitor:
 	cd codes/os && make monitor
 
+os:
+	cd codes/os && make run
 
+clean:
+	cd codes/os && make clean
+	cd codes/user && make clean
+	cd codes/nk && make clean
 

@@ -1,7 +1,6 @@
 
 use super::{
     frame_alloc,
-    nkapi_vun_getpt, nkapi_dealloc, nkapi_alloc,
     nkapi_translate, nkapi_translate_va, frame_dealloc,
 };
 use crate::{debug_warn, debug_info};

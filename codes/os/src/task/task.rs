@@ -1,7 +1,7 @@
 use crate::util::MemorySet;
 
 use crate::{util::mm_util::translated_refmut, 
-syscall::FD_LIMIT, task::RLIMIT_NOFILE};
+syscall::sys_musl::FD_LIMIT, task::RLIMIT_NOFILE};
 
 use crate::shared::*; use crate::config::*;
 use crate::util::*;
@@ -151,7 +151,8 @@ pub fn test_in_usr(){
 
     unsafe{
         let mut satp: usize = 0;
-        llvm_asm!("csrr $0,satp" : "=r"(satp));
+        core::arch::asm!("csrr {0}, satp", 
+                        out(reg) satp);
         debug_os!("current satp: {:x}", satp);
         for i in 0..100{
             nkapi_set_permission(1, 0.into(), (MapPermission::R | 

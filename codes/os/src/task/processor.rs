@@ -12,12 +12,12 @@ use crate::shared::*; use crate::config::*;
 use crate::util::memory_set::*;
 
 use crate::task::manager::add_task;
-use crate::monitor::*;
 use crate::debug_os;
 pub fn get_core_id() -> usize{
     let tp:usize;
     unsafe {
-        llvm_asm!("mv $0, tp" : "=r"(tp));
+        core::arch::asm!("mv {0}, tp", 
+                        out(reg) tp);
     }
     // tp
     0

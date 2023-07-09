@@ -421,7 +421,7 @@ pub fn sys_fork(flags: usize, stack_ptr: usize, ptid: usize, ctid: usize, newtls
     add_task(new_task);
     unsafe {
         // llvm_asm!("sfence.vma" :::: "volatile");
-        llvm_asm!("fence.i" :::: "volatile");
+        core::arch::asm!("fence.i", options(nostack, nomem, preserves_flags));
     }
     gdb_println!(SYSCALL_ENABLE,"sys_fork(flags: {:?}, stack_ptr: 0x{:X}, ptid: {}, ctid: {}, newtls: {}) = {}", flags, stack_ptr, ptid, ctid, newtls, new_pid);
     new_pid as isize
@@ -469,7 +469,7 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
         inner.fd_table[fd].take();
         unsafe {
             // llvm_asm!("sfence.vma" :::: "volatile");
-            llvm_asm!("fence.i" :::: "volatile");
+            core::arch::asm!("fence.i", options(nostack, nomem, preserves_flags));
         }
         gdb_println!(SYSCALL_ENABLE, "sys_exec(path: {}, args: {:?}) = {}", path, args_vec_copy, argc);
         0 
@@ -605,7 +605,7 @@ pub fn sys_mprotect(addr: usize, len: usize, prot: isize) -> isize{
     }
     unsafe {
         // llvm_asm!("sfence.vma" :::: "volatile");
-        llvm_asm!("fence.i" :::: "volatile");
+        core::arch::asm!("fence.i", options(nostack, nomem, preserves_flags));
     }
     0
 }
@@ -613,7 +613,7 @@ pub fn sys_mprotect(addr: usize, len: usize, prot: isize) -> isize{
 
 use crate::task::RLimit;
 
-use super::FD_LIMIT;
+use super::sys_musl::FD_LIMIT;
 /* [WARNING] For now, we only support current proc or procs in ready_queue
 *            this might be wrong at Multi-Core state.
 */

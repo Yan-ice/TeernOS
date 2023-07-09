@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/stddef.h
+
+../include/stdio.h
+
+../include/stdlib.h
+
+../include/string.h
+stddef.h
+../include/stddef.h
+
+../include/unistd.h
+stddef.h
+../include/stddef.h
+
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/unlink.c
+stdlib.h
+-
+string.h
+-
+unistd.h
+-
+stdio.h
+-
+stddef.h
+-
+

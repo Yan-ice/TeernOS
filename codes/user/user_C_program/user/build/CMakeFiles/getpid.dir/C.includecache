@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/stddef.h
+
+../include/stdio.h
+
+../include/stdlib.h
+
+../include/unistd.h
+stddef.h
+../include/stddef.h
+
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/getpid.c
+stdio.h
+-
+unistd.h
+-
+stdlib.h
+-
+

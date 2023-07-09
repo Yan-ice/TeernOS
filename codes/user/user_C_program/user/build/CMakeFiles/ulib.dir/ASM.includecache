@@ -1,0 +1,12 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/lib/arch/riscv/crt.S
+
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/clone.s
+

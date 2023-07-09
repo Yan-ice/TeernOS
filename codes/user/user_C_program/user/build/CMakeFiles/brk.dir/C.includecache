@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/stddef.h
+
+../include/stdio.h
+
+../include/stdlib.h
+
+../include/string.h
+stddef.h
+../include/stddef.h
+
+../include/unistd.h
+stddef.h
+../include/stddef.h
+
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/brk.c
+unistd.h
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/unistd.h
+stdio.h
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/stdio.h
+stdlib.h
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/stdlib.h
+string.h
+/home/yan_ice/Desktop/Teecert/TeernOS/codes/user/user_C_program/user/src/oscomp/string.h
+

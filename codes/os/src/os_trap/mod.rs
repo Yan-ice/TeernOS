@@ -8,13 +8,14 @@ use riscv::{register::{
     },
     stval,
     stvec, hpmcounter21::read, sstatus::Sstatus, sie
-}, addr::BitField};
+}};
 
 use crate::{shared::*, task::current_user_id};
 use crate::config::*;
 use crate::timer::set_next_trigger;
 
-use crate::syscall::{syscall};
+use crate::syscall::sys_musl::syscall;
+
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,
@@ -24,6 +25,8 @@ use crate::task::{
     Signals,
     perform_signal_handler,
 };
+
+use core::arch::asm;
 
 use crate::debug_os;
 use super::PROXYCONTEXT;
@@ -141,7 +144,7 @@ fn handle_outer_trap(cx: &mut TrapContext, scause: scause::Scause, stval: usize)
             }
             unsafe {
                 //llvm_asm!("sfence.vma" :::: "volatile");
-                llvm_asm!("fence.i" :::: "volatile");
+                asm!("fence.i");
             }
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {

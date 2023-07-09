@@ -1,4 +1,4 @@
-TARGET := riscv64imac-unknown-none-elf
+TARGET := riscv64gc-unknown-none-elf
 MODE := release
 APP_DIR := src/bin
 TARGET_DIR := target/$(TARGET)/$(MODE)
@@ -18,7 +18,8 @@ update:
 
 elf: $(APPS)
 	rustup target add $(TARGET)
-	@cargo build --release -Z namespaced-features --features "$(C_TARGET)"
+# @cargo build --release -Z namespaced-features --features "$(C_TARGET)"
+	@cargo build --release --features "$(C_TARGET)"
 
 binary: elf
 	$(foreach elf, $(ELFS), $(OBJCOPY) $(elf) --strip-all -O binary $(patsubst $(TARGET_DIR)/%, $(TARGET_DIR)/%.bin, $(elf));)

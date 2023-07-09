@@ -1,4 +1,3 @@
-use riscv::register::time;
 use crate::shared::sbi::set_timer;
 use crate::config::CLOCK_FREQ;
 use crate::task::TimeVal;

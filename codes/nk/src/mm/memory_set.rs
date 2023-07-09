@@ -13,6 +13,7 @@ use spin::Mutex;
 
 use super::frame_allocator::{frame_alloc};
 use crate::debug_info;
+use core::arch::asm;
 
 extern "C" {
     fn stext();

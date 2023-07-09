@@ -2,7 +2,7 @@ use crate::address::*;
 use crate::config::*;
 use crate::context::*;
 use crate::flags::*;
-
+use core::arch::asm;
 macro_rules! return_void {
     () => {
         return;
@@ -31,7 +31,7 @@ macro_rules! return_value {
 macro_rules! return_some {
     ($type:ty, $retval0:expr, $retval1:expr) => {
         unsafe{
-            if retval1 == 0 {
+            if $retval1 == 0 {
                 let cast: $type = <$type>::from($retval0);
                 return Some(cast);
             }else{
@@ -50,7 +50,7 @@ macro_rules! entry_gate {
                 in("t3") crate::config::NK_TRAMPOLINE,
                 in("x17") $tar as usize*8,
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
         }
     };
@@ -62,7 +62,7 @@ macro_rules! entry_gate {
                 in("x17") $tar as usize*8,
                 in("a0") usize::from($t1),
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
         }
     };
@@ -75,7 +75,7 @@ macro_rules! entry_gate {
                 in("a0") usize::from($t1),
                 in("a1") usize::from($t2),
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
         }
     };
@@ -89,7 +89,7 @@ macro_rules! entry_gate {
                 in("a1") usize::from($t2),
                 in("a2") usize::from($t3),
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
         }
     };
@@ -105,7 +105,7 @@ macro_rules! entry_gate {
                 in("a2") usize::from($t3),
                 in("a3") usize::from($t4),
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
 
             if usize::from($t1) > 2000 {
@@ -116,19 +116,21 @@ macro_rules! entry_gate {
     };
     ($tar:expr,$t1:expr,$t2:expr,$t3:expr,$t4:expr,$t5:expr,$retval0: expr, $retval1: expr) => {
         unsafe{
+            let para_vec = [usize::from($t1),usize::from($t2),usize::from($t3),usize::from($t4),usize::from($t5)];
+            //println!("params_in: {:x} {:x} {:x} {:x} {:x}", 
+            para_vec[0], para_vec[1], para_vec[2], para_vec[3], para_vec[4]);
             asm!(
                 "jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
                 in("x17") $tar as usize*8,
-                in("a0") usize::from($t1),
-                in("a1") usize::from($t2),
-                in("a2") usize::from($t3),
-                in("a3") usize::from($t4),
-                in("a5") usize::from($t5),
+                in("a0") para_vec[0],
+                in("a1") para_vec[1],
+                in("a2") para_vec[2],
+                in("a3") para_vec[3],
+                in("a4") para_vec[4],
                 lateout("a0") $retval0,
-                lateout("x17") $retval1,
+                lateout("a1") $retval1,
             );
-
             if usize::from($t1) > 2000 {
                 println!("t1: {}",usize::from($t1));
             }
@@ -143,6 +145,9 @@ pub fn nkapi_time() -> usize{
     let retval0: usize;
     let retval1: usize;
     entry_gate!(NKAPI_TIME, retval0, retval1);
+    if retval1 != 0 {
+        panic!("Error handling!");
+    }
     return retval0;
 }
 
@@ -185,6 +190,9 @@ pub fn nkapi_alloc(pt_handle: usize, vpn: VirtPageNum, map_type: MapType, perm: 
     let retval1: usize;
     entry_gate!(NKAPI_ALLOC, pt_handle, vpn, 1 as usize, usize::from(map_type), perm, 
     retval0, retval1);
+    if retval1 != 0 {
+        panic!("Error handling!");
+    }
     return retval0.into();
 }
 
@@ -194,6 +202,10 @@ pub fn nkapi_alloc_mul(pt_handle: usize, vpn_start: VirtPageNum, vpn_end: VirtPa
     let size = vpn_end.0 - vpn_start.0 + 1;
     entry_gate!(NKAPI_ALLOC, pt_handle, vpn_start, size, usize::from(map_type), perm, 
     retval0, retval1);
+    
+    if retval1 != 0 {
+        panic!("Error handling: {}", retval1);
+    }
     return retval0.into();
 }
 
@@ -201,7 +213,7 @@ pub fn nkapi_pt_init(pt_handle: usize, regenerate: bool){
     let retval0: usize;
     let retval1: usize;
 
-    entry_gate!(NKAPI_PT_INIT,pt_handle, regenerate,retval0, retval1);
+    entry_gate!(NKAPI_PT_INIT,pt_handle, regenerate, retval0, retval1);
 }
 
 pub fn nkapi_dealloc(pt_handle: usize, vpn: VirtPageNum){
@@ -247,10 +259,13 @@ pub fn nkapi_set_signal_handler(entry: usize){
 pub fn nkapi_set_allocator_range(begin: usize, end: usize){
     let mut retval0: usize;
     let mut retval1: usize;
+    debug_info!("cfg a success");
     entry_gate!(NKAPI_CONFIG, NKCFG_ALLOCATOR_START, begin,
         retval0, retval1);
+    debug_info!("cfg b success");
     entry_gate!(NKAPI_CONFIG, NKCFG_ALLOCATOR_END, end,
         retval0, retval1);
+        debug_info!("cfg c success");
 }
 
 pub fn nkapi_set_permission(pt_handle: usize, vpn:VirtPageNum, flags: usize){

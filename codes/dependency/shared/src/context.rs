@@ -26,11 +26,11 @@ impl TrapContext {
         //kernel_satp: usize,  // 未理解的内核页表，这东西在干啥
         kernel_sp: usize  // 内核栈栈顶
     ) -> Self {
-        let mut sstatus = sstatus::read();
         // set CPU privilege to User after trapping back
         //Yan_ice: If it is supervisor mode, it can use sret successfully.
-        sstatus.set_spp(SPP::User);
         unsafe{
+            sstatus::set_spp(SPP::User);
+            let sstatus = sstatus::read();
             let mut cx = Self {
                 x: [0; 32],
                 sstatus,
