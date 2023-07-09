@@ -385,7 +385,7 @@ nkapi!{
 nkapi!{
     fn nkapi_alloc(pt_handle: usize, root_vpn: VirtPageNum, size: usize, 
         map_type_u: usize, perm: MapPermission) -> PhysPageNum{
-        debug_info!("params: {:x} {:x} {:x} {:x} {:x}",pt_handle, root_vpn.0, size, map_type_u, perm.bits());
+        //debug_info!("params: {:x} {:x} {:x} {:x} {:x}",pt_handle, root_vpn.0, size, map_type_u, perm.bits());
 
         let map_type = MapType::from(map_type_u);
         let pte_flags = PTEFlags::from_bits(perm.bits()).unwrap();
@@ -500,9 +500,7 @@ nkapi!{
 
 nkapi!{
     fn nkapi_translate_va(pt_handle: usize, va: VirtAddr) -> PhysAddr{
-        debug_info!("before pt is {:x}", pt_handle);
         pt_operate! (pt_handle, target_pt, {
-            debug_info!("after pt is {:x}", pt_handle);
             if let Some(pa) = target_pt.translate_va(va){
                 return Ok(pa);
             }

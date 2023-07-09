@@ -118,9 +118,10 @@ macro_rules! entry_gate {
         unsafe{
             let para_vec = [usize::from($t1),usize::from($t2),usize::from($t3),usize::from($t4),usize::from($t5)];
             //println!("params_in: {:x} {:x} {:x} {:x} {:x}", 
-            para_vec[0], para_vec[1], para_vec[2], para_vec[3], para_vec[4]);
+            //para_vec[0], para_vec[1], para_vec[2], para_vec[3], para_vec[4]);
             asm!(
-                "jalr x1, t3, 0",
+                "fence.i
+                jalr x1, t3, 0",
                 in("t3") crate::config::NK_TRAMPOLINE,
                 in("x17") $tar as usize*8,
                 in("a0") para_vec[0],
