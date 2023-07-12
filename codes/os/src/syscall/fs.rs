@@ -345,14 +345,16 @@ pub fn sys_chdir(path: *const u8) -> isize{
 }
 
 pub fn sys_ls(path: *const u8) -> isize{
-    // debug_os!("ls");
+    debug_os!("ls syscall");
     let token = current_user_token();
     let task = current_task().unwrap();
     let inner = task.acquire_inner_lock();
+    debug_os!("ls syscall 2");
     let path = translated_str(token, path);
+    debug_os!("ls syscall 3");
     let work_path = inner.current_path.clone();
-    // debug_os!("work path = {}", work_path);
-    // debug_os!("path  = {}, len = {}", path, path.len());
+    debug_os!("work path = {}", work_path);
+    debug_os!("path  = {}, len = {}", path, path.len());
     list_files(work_path.as_str(), path.as_str());
     //list_files(inner.current_inode);
     //list_files(inner.current_inode);

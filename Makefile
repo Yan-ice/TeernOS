@@ -17,8 +17,9 @@ export NK_PATH := $(cwd)/codes/nk
 export SBI_PATH := $(cwd)/opensbi_nk
 export K210_PATH := $(cwd)/k210
 
-export KERNEL_ELF := $(NK_PATH)/target/$(TARGET)/$(MODE)/TeernOS_nk
-export KERNEL_BIN := $(KERNEL_ELF).bin
+# export KERNEL_ELF := $(NK_PATH)/target/$(TARGET)/$(MODE)/TeernOS_nk
+# export KERNEL_BIN := $(KERNEL_ELF).bin
+export KERNEL_BIN := $(cwd)/MMK.bin
 
 export OKERNEL_ELF := $(OS_PATH)/target/$(TARGET)/$(MODE)/UltraOS
 export OKERNEL_BIN := $(OKERNEL_ELF).bin
@@ -47,7 +48,7 @@ all: run
 build:
 # rustup target add riscv64gc-unknown-none-elf
 	cd codes/os && make build
-	cd codes/nk && make build
+	# cd codes/nk && make build
 	cd codes/user && make elf
 ifeq ($(BOARD), qemu)
 	make build_fs
@@ -91,7 +92,7 @@ env:
 	rustup update
 	cargo install cargo-binutils
 	cd codes/os && make env
-	cd codes/nk && make env
+	# cd codes/nk && make env
 
 gdb:
 	cd codes/os && make gdb
@@ -105,5 +106,5 @@ os:
 clean:
 	cd codes/os && make clean
 	cd codes/user && make clean
-	cd codes/nk && make clean
+	# cd codes/nk && make clean
 

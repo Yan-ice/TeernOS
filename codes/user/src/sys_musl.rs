@@ -171,7 +171,7 @@ pub fn sys_sleep(period_ms: usize)  -> isize {
 
 // Not standard POSIX sys_call
 pub fn sys_ls(path:&str) -> isize {
-    println!("ready for syscall ls");
+    println!("musl ready for syscall ls");
     syscall(SYSCALL_LS, [path.as_ptr() as usize, 0, 0])
 }
 pub fn sys_shutdown() -> isize {
